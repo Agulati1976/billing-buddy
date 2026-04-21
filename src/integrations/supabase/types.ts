@@ -14,16 +14,199 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      businesses: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          gstin: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          owner_id: string
+          phone: string | null
+          state: string | null
+          state_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          owner_id: string
+          phone?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          state?: string | null
+          state_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      parties: {
+        Row: {
+          billing_address: string | null
+          business_id: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          gstin: string | null
+          id: string
+          name: string
+          notes: string | null
+          opening_balance: number
+          phone: string | null
+          shipping_address: string | null
+          state: string | null
+          state_code: string | null
+          type: Database["public"]["Enums"]["party_type"]
+          updated_at: string
+        }
+        Insert: {
+          billing_address?: string | null
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          opening_balance?: number
+          phone?: string | null
+          shipping_address?: string | null
+          state?: string | null
+          state_code?: string | null
+          type?: Database["public"]["Enums"]["party_type"]
+          updated_at?: string
+        }
+        Update: {
+          billing_address?: string | null
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          opening_balance?: number
+          phone?: string | null
+          shipping_address?: string | null
+          state?: string | null
+          state_code?: string | null
+          type?: Database["public"]["Enums"]["party_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parties_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _business_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_business_member: {
+        Args: { _business_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "staff" | "accountant"
+      party_type: "customer" | "supplier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +333,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "staff", "accountant"],
+      party_type: ["customer", "supplier"],
+    },
   },
 } as const
