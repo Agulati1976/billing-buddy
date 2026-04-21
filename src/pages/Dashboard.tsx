@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useBusiness } from "@/hooks/useBusiness";
-import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet, FileText } from "lucide-react";
 import { formatINR } from "@/lib/states";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 const StatCard = ({
   label, value, icon: Icon, tone = "primary",
@@ -27,8 +30,66 @@ const StatCard = ({
   );
 };
 
+interface Stats {
+  todaySales: number;
+  monthSales: number;
+  toReceive: number;
+  toPay: number;
+  topCustomers: { name: string; total: number }[];
+  lowStock: { name: string; current_stock: number; unit: string; low_stock_alert: number }[];
+  recentInvoices: { id: string; invoice_number: string; total_amount: number; status: string; party: string | null }[];
+}
+
 export default function Dashboard() {
   const { current } = useBusiness();
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    if (!current) return;
+    (async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const monthStart = new Date(); monthStart.setDate(1);
+      const ms = monthStart.toISOString().slice(0, 10);
+
+      const [todayR, monthR, recvR, payR, recentR, lowR] = await Promise.all([
+        supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").eq("invoice_date", today),
+        supabase.from("invoices").select("total_amount, party_id, parties(name)").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", ms),
+        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").gt("balance_amount", 0),
+        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").gt("balance_amount", 0),
+        supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").order("created_at", { ascending: false }).limit(5),
+        supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0),
+      ]);
+
+      const todaySales = (todayR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
+      const monthSales = (monthR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
+      const toReceive = (recvR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
+      const toPay = (payR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
+
+      const customerMap = new Map<string, number>();
+      (monthR.data ?? []).forEach((r: any) => {
+        const name = r.parties?.name;
+        if (!name) return;
+        customerMap.set(name, (customerMap.get(name) ?? 0) + Number(r.total_amount));
+      });
+      const topCustomers = [...customerMap.entries()]
+        .map(([name, total]) => ({ name, total }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+
+      const lowStock = ((lowR.data as any[]) ?? [])
+        .filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert))
+        .slice(0, 5);
+
+      const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
+        id: r.id, invoice_number: r.invoice_number,
+        total_amount: Number(r.total_amount), status: r.status,
+        party: r.parties?.name ?? null,
+      }));
+
+      setStats({ todaySales, monthSales, toReceive, toPay, topCustomers, lowStock, recentInvoices });
+    })();
+  }, [current?.id]);
+
   return (
     <div className="space-y-6 max-w-7xl">
       <div>
@@ -39,26 +100,75 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Today's Sales" value={formatINR(0)} icon={TrendingUp} tone="primary" />
-        <StatCard label="This Month" value={formatINR(0)} icon={ArrowUpRight} tone="success" />
-        <StatCard label="To Receive" value={formatINR(0)} icon={ArrowDownRight} tone="warning" />
-        <StatCard label="To Pay" value={formatINR(0)} icon={Wallet} tone="danger" />
+        <StatCard label="Today's Sales" value={formatINR(stats?.todaySales ?? 0)} icon={TrendingUp} tone="primary" />
+        <StatCard label="This Month" value={formatINR(stats?.monthSales ?? 0)} icon={ArrowUpRight} tone="success" />
+        <StatCard label="To Receive" value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
+        <StatCard label="To Pay" value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold">Top Customers</h2>
+            <FileText className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold">Recent Sales</h2>
           </div>
-          <p className="text-sm text-muted-foreground">No invoices yet. Once you start billing, your top customers appear here.</p>
+          {stats && stats.recentInvoices.length > 0 ? (
+            <ul className="space-y-2">
+              {stats.recentInvoices.map((r) => (
+                <li key={r.id}>
+                  <Link to={`/sales/${r.id}`} className="flex justify-between items-center text-sm py-2 border-b last:border-0 hover:bg-muted/50 -mx-2 px-2 rounded">
+                    <div>
+                      <div className="font-medium">{r.invoice_number}</div>
+                      <div className="text-xs text-muted-foreground">{r.party ?? "—"}</div>
+                    </div>
+                    <div className="num font-medium">{formatINR(r.total_amount)}</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No invoices yet. Create your first sale invoice to get started.</p>
+          )}
         </Card>
+
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Package className="h-5 w-5 text-primary" />
+            <Users className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold">Top Customers (this month)</h2>
+          </div>
+          {stats && stats.topCustomers.length > 0 ? (
+            <ul className="space-y-2">
+              {stats.topCustomers.map((c) => (
+                <li key={c.name} className="flex justify-between text-sm py-1">
+                  <span>{c.name}</span>
+                  <span className="num font-medium">{formatINR(c.total)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No sales this month yet.</p>
+          )}
+        </Card>
+
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-warning" />
             <h2 className="font-semibold">Low Stock Alerts</h2>
           </div>
-          <p className="text-sm text-muted-foreground">Inventory module coming soon.</p>
+          {stats && stats.lowStock.length > 0 ? (
+            <ul className="space-y-2">
+              {stats.lowStock.map((i) => (
+                <li key={i.name} className="flex justify-between items-center text-sm py-1">
+                  <span>{i.name}</span>
+                  <span className="text-danger num">
+                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert at {Number(i.low_stock_alert)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">All items are above their low-stock threshold.</p>
+          )}
         </Card>
       </div>
     </div>
