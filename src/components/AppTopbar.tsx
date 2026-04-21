@@ -45,7 +45,7 @@ export function AppTopbar() {
       )}
 
       <div className="ml-auto flex items-center gap-2">
-        <Button size="sm" className="gap-1.5">
+        <Button size="sm" className="gap-1.5" onClick={() => navigate("/sales/new")}>
           <Plus className="h-4 w-4" /> New Sale
         </Button>
 

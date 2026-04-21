@@ -11,6 +11,10 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Parties from "./pages/Parties";
 import Items from "./pages/Items";
+import Invoices from "./pages/Invoices";
+import InvoiceEditor from "./pages/InvoiceEditor";
+import Payments from "./pages/Payments";
+import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -32,6 +36,14 @@ const App = () => (
                 <Route path="/customers" element={<Parties type="customer" />} />
                 <Route path="/suppliers" element={<Parties type="supplier" />} />
                 <Route path="/items" element={<Items />} />
+                <Route path="/sales" element={<Invoices type="sale" />} />
+                <Route path="/sales/:id" element={<InvoiceEditor type="sale" />} />
+                <Route path="/purchases" element={<Invoices type="purchase" />} />
+                <Route path="/purchases/:id" element={<InvoiceEditor type="purchase" />} />
+                <Route path="/quotations" element={<Invoices type="quotation" />} />
+                <Route path="/quotations/:id" element={<InvoiceEditor type="quotation" />} />
+                <Route path="/payments" element={<Payments />} />
+                <Route path="/expenses" element={<Expenses />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />

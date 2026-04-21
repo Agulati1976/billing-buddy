@@ -16,9 +16,9 @@ const groups = [
   {
     label: "Sales & Purchases",
     items: [
-      { to: "/sales", label: "Sale Invoices", icon: FileText, soon: true },
-      { to: "/quotes", label: "Quotations", icon: FileEdit, soon: true },
-      { to: "/purchases", label: "Purchases", icon: ReceiptIcon, soon: true },
+      { to: "/sales", label: "Sale Invoices", icon: FileText },
+      { to: "/quotations", label: "Quotations", icon: FileEdit },
+      { to: "/purchases", label: "Purchases", icon: ReceiptIcon },
     ],
   },
   {
@@ -35,13 +35,9 @@ const groups = [
   {
     label: "Money",
     items: [
-      { to: "/payments", label: "Payments", icon: Wallet, soon: true },
-      { to: "/expenses", label: "Expenses", icon: ReceiptIcon, soon: true },
+      { to: "/payments", label: "Payments", icon: Wallet },
+      { to: "/expenses", label: "Expenses", icon: ReceiptIcon },
     ],
-  },
-  {
-    label: "Insights",
-    items: [{ to: "/reports", label: "Reports", icon: BarChart3, soon: true }],
   },
 ];
 
