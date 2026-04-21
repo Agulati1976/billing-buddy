@@ -59,6 +59,74 @@ export type Database = {
         }
         Relationships: []
       }
+      items: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          current_stock: number
+          description: string | null
+          hsn_code: string | null
+          id: string
+          low_stock_alert: number
+          name: string
+          opening_stock: number
+          purchase_price: number
+          sale_price: number
+          sku: string | null
+          tax_rate: number
+          type: Database["public"]["Enums"]["item_type"]
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          description?: string | null
+          hsn_code?: string | null
+          id?: string
+          low_stock_alert?: number
+          name: string
+          opening_stock?: number
+          purchase_price?: number
+          sale_price?: number
+          sku?: string | null
+          tax_rate?: number
+          type?: Database["public"]["Enums"]["item_type"]
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          description?: string | null
+          hsn_code?: string | null
+          id?: string
+          low_stock_alert?: number
+          name?: string
+          opening_stock?: number
+          purchase_price?: number
+          sale_price?: number
+          sku?: string | null
+          tax_rate?: number
+          type?: Database["public"]["Enums"]["item_type"]
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parties: {
         Row: {
           billing_address: string | null
@@ -154,6 +222,57 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          quantity: number
+          reference_id: string | null
+          type: Database["public"]["Enums"]["stock_movement_type"]
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          quantity: number
+          reference_id?: string | null
+          type: Database["public"]["Enums"]["stock_movement_type"]
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          quantity?: number
+          reference_id?: string | null
+          type?: Database["public"]["Enums"]["stock_movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           business_id: string
@@ -206,7 +325,16 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "staff" | "accountant"
+      item_type: "product" | "service"
       party_type: "customer" | "supplier"
+      stock_movement_type:
+        | "opening"
+        | "purchase"
+        | "sale"
+        | "adjustment_in"
+        | "adjustment_out"
+        | "damage"
+        | "transfer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -335,7 +463,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "staff", "accountant"],
+      item_type: ["product", "service"],
       party_type: ["customer", "supplier"],
+      stock_movement_type: [
+        "opening",
+        "purchase",
+        "sale",
+        "adjustment_in",
+        "adjustment_out",
+        "damage",
+        "transfer",
+      ],
     },
   },
 } as const
