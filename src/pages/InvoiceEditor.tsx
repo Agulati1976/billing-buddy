@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ArrowLeft, Save, Printer } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Save, Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
   computeInvoice, INVOICE_TYPE_META, nextInvoiceNumber,
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
+import { generateInvoicePdf } from "@/lib/invoicePdf";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
@@ -189,6 +190,36 @@ export default function InvoiceEditor({ type }: Props) {
     navigate(`/${type}s`);
   };
 
+  const downloadPdf = () => {
+    if (!current) return;
+    const validLines = totals.lines.filter((l) => l.item_name.trim());
+    if (validLines.length === 0) { toast.error("No items to export"); return; }
+    const doc = generateInvoicePdf(
+      {
+        name: current.name,
+        gstin: current.gstin, phone: current.phone, email: current.email,
+        address: current.address, state: current.state, state_code: current.state_code,
+      },
+      party ? {
+        name: party.name, gstin: party.gstin, state_code: party.state_code,
+        billing_address: (party as any).billing_address ?? null,
+        phone: (party as any).phone ?? null, email: (party as any).email ?? null,
+        state: (party as any).state ?? null,
+      } : null,
+      {
+        type, invoice_number: number, invoice_date: date, due_date: dueDate || null,
+        is_inter_state: isInterState,
+        subtotal: totals.subtotal, discount_amount: totals.discount_amount,
+        taxable_total: totals.taxable_total, cgst_amount: totals.cgst_amount,
+        sgst_amount: totals.sgst_amount, igst_amount: totals.igst_amount,
+        round_off: totals.round_off, total_amount: totals.total_amount,
+        notes, terms, lines: validLines,
+      }
+    );
+    const safeNum = number.replace(/[\/\\]/g, "-");
+    doc.save(`${safeNum || "invoice"}.pdf`);
+  };
+
   if (!loaded) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
@@ -204,6 +235,9 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadPdf} className="gap-1.5">
+            <Download className="h-4 w-4" /> Download PDF
+          </Button>
           {readOnly && (
             <Button variant="outline" onClick={() => window.print()} className="gap-1.5">
               <Printer className="h-4 w-4" /> Print
