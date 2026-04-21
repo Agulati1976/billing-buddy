@@ -30,7 +30,7 @@ const groups = [
   },
   {
     label: "Inventory",
-    items: [{ to: "/items", label: "Items", icon: Package, soon: true }],
+    items: [{ to: "/items", label: "Items", icon: Package }],
   },
   {
     label: "Money",
