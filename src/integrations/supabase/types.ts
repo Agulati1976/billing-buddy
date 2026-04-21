@@ -59,6 +59,221 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          business_id: string
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          business_id: string
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          business_id?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          created_at: string
+          discount_pct: number
+          hsn_code: string | null
+          id: string
+          invoice_id: string
+          item_id: string | null
+          item_name: string
+          price: number
+          quantity: number
+          tax_amount: number
+          tax_rate: number
+          taxable_amount: number
+          total_amount: number
+          unit: string | null
+        }
+        Insert: {
+          created_at?: string
+          discount_pct?: number
+          hsn_code?: string | null
+          id?: string
+          invoice_id: string
+          item_id?: string | null
+          item_name: string
+          price?: number
+          quantity?: number
+          tax_amount?: number
+          tax_rate?: number
+          taxable_amount?: number
+          total_amount?: number
+          unit?: string | null
+        }
+        Update: {
+          created_at?: string
+          discount_pct?: number
+          hsn_code?: string | null
+          id?: string
+          invoice_id?: string
+          item_id?: string | null
+          item_name?: string
+          price?: number
+          quantity?: number
+          tax_amount?: number
+          tax_rate?: number
+          taxable_amount?: number
+          total_amount?: number
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          balance_amount: number
+          business_id: string
+          cgst_amount: number
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          due_date: string | null
+          id: string
+          igst_amount: number
+          invoice_date: string
+          invoice_number: string
+          is_inter_state: boolean
+          notes: string | null
+          paid_amount: number
+          party_id: string | null
+          party_state_code: string | null
+          round_off: number
+          sgst_amount: number
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_amount: number
+          terms: string | null
+          total_amount: number
+          type: Database["public"]["Enums"]["invoice_type"]
+          updated_at: string
+        }
+        Insert: {
+          balance_amount?: number
+          business_id: string
+          cgst_amount?: number
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          due_date?: string | null
+          id?: string
+          igst_amount?: number
+          invoice_date?: string
+          invoice_number: string
+          is_inter_state?: boolean
+          notes?: string | null
+          paid_amount?: number
+          party_id?: string | null
+          party_state_code?: string | null
+          round_off?: number
+          sgst_amount?: number
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          terms?: string | null
+          total_amount?: number
+          type?: Database["public"]["Enums"]["invoice_type"]
+          updated_at?: string
+        }
+        Update: {
+          balance_amount?: number
+          business_id?: string
+          cgst_amount?: number
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          due_date?: string | null
+          id?: string
+          igst_amount?: number
+          invoice_date?: string
+          invoice_number?: string
+          is_inter_state?: boolean
+          notes?: string | null
+          paid_amount?: number
+          party_id?: string | null
+          party_state_code?: string | null
+          round_off?: number
+          sgst_amount?: number
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          terms?: string | null
+          total_amount?: number
+          type?: Database["public"]["Enums"]["invoice_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       items: {
         Row: {
           business_id: string
@@ -188,6 +403,76 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          business_id: string
+          created_at: string
+          created_by: string | null
+          direction: Database["public"]["Enums"]["payment_direction"]
+          id: string
+          invoice_id: string | null
+          method: Database["public"]["Enums"]["payment_method"]
+          notes: string | null
+          party_id: string | null
+          payment_date: string
+          reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          direction: Database["public"]["Enums"]["payment_direction"]
+          id?: string
+          invoice_id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          party_id?: string | null
+          payment_date?: string
+          reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: Database["public"]["Enums"]["payment_direction"]
+          id?: string
+          invoice_id?: string | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          notes?: string | null
+          party_id?: string | null
+          payment_date?: string
+          reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
             referencedColumns: ["id"]
           },
         ]
@@ -325,8 +610,25 @@ export type Database = {
     }
     Enums: {
       app_role: "owner" | "staff" | "accountant"
+      invoice_status:
+        | "draft"
+        | "unpaid"
+        | "partial"
+        | "paid"
+        | "overdue"
+        | "cancelled"
+      invoice_type:
+        | "sale"
+        | "purchase"
+        | "sale_return"
+        | "purchase_return"
+        | "quotation"
+        | "credit_note"
+        | "debit_note"
       item_type: "product" | "service"
       party_type: "customer" | "supplier"
+      payment_direction: "in" | "out"
+      payment_method: "cash" | "bank" | "upi" | "cheque" | "card" | "other"
       stock_movement_type:
         | "opening"
         | "purchase"
@@ -463,8 +765,27 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["owner", "staff", "accountant"],
+      invoice_status: [
+        "draft",
+        "unpaid",
+        "partial",
+        "paid",
+        "overdue",
+        "cancelled",
+      ],
+      invoice_type: [
+        "sale",
+        "purchase",
+        "sale_return",
+        "purchase_return",
+        "quotation",
+        "credit_note",
+        "debit_note",
+      ],
       item_type: ["product", "service"],
       party_type: ["customer", "supplier"],
+      payment_direction: ["in", "out"],
+      payment_method: ["cash", "bank", "upi", "cheque", "card", "other"],
       stock_movement_type: [
         "opening",
         "purchase",
