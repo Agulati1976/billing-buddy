@@ -1,7 +1,16 @@
 // Professional Tax Invoice PDF generator (jsPDF + autotable)
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { formatINR } from "@/lib/states";
+// PDF-safe currency: "Rs." prefix (built-in PDF fonts lack the ₹ glyph)
+const formatINR = (n: number): string => {
+  const v = Number(n) || 0;
+  const sign = v < 0 ? "-" : "";
+  const abs = Math.abs(v);
+  const formatted = new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(abs);
+  return `${sign}Rs. ${formatted}`;
+};
 import { INVOICE_TYPE_META, type InvoiceType } from "@/lib/invoice";
 
 export interface PdfBusiness {
