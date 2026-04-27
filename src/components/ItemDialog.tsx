@@ -76,6 +76,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
       type: form.type,
       sku: form.sku.trim() || null,
       hsn_code: form.hsn_code.trim() || null,
+      barcode: form.barcode.trim() || null,
       unit: form.unit,
       sale_price: Number(form.sale_price) || 0,
       purchase_price: Number(form.purchase_price) || 0,
@@ -119,6 +120,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
             <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div>
+            <Label>Barcode</Label>
+            <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+              placeholder="EAN / UPC / custom" />
+          </div>
+          <div className="col-span-2">
             <Label>HSN/SAC Code</Label>
             <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} />
           </div>
