@@ -109,6 +109,7 @@ export default function InvoiceEditor({ type }: Props) {
         item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
         discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate),
+        batch_id: l.batch_id ?? null,
       })) : [emptyLine()]);
       setLoaded(true);
     });
@@ -164,6 +165,7 @@ export default function InvoiceEditor({ type }: Props) {
       unit: it.unit,
       price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
       tax_rate: Number(it.tax_rate),
+      batch_id: null,
     });
   };
 
@@ -218,6 +220,7 @@ export default function InvoiceEditor({ type }: Props) {
         price: l.price,
         discount_pct: l.discount_pct,
         tax_rate: l.tax_rate,
+        batch_id: l.batch_id ?? null,
         taxable_amount: l.taxable_amount,
         tax_amount: l.tax_amount,
         total_amount: l.total_amount,
