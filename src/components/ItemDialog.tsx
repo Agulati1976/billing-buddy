@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,8 @@ export interface ItemRow {
   current_stock: number;
   low_stock_alert: number;
   description: string | null;
+  category_id: string | null;
+  is_batch_tracked: boolean;
 }
 
 const UNITS = ["pcs", "kg", "g", "box", "ltr", "ml", "mtr", "ft", "dozen", "pack"];
@@ -41,11 +44,19 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
   const { current } = useBusiness();
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState({
     name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
     unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
     opening_stock: "0", low_stock_alert: "0", description: "",
+    category_id: "", is_batch_tracked: false,
   });
+
+  useEffect(() => {
+    if (!current) return;
+    supabase.from("categories").select("id, name").eq("business_id", current.id).order("name")
+      .then(({ data }) => setCategories((data ?? []) as any));
+  }, [current?.id, open]);
 
   useEffect(() => {
     if (item) {
@@ -56,12 +67,15 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
         unit: item.unit, sale_price: String(item.sale_price), purchase_price: String(item.purchase_price),
         tax_rate: String(item.tax_rate), opening_stock: String(item.opening_stock),
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
+        category_id: item.category_id ?? "",
+        is_batch_tracked: !!item.is_batch_tracked,
       });
     } else {
       setForm({
         name: "", type: "product", sku: "", barcode: "", hsn_code: "", unit: "pcs",
         sale_price: "0", purchase_price: "0", tax_rate: "18",
         opening_stock: "0", low_stock_alert: "0", description: "",
+        category_id: "", is_batch_tracked: false,
       });
     }
   }, [item, open]);
@@ -84,6 +98,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
       opening_stock: form.type === "product" ? (Number(form.opening_stock) || 0) : 0,
       low_stock_alert: form.type === "product" ? (Number(form.low_stock_alert) || 0) : 0,
       description: form.description.trim() || null,
+      category_id: form.category_id || null,
+      is_batch_tracked: form.type === "product" ? form.is_batch_tracked : false,
       created_by: user.id,
     };
     const { error } = item
