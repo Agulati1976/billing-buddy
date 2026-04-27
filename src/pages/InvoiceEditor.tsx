@@ -271,6 +271,11 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
+          {!readOnly && (
+            <Button variant="outline" onClick={() => setScannerOpen(true)} className="gap-1.5">
+              <ScanLine className="h-4 w-4" /> Scan
+            </Button>
+          )}
           <Button variant="outline" onClick={downloadPdf} className="gap-1.5">
             <Download className="h-4 w-4" /> Download PDF
           </Button>
@@ -324,6 +329,14 @@ export default function InvoiceEditor({ type }: Props) {
               )}
             </p>
           )}
+        </div>
+        <div className="flex items-center justify-between gap-3 pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
+            <Label htmlFor="gst-toggle" className="cursor-pointer">
+              {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
+            </Label>
+          </div>
         </div>
       </Card>
 
@@ -429,10 +442,21 @@ export default function InvoiceEditor({ type }: Props) {
           <dl className="space-y-2 text-sm">
             <Row label="Subtotal" value={formatINR(totals.subtotal)} />
             {totals.discount_amount > 0 && <Row label="Discount" value={`− ${formatINR(totals.discount_amount)}`} />}
+            {!readOnly && (
+              <div className="flex items-center justify-between gap-2 py-1">
+                <Label className="text-muted-foreground text-sm">Extra Discount (₹)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="h-8 w-32 num text-right"
+                  value={extraDiscount}
+                  onChange={(e) => setExtraDiscount(e.target.value)}
+                />
+              </div>
+            )}
             <Row label="Taxable Amount" value={formatINR(totals.taxable_total)} />
-            {isInterState ? (
-              <Row label="IGST" value={formatINR(totals.igst_amount)} />
-            ) : (
+            {isGst && isInterState && <Row label="IGST" value={formatINR(totals.igst_amount)} />}
+            {isGst && !isInterState && (
               <>
                 <Row label="CGST" value={formatINR(totals.cgst_amount)} />
                 <Row label="SGST" value={formatINR(totals.sgst_amount)} />
@@ -445,6 +469,8 @@ export default function InvoiceEditor({ type }: Props) {
           </dl>
         </Card>
       </div>
+
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
     </div>
   );
 }
