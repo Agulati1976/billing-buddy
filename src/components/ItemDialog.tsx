@@ -15,7 +15,17 @@ export interface ItemRow {
   name: string;
   type: "product" | "service";
   sku: string | null;
+  barcode: string | null;
   hsn_code: string | null;
+  unit: string;
+  sale_price: number;
+  purchase_price: number;
+  tax_rate: number;
+  opening_stock: number;
+  current_stock: number;
+  low_stock_alert: number;
+  description: string | null;
+}
   unit: string;
   sale_price: number;
   purchase_price: number;
