@@ -26,15 +26,6 @@ export interface ItemRow {
   low_stock_alert: number;
   description: string | null;
 }
-  unit: string;
-  sale_price: number;
-  purchase_price: number;
-  tax_rate: number;
-  opening_stock: number;
-  current_stock: number;
-  low_stock_alert: number;
-  description: string | null;
-}
 
 const UNITS = ["pcs", "kg", "g", "box", "ltr", "ml", "mtr", "ft", "dozen", "pack"];
 const TAX_RATES = [0, 5, 12, 18, 28];
@@ -51,7 +42,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    name: "", type: "product" as "product" | "service", sku: "", hsn_code: "",
+    name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
     unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
     opening_stock: "0", low_stock_alert: "0", description: "",
   });
@@ -59,14 +50,16 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
   useEffect(() => {
     if (item) {
       setForm({
-        name: item.name, type: item.type, sku: item.sku ?? "", hsn_code: item.hsn_code ?? "",
+        name: item.name, type: item.type, sku: item.sku ?? "",
+        barcode: item.barcode ?? "",
+        hsn_code: item.hsn_code ?? "",
         unit: item.unit, sale_price: String(item.sale_price), purchase_price: String(item.purchase_price),
         tax_rate: String(item.tax_rate), opening_stock: String(item.opening_stock),
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
       });
     } else {
       setForm({
-        name: "", type: "product", sku: "", hsn_code: "", unit: "pcs",
+        name: "", type: "product", sku: "", barcode: "", hsn_code: "", unit: "pcs",
         sale_price: "0", purchase_price: "0", tax_rate: "18",
         opening_stock: "0", low_stock_alert: "0", description: "",
       });
