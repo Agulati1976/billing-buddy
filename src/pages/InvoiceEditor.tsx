@@ -23,7 +23,8 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
-interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; }
+interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export default function InvoiceEditor({ type }: Props) {
 
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [partyId, setPartyId] = useState<string>("");
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -50,7 +52,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [readOnly, setReadOnly] = useState(false);
 
   function emptyLine(): InvoiceLineInput {
-    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, tax_rate: 0 };
+    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, tax_rate: 0, batch_id: null };
   }
 
   // Load parties & items

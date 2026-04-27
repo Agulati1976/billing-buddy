@@ -13,6 +13,7 @@ export interface InvoiceLineInput {
   price: number;
   discount_pct: number;
   tax_rate: number;
+  batch_id?: string | null;
 }
 
 export interface ComputedLine extends InvoiceLineInput {
