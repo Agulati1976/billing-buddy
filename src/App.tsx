@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Parties from "./pages/Parties";
+import CustomerDetail from "./pages/CustomerDetail";
 import Items from "./pages/Items";
 import Categories from "./pages/Categories";
 import Warehouses from "./pages/Warehouses";
@@ -37,7 +38,9 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/customers" element={<Parties type="customer" />} />
+                <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/suppliers" element={<Parties type="supplier" />} />
+                <Route path="/suppliers/:id" element={<CustomerDetail />} />
                 <Route path="/items" element={<Items />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/warehouses" element={<Warehouses />} />

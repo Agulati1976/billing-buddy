@@ -1,1 +1,4 @@
 project_id = "qbxombgwzqqumubpaogo"
+
+[functions.send-payment-reminder]
+verify_jwt = true
