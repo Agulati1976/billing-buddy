@@ -67,4 +67,4 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
       </DialogContent>
     </Dialog>
   );
-}
+});
