@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Phone, Mail, Pencil, Trash2, Search, Users, Truck } from "lucide-react";
+import { Plus, Phone, Mail, Pencil, Trash2, Search, Users, Truck, ChevronRight } from "lucide-react";
 import { PartyDialog } from "@/components/PartyDialog";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
+import { useNavigate } from "react-router-dom";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -33,6 +34,7 @@ export interface Party {
 
 export default function Parties({ type }: { type: "customer" | "supplier" }) {
   const { current } = useBusiness();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -132,9 +134,16 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
               </TableRow>
             ) : (
               filtered.map((p) => (
-                <TableRow key={p.id} className="hover:bg-muted/40">
+                <TableRow
+                  key={p.id}
+                  className="hover:bg-muted/40 cursor-pointer"
+                  onClick={() => navigate(`/${type === "customer" ? "customers" : "suppliers"}/${p.id}`)}
+                >
                   <TableCell>
-                    <div className="font-medium">{p.name}</div>
+                    <div className="font-medium flex items-center gap-1">
+                      {p.name}
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
                     {p.billing_address && (
                       <div className="text-xs text-muted-foreground line-clamp-1">{p.billing_address}</div>
                     )}
