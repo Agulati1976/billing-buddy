@@ -15,6 +15,7 @@ export interface ItemRow {
   name: string;
   type: "product" | "service";
   sku: string | null;
+  barcode: string | null;
   hsn_code: string | null;
   unit: string;
   sale_price: number;
@@ -41,7 +42,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    name: "", type: "product" as "product" | "service", sku: "", hsn_code: "",
+    name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
     unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
     opening_stock: "0", low_stock_alert: "0", description: "",
   });
@@ -49,14 +50,16 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
   useEffect(() => {
     if (item) {
       setForm({
-        name: item.name, type: item.type, sku: item.sku ?? "", hsn_code: item.hsn_code ?? "",
+        name: item.name, type: item.type, sku: item.sku ?? "",
+        barcode: item.barcode ?? "",
+        hsn_code: item.hsn_code ?? "",
         unit: item.unit, sale_price: String(item.sale_price), purchase_price: String(item.purchase_price),
         tax_rate: String(item.tax_rate), opening_stock: String(item.opening_stock),
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
       });
     } else {
       setForm({
-        name: "", type: "product", sku: "", hsn_code: "", unit: "pcs",
+        name: "", type: "product", sku: "", barcode: "", hsn_code: "", unit: "pcs",
         sale_price: "0", purchase_price: "0", tax_rate: "18",
         opening_stock: "0", low_stock_alert: "0", description: "",
       });
@@ -73,6 +76,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
       type: form.type,
       sku: form.sku.trim() || null,
       hsn_code: form.hsn_code.trim() || null,
+      barcode: form.barcode.trim() || null,
       unit: form.unit,
       sale_price: Number(form.sale_price) || 0,
       purchase_price: Number(form.purchase_price) || 0,
@@ -116,6 +120,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
             <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div>
+            <Label>Barcode</Label>
+            <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+              placeholder="EAN / UPC / custom" />
+          </div>
+          <div className="col-span-2">
             <Label>HSN/SAC Code</Label>
             <Input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} />
           </div>

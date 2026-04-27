@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ArrowLeft, Save, Printer, Download } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
@@ -18,10 +19,11 @@ import {
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
-interface Item { id: string; name: string; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; }
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
@@ -40,6 +42,9 @@ export default function InvoiceEditor({ type }: Props) {
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
+  const [isGst, setIsGst] = useState(true);
+  const [extraDiscount, setExtraDiscount] = useState("0");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
@@ -54,7 +59,7 @@ export default function InvoiceEditor({ type }: Props) {
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
       supabase.from("parties").select("id, name, state_code, gstin").eq("business_id", current.id).eq("type", partyType).order("name"),
-      supabase.from("items").select("id, name, hsn_code, sale_price, purchase_price, tax_rate, unit").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit").eq("business_id", current.id).order("name"),
     ]).then(([p, it]) => {
       setParties((p.data as any) ?? []);
       setItems((it.data as any) ?? []);
@@ -92,6 +97,8 @@ export default function InvoiceEditor({ type }: Props) {
       setDueDate(i.due_date ?? "");
       setNotes(i.notes ?? "");
       setTerms(i.terms ?? "");
+      setIsGst(i.is_gst !== false);
+      setExtraDiscount(String(i.extra_discount ?? 0));
       setReadOnly(true); // existing invoices are view-only in MVP
       const ls = (ln.data as any[]) ?? [];
       setLines(ls.length ? ls.map((l) => ({
@@ -109,7 +116,34 @@ export default function InvoiceEditor({ type }: Props) {
     return party.state_code !== current.state_code;
   }, [party, current]);
 
-  const totals = useMemo(() => computeInvoice(lines, isInterState), [lines, isInterState]);
+  const totals = useMemo(
+    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 }),
+    [lines, isInterState, isGst, extraDiscount]
+  );
+
+  const handleScanned = (code: string) => {
+    const it = items.find((x) => (x.barcode ?? "").trim() === code.trim());
+    if (!it) {
+      toast.error(`No item with barcode ${code}`);
+      return;
+    }
+    const isPurchase = type === "purchase" || type === "purchase_return";
+    setLines((ls) => {
+      const existingIdx = ls.findIndex((l) => l.item_id === it.id);
+      if (existingIdx >= 0) {
+        return ls.map((l, i) => i === existingIdx ? { ...l, quantity: Number(l.quantity) + 1 } : l);
+      }
+      const newLine: InvoiceLineInput = {
+        item_id: it.id, item_name: it.name, hsn_code: it.hsn_code,
+        quantity: 1, unit: it.unit,
+        price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
+        discount_pct: 0, tax_rate: Number(it.tax_rate),
+      };
+      const lastEmpty = ls.length > 0 && !ls[ls.length - 1].item_name.trim();
+      return lastEmpty ? [...ls.slice(0, -1), newLine] : [...ls, newLine];
+    });
+    toast.success(`Added: ${it.name}`);
+  };
 
   const updateLine = (idx: number, patch: Partial<InvoiceLineInput>) => {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -137,7 +171,7 @@ export default function InvoiceEditor({ type }: Props) {
     if (validLines.length === 0) { toast.error("Add at least one line item"); return; }
 
     setSaving(true);
-    const computed = computeInvoice(validLines, isInterState);
+    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 });
     const status = type === "quotation" ? "draft" : "unpaid";
 
     const { data: inv, error } = await supabase.from("invoices").insert({
@@ -150,6 +184,8 @@ export default function InvoiceEditor({ type }: Props) {
       due_date: dueDate || null,
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
+      is_gst: isGst,
+      extra_discount: computed.extra_discount,
       subtotal: computed.subtotal,
       discount_amount: computed.discount_amount,
       tax_amount: computed.tax_amount,
@@ -235,6 +271,11 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
+          {!readOnly && (
+            <Button variant="outline" onClick={() => setScannerOpen(true)} className="gap-1.5">
+              <ScanLine className="h-4 w-4" /> Scan
+            </Button>
+          )}
           <Button variant="outline" onClick={downloadPdf} className="gap-1.5">
             <Download className="h-4 w-4" /> Download PDF
           </Button>
@@ -288,6 +329,14 @@ export default function InvoiceEditor({ type }: Props) {
               )}
             </p>
           )}
+        </div>
+        <div className="flex items-center justify-between gap-3 pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
+            <Label htmlFor="gst-toggle" className="cursor-pointer">
+              {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
+            </Label>
+          </div>
         </div>
       </Card>
 
@@ -393,10 +442,21 @@ export default function InvoiceEditor({ type }: Props) {
           <dl className="space-y-2 text-sm">
             <Row label="Subtotal" value={formatINR(totals.subtotal)} />
             {totals.discount_amount > 0 && <Row label="Discount" value={`− ${formatINR(totals.discount_amount)}`} />}
+            {!readOnly && (
+              <div className="flex items-center justify-between gap-2 py-1">
+                <Label className="text-muted-foreground text-sm">Extra Discount (₹)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  className="h-8 w-32 num text-right"
+                  value={extraDiscount}
+                  onChange={(e) => setExtraDiscount(e.target.value)}
+                />
+              </div>
+            )}
             <Row label="Taxable Amount" value={formatINR(totals.taxable_total)} />
-            {isInterState ? (
-              <Row label="IGST" value={formatINR(totals.igst_amount)} />
-            ) : (
+            {isGst && isInterState && <Row label="IGST" value={formatINR(totals.igst_amount)} />}
+            {isGst && !isInterState && (
               <>
                 <Row label="CGST" value={formatINR(totals.cgst_amount)} />
                 <Row label="SGST" value={formatINR(totals.sgst_amount)} />
@@ -409,6 +469,8 @@ export default function InvoiceEditor({ type }: Props) {
           </dl>
         </Card>
       </div>
+
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
     </div>
   );
 }

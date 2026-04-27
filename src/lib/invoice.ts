@@ -25,6 +25,7 @@ export interface InvoiceTotals {
   lines: ComputedLine[];
   subtotal: number;
   discount_amount: number;
+  extra_discount: number;
   taxable_total: number;
   tax_amount: number;
   cgst_amount: number;
@@ -36,15 +37,21 @@ export interface InvoiceTotals {
 
 export function computeInvoice(
   lines: InvoiceLineInput[],
-  isInterState: boolean
+  isInterState: boolean,
+  opts: { isGst?: boolean; extraDiscount?: number } = {}
 ): InvoiceTotals {
+  const isGst = opts.isGst !== false; // default true
+  const extraDiscount = Number(opts.extraDiscount) || 0;
+
   const computed: ComputedLine[] = lines.map((l) => {
     const gross = (Number(l.quantity) || 0) * (Number(l.price) || 0);
     const discount = (gross * (Number(l.discount_pct) || 0)) / 100;
     const taxable = gross - discount;
-    const tax = (taxable * (Number(l.tax_rate) || 0)) / 100;
+    const effectiveRate = isGst ? (Number(l.tax_rate) || 0) : 0;
+    const tax = (taxable * effectiveRate) / 100;
     return {
       ...l,
+      tax_rate: effectiveRate,
       taxable_amount: round2(taxable),
       tax_amount: round2(tax),
       total_amount: round2(taxable + tax),
@@ -55,11 +62,13 @@ export function computeInvoice(
     (s, l) => s + (Number(l.quantity) || 0) * (Number(l.price) || 0),
     0
   );
-  const discount_amount = computed.reduce(
+  const lineDiscount = computed.reduce(
     (s, l) => s + ((Number(l.quantity) || 0) * (Number(l.price) || 0) * (Number(l.discount_pct) || 0)) / 100,
     0
   );
-  const taxable_total = computed.reduce((s, l) => s + l.taxable_amount, 0);
+  const discount_amount = lineDiscount + extraDiscount;
+  const taxable_after_lines = computed.reduce((s, l) => s + l.taxable_amount, 0);
+  const taxable_total = Math.max(0, taxable_after_lines - extraDiscount);
   const tax_amount = computed.reduce((s, l) => s + l.tax_amount, 0);
 
   const cgst_amount = isInterState ? 0 : tax_amount / 2;
@@ -74,6 +83,7 @@ export function computeInvoice(
     lines: computed,
     subtotal: round2(subtotal),
     discount_amount: round2(discount_amount),
+    extra_discount: round2(extraDiscount),
     taxable_total: round2(taxable_total),
     tax_amount: round2(tax_amount),
     cgst_amount: round2(cgst_amount),
