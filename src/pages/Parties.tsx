@@ -149,7 +149,7 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-0.5 text-sm">
+                    <div className="space-y-0.5 text-sm" onClick={(e) => e.stopPropagation()}>
                       {p.phone && (
                         <a href={`tel:${p.phone}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-primary">
                           <Phone className="h-3 w-3" /> {p.phone}
@@ -170,7 +170,7 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
                     {p.state_code ? `${p.state_code} · ${p.state}` : "—"}
                   </TableCell>
                   <TableCell className="text-right num font-medium">{formatINR(Number(p.opening_balance))}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1 justify-end">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(p); setOpenForm(true); }}>
                         <Pencil className="h-3.5 w-3.5" />
