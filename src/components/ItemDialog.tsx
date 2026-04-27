@@ -170,8 +170,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
             <>
               <div>
                 <Label>Opening Stock</Label>
-                <Input type="number" step="0.01" disabled={!!item} value={form.opening_stock}
+                <Input type="number" step="0.01" disabled={!!item || form.is_batch_tracked} value={form.opening_stock}
                   onChange={(e) => setForm({ ...form, opening_stock: e.target.value })} />
+                {form.is_batch_tracked && (
+                  <p className="text-xs text-muted-foreground mt-1">Stock comes from batches.</p>
+                )}
               </div>
               <div>
                 <Label>Low Stock Alert</Label>
@@ -179,6 +182,25 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
                   onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value })} />
               </div>
             </>
+          )}
+          <div className="col-span-2">
+            <Label>Category</Label>
+            <Select value={form.category_id || "__none"} onValueChange={(v) => setForm({ ...form, category_id: v === "__none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Uncategorised" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">Uncategorised</SelectItem>
+                {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          {form.type === "product" && (
+            <div className="col-span-2 flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label className="cursor-pointer">Batch tracking</Label>
+                <p className="text-xs text-muted-foreground">Track stock per batch (with batch no, mfg & expiry).</p>
+              </div>
+              <Switch checked={form.is_batch_tracked} onCheckedChange={(v) => setForm({ ...form, is_batch_tracked: v })} />
+            </div>
           )}
           <div className="col-span-2">
             <Label>Description</Label>
