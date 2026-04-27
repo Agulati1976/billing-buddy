@@ -37,6 +37,7 @@ interface Stats {
   toPay: number;
   topCustomers: { name: string; total: number }[];
   lowStock: { name: string; current_stock: number; unit: string; low_stock_alert: number }[];
+  expiringBatches: { id: string; batch_number: string; expiry_date: string; quantity: number; item: string }[];
   recentInvoices: { id: string; invoice_number: string; total_amount: number; status: string; party: string | null }[];
 }
 
@@ -51,13 +52,17 @@ export default function Dashboard() {
       const monthStart = new Date(); monthStart.setDate(1);
       const ms = monthStart.toISOString().slice(0, 10);
 
-      const [todayR, monthR, recvR, payR, recentR, lowR] = await Promise.all([
+      const in30 = new Date(); in30.setDate(in30.getDate() + 30);
+      const in30Str = in30.toISOString().slice(0, 10);
+
+      const [todayR, monthR, recvR, payR, recentR, lowR, expR] = await Promise.all([
         supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").eq("invoice_date", today),
         supabase.from("invoices").select("total_amount, party_id, parties(name)").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", ms),
         supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").gt("balance_amount", 0),
         supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").gt("balance_amount", 0),
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").order("created_at", { ascending: false }).limit(5),
         supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0),
+        supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", in30Str).order("expiry_date").limit(10),
       ]);
 
       const todaySales = (todayR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
@@ -86,7 +91,12 @@ export default function Dashboard() {
         party: r.parties?.name ?? null,
       }));
 
-      setStats({ todaySales, monthSales, toReceive, toPay, topCustomers, lowStock, recentInvoices });
+      const expiringBatches = ((expR.data as any[]) ?? []).map((b) => ({
+        id: b.id, batch_number: b.batch_number, expiry_date: b.expiry_date,
+        quantity: Number(b.quantity), item: b.items?.name ?? "—",
+      }));
+
+      setStats({ todaySales, monthSales, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
     })();
   }, [current?.id]);
 
@@ -168,6 +178,25 @@ export default function Dashboard() {
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">All items are above their low-stock threshold.</p>
+          )}
+        </Card>
+
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-warning" />
+            <h2 className="font-semibold">Expiring Batches (next 30 days)</h2>
+          </div>
+          {stats && stats.expiringBatches.length > 0 ? (
+            <ul className="space-y-2">
+              {stats.expiringBatches.map((b) => (
+                <li key={b.id} className="flex justify-between items-center text-sm py-1">
+                  <span>{b.item} <span className="text-muted-foreground">· batch {b.batch_number}</span></span>
+                  <span className="text-warning num">{b.quantity} · exp {b.expiry_date}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No batches expiring in the next 30 days.</p>
           )}
         </Card>
       </div>

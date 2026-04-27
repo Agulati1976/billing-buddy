@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      batches: {
+        Row: {
+          batch_number: string
+          business_id: string
+          created_at: string
+          created_by: string | null
+          expiry_date: string | null
+          id: string
+          item_id: string
+          mfg_date: string | null
+          notes: string | null
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          item_id: string
+          mfg_date?: string | null
+          notes?: string | null
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          expiry_date?: string | null
+          id?: string
+          item_id?: string
+          mfg_date?: string | null
+          notes?: string | null
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
           address: string | null
@@ -55,6 +105,36 @@ export type Database = {
           phone?: string | null
           state?: string | null
           state_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []
@@ -111,6 +191,7 @@ export type Database = {
       }
       invoice_items: {
         Row: {
+          batch_id: string | null
           created_at: string
           discount_pct: number
           hsn_code: string | null
@@ -127,6 +208,7 @@ export type Database = {
           unit: string | null
         }
         Insert: {
+          batch_id?: string | null
           created_at?: string
           discount_pct?: number
           hsn_code?: string | null
@@ -143,6 +225,7 @@ export type Database = {
           unit?: string | null
         }
         Update: {
+          batch_id?: string | null
           created_at?: string
           discount_pct?: number
           hsn_code?: string | null
@@ -159,6 +242,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoice_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoice_items_invoice_id_fkey"
             columns: ["invoice_id"]
@@ -284,12 +374,14 @@ export type Database = {
         Row: {
           barcode: string | null
           business_id: string
+          category_id: string | null
           created_at: string
           created_by: string | null
           current_stock: number
           description: string | null
           hsn_code: string | null
           id: string
+          is_batch_tracked: boolean
           low_stock_alert: number
           name: string
           opening_stock: number
@@ -304,12 +396,14 @@ export type Database = {
         Insert: {
           barcode?: string | null
           business_id: string
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           current_stock?: number
           description?: string | null
           hsn_code?: string | null
           id?: string
+          is_batch_tracked?: boolean
           low_stock_alert?: number
           name: string
           opening_stock?: number
@@ -324,12 +418,14 @@ export type Database = {
         Update: {
           barcode?: string | null
           business_id?: string
+          category_id?: string | null
           created_at?: string
           created_by?: string | null
           current_stock?: number
           description?: string | null
           hsn_code?: string | null
           id?: string
+          is_batch_tracked?: boolean
           low_stock_alert?: number
           name?: string
           opening_stock?: number
@@ -347,6 +443,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
             referencedColumns: ["id"]
           },
         ]
@@ -527,6 +630,7 @@ export type Database = {
           quantity: number
           reference_id: string | null
           type: Database["public"]["Enums"]["stock_movement_type"]
+          warehouse_id: string | null
         }
         Insert: {
           business_id: string
@@ -538,6 +642,7 @@ export type Database = {
           quantity: number
           reference_id?: string | null
           type: Database["public"]["Enums"]["stock_movement_type"]
+          warehouse_id?: string | null
         }
         Update: {
           business_id?: string
@@ -549,6 +654,7 @@ export type Database = {
           quantity?: number
           reference_id?: string | null
           type?: Database["public"]["Enums"]["stock_movement_type"]
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -563,6 +669,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -598,6 +711,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      warehouses: {
+        Row: {
+          address: string | null
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

@@ -23,7 +23,8 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
-interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; }
+interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export default function InvoiceEditor({ type }: Props) {
 
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [partyId, setPartyId] = useState<string>("");
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -50,7 +52,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [readOnly, setReadOnly] = useState(false);
 
   function emptyLine(): InvoiceLineInput {
-    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, tax_rate: 0 };
+    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, tax_rate: 0, batch_id: null };
   }
 
   // Load parties & items
@@ -59,10 +61,12 @@ export default function InvoiceEditor({ type }: Props) {
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
       supabase.from("parties").select("id, name, state_code, gstin").eq("business_id", current.id).eq("type", partyType).order("name"),
-      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit").eq("business_id", current.id).order("name"),
-    ]).then(([p, it]) => {
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").eq("business_id", current.id).order("name"),
+      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+    ]).then(([p, it, b]) => {
       setParties((p.data as any) ?? []);
       setItems((it.data as any) ?? []);
+      setBatches((b.data as any) ?? []);
     });
   }, [current?.id, type]);
 
@@ -105,6 +109,7 @@ export default function InvoiceEditor({ type }: Props) {
         item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
         discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate),
+        batch_id: l.batch_id ?? null,
       })) : [emptyLine()]);
       setLoaded(true);
     });
@@ -160,6 +165,7 @@ export default function InvoiceEditor({ type }: Props) {
       unit: it.unit,
       price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
       tax_rate: Number(it.tax_rate),
+      batch_id: null,
     });
   };
 
@@ -169,6 +175,12 @@ export default function InvoiceEditor({ type }: Props) {
     if (!partyId && type !== "quotation") { toast.error("Select a party"); return; }
     const validLines = lines.filter((l) => l.item_name.trim() && Number(l.quantity) > 0);
     if (validLines.length === 0) { toast.error("Add at least one line item"); return; }
+    for (const l of validLines) {
+      const it = items.find(x => x.id === l.item_id);
+      if (it?.is_batch_tracked && !l.batch_id) {
+        toast.error(`Pick a batch for "${it.name}"`); return;
+      }
+    }
 
     setSaving(true);
     const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 });
@@ -214,6 +226,7 @@ export default function InvoiceEditor({ type }: Props) {
         price: l.price,
         discount_pct: l.discount_pct,
         tax_rate: l.tax_rate,
+        batch_id: l.batch_id ?? null,
         taxable_amount: l.taxable_amount,
         tax_amount: l.tax_amount,
         total_amount: l.total_amount,
@@ -359,14 +372,19 @@ export default function InvoiceEditor({ type }: Props) {
               <TableRow key={idx}>
                 <TableCell>
                   {readOnly ? (
-                    <span className="font-medium">{l.item_name}</span>
+                    <div>
+                      <span className="font-medium">{l.item_name}</span>
+                      {l.batch_id && (
+                        <div className="text-xs text-muted-foreground">Batch: {batches.find(b => b.id === l.batch_id)?.batch_number ?? "—"}</div>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-1">
                       <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
                         <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
                         <SelectContent>
                           {items.map((it) => (
-                            <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>
+                            <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -376,6 +394,25 @@ export default function InvoiceEditor({ type }: Props) {
                         onChange={(e) => updateLine(idx, { item_name: e.target.value })}
                         placeholder="Or type name"
                       />
+                      {(() => {
+                        const it = items.find(x => x.id === l.item_id);
+                        if (!it?.is_batch_tracked) return null;
+                        const itemBatches = batches.filter(b => b.item_id === it.id);
+                        return (
+                          <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                            <SelectTrigger className="h-8"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
+                            <SelectContent>
+                              {itemBatches.length === 0 ? (
+                                <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
+                              ) : itemBatches.map(b => (
+                                <SelectItem key={b.id} value={b.id}>
+                                  {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </div>
                   )}
                 </TableCell>

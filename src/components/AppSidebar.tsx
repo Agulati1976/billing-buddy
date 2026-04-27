@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
-  Wallet, Receipt as ReceiptIcon, BarChart3, Settings, Receipt,
+  Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
 } from "lucide-react";
 
 const groups = [
@@ -30,7 +30,12 @@ const groups = [
   },
   {
     label: "Inventory",
-    items: [{ to: "/items", label: "Items", icon: Package }],
+    items: [
+      { to: "/items", label: "Items", icon: Package },
+      { to: "/categories", label: "Categories", icon: Tags },
+      { to: "/warehouses", label: "Warehouses", icon: Warehouse },
+      { to: "/batches", label: "Batches & Expiry", icon: Boxes },
+    ],
   },
   {
     label: "Money",
