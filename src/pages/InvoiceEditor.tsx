@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, ArrowLeft, Save, Printer, Download } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
@@ -18,10 +19,11 @@ import {
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
-interface Item { id: string; name: string; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; }
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
@@ -40,6 +42,9 @@ export default function InvoiceEditor({ type }: Props) {
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
+  const [isGst, setIsGst] = useState(true);
+  const [extraDiscount, setExtraDiscount] = useState("0");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
@@ -54,7 +59,7 @@ export default function InvoiceEditor({ type }: Props) {
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
       supabase.from("parties").select("id, name, state_code, gstin").eq("business_id", current.id).eq("type", partyType).order("name"),
-      supabase.from("items").select("id, name, hsn_code, sale_price, purchase_price, tax_rate, unit").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit").eq("business_id", current.id).order("name"),
     ]).then(([p, it]) => {
       setParties((p.data as any) ?? []);
       setItems((it.data as any) ?? []);
