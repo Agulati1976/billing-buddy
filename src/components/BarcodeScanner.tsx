@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -8,7 +8,7 @@ interface Props {
   onScanned: (code: string) => void;
 }
 
-export function BarcodeScanner({ open, onOpenChange, onScanned }: Props) {
+export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function BarcodeScanner({ open, onOpenChange, onScanned }, _ref) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerId = "barcode-scanner-region";
 
@@ -67,4 +67,4 @@ export function BarcodeScanner({ open, onOpenChange, onScanned }: Props) {
       </DialogContent>
     </Dialog>
   );
-}
+});
