@@ -184,10 +184,12 @@ export type Database = {
           created_by: string | null
           discount_amount: number
           due_date: string | null
+          extra_discount: number
           id: string
           igst_amount: number
           invoice_date: string
           invoice_number: string
+          is_gst: boolean
           is_inter_state: boolean
           notes: string | null
           paid_amount: number
@@ -211,10 +213,12 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number
           due_date?: string | null
+          extra_discount?: number
           id?: string
           igst_amount?: number
           invoice_date?: string
           invoice_number: string
+          is_gst?: boolean
           is_inter_state?: boolean
           notes?: string | null
           paid_amount?: number
@@ -238,10 +242,12 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number
           due_date?: string | null
+          extra_discount?: number
           id?: string
           igst_amount?: number
           invoice_date?: string
           invoice_number?: string
+          is_gst?: boolean
           is_inter_state?: boolean
           notes?: string | null
           paid_amount?: number
@@ -276,6 +282,7 @@ export type Database = {
       }
       items: {
         Row: {
+          barcode: string | null
           business_id: string
           created_at: string
           created_by: string | null
@@ -295,6 +302,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          barcode?: string | null
           business_id: string
           created_at?: string
           created_by?: string | null
@@ -314,6 +322,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          barcode?: string | null
           business_id?: string
           created_at?: string
           created_by?: string | null
