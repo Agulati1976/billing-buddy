@@ -519,6 +519,51 @@ export type Database = {
           },
         ]
       }
+      payment_reminders: {
+        Row: {
+          business_id: string
+          channel: string
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_ids: string[]
+          message: string | null
+          party_id: string
+          recipient_email: string | null
+          sent_at: string | null
+          status: string
+          total_overdue: number
+        }
+        Insert: {
+          business_id: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_ids?: string[]
+          message?: string | null
+          party_id: string
+          recipient_email?: string | null
+          sent_at?: string | null
+          status?: string
+          total_overdue?: number
+        }
+        Update: {
+          business_id?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_ids?: string[]
+          message?: string | null
+          party_id?: string
+          recipient_email?: string | null
+          sent_at?: string | null
+          status?: string
+          total_overdue?: number
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
