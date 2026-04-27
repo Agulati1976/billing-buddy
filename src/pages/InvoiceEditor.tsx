@@ -97,6 +97,8 @@ export default function InvoiceEditor({ type }: Props) {
       setDueDate(i.due_date ?? "");
       setNotes(i.notes ?? "");
       setTerms(i.terms ?? "");
+      setIsGst(i.is_gst !== false);
+      setExtraDiscount(String(i.extra_discount ?? 0));
       setReadOnly(true); // existing invoices are view-only in MVP
       const ls = (ln.data as any[]) ?? [];
       setLines(ls.length ? ls.map((l) => ({
@@ -114,7 +116,34 @@ export default function InvoiceEditor({ type }: Props) {
     return party.state_code !== current.state_code;
   }, [party, current]);
 
-  const totals = useMemo(() => computeInvoice(lines, isInterState), [lines, isInterState]);
+  const totals = useMemo(
+    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 }),
+    [lines, isInterState, isGst, extraDiscount]
+  );
+
+  const handleScanned = (code: string) => {
+    const it = items.find((x) => (x.barcode ?? "").trim() === code.trim());
+    if (!it) {
+      toast.error(`No item with barcode ${code}`);
+      return;
+    }
+    const isPurchase = type === "purchase" || type === "purchase_return";
+    setLines((ls) => {
+      const existingIdx = ls.findIndex((l) => l.item_id === it.id);
+      if (existingIdx >= 0) {
+        return ls.map((l, i) => i === existingIdx ? { ...l, quantity: Number(l.quantity) + 1 } : l);
+      }
+      const newLine: InvoiceLineInput = {
+        item_id: it.id, item_name: it.name, hsn_code: it.hsn_code,
+        quantity: 1, unit: it.unit,
+        price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
+        discount_pct: 0, tax_rate: Number(it.tax_rate),
+      };
+      const lastEmpty = ls.length > 0 && !ls[ls.length - 1].item_name.trim();
+      return lastEmpty ? [...ls.slice(0, -1), newLine] : [...ls, newLine];
+    });
+    toast.success(`Added: ${it.name}`);
+  };
 
   const updateLine = (idx: number, patch: Partial<InvoiceLineInput>) => {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -142,7 +171,7 @@ export default function InvoiceEditor({ type }: Props) {
     if (validLines.length === 0) { toast.error("Add at least one line item"); return; }
 
     setSaving(true);
-    const computed = computeInvoice(validLines, isInterState);
+    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 });
     const status = type === "quotation" ? "draft" : "unpaid";
 
     const { data: inv, error } = await supabase.from("invoices").insert({
@@ -155,6 +184,8 @@ export default function InvoiceEditor({ type }: Props) {
       due_date: dueDate || null,
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
+      is_gst: isGst,
+      extra_discount: computed.extra_discount,
       subtotal: computed.subtotal,
       discount_amount: computed.discount_amount,
       tax_amount: computed.tax_amount,
