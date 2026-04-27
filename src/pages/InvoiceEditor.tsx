@@ -61,10 +61,12 @@ export default function InvoiceEditor({ type }: Props) {
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
       supabase.from("parties").select("id, name, state_code, gstin").eq("business_id", current.id).eq("type", partyType).order("name"),
-      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit").eq("business_id", current.id).order("name"),
-    ]).then(([p, it]) => {
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").eq("business_id", current.id).order("name"),
+      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+    ]).then(([p, it, b]) => {
       setParties((p.data as any) ?? []);
       setItems((it.data as any) ?? []);
+      setBatches((b.data as any) ?? []);
     });
   }, [current?.id, type]);
 
