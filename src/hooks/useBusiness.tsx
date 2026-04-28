@@ -35,6 +35,8 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
   const [current, setCurrentState] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { loading: authLoading } = useAuth();
+
   const refresh = useCallback(async () => {
     if (!user) {
       setBusinesses([]);
@@ -42,7 +44,6 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
-    setLoading(true);
     const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: true });
     if (!error && data) {
       setBusinesses(data as Business[]);
@@ -54,7 +55,17 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, [user]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    // While auth is resolving, or whenever the user identity changes,
+    // mark businesses as loading so AppLayout doesn't prematurely
+    // redirect to /onboarding before we've fetched for this user.
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+    setLoading(true);
+    refresh();
+  }, [refresh, authLoading]);
 
   const setCurrent = (b: Business) => {
     setCurrentState(b);
