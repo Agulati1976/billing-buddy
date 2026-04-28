@@ -239,10 +239,13 @@ export default function InvoiceEditor({ type }: Props) {
     navigate(`/${type}s`);
   };
 
-  const downloadPdf = () => {
+  const downloadPdf = async () => {
     if (!current) return;
     const validLines = totals.lines.filter((l) => l.item_name.trim());
     if (validLines.length === 0) { toast.error("No items to export"); return; }
+    // Load invoice design (best-effort; fall back to defaults)
+    const { data: design } = await supabase
+      .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
     const doc = generateInvoicePdf(
       {
         name: current.name,
@@ -263,7 +266,12 @@ export default function InvoiceEditor({ type }: Props) {
         sgst_amount: totals.sgst_amount, igst_amount: totals.igst_amount,
         round_off: totals.round_off, total_amount: totals.total_amount,
         notes, terms, lines: validLines,
-      }
+      },
+      design ? {
+        template: design.template, accent_color: design.accent_color,
+        footer_text: design.footer_text, signature_label: design.signature_label,
+        show_signature: design.show_signature, show_amount_in_words: design.show_amount_in_words,
+      } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
     doc.save(`${safeNum || "invoice"}.pdf`);
