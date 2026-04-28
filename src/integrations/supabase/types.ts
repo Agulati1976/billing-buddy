@@ -809,7 +809,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "staff" | "accountant"
+      app_role: "owner" | "staff" | "accountant" | "admin"
       invoice_status:
         | "draft"
         | "unpaid"
@@ -964,7 +964,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "staff", "accountant"],
+      app_role: ["owner", "staff", "accountant", "admin"],
       invoice_status: [
         "draft",
         "unpaid",
