@@ -77,7 +77,7 @@ export default function AiInsights() {
             On-demand intelligence about your business. Click "Generate" on any card.
           </p>
         </div>
-        <Badge variant="secondary" className="hidden md:inline-flex">Powered by Lovable AI</Badge>
+        
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
