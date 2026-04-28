@@ -1,9 +1,11 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, LogOut, Building2 } from "lucide-react";
+import { Plus, LogOut, Building2, Check, ChevronDown } from "lucide-react";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -25,23 +27,31 @@ export function AppTopbar() {
       <SidebarTrigger />
 
       {current && (
-        <Select
-          value={current.id}
-          onValueChange={(id) => {
-            const b = businesses.find((x) => x.id === id);
-            if (b) setCurrent(b);
-          }}
-        >
-          <SelectTrigger className="w-[220px] h-9">
-            <Building2 className="h-4 w-4 mr-2 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-2 max-w-[260px]">
+              <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="truncate">{current.name}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+              Switch business
+            </DropdownMenuLabel>
             {businesses.map((b) => (
-              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              <DropdownMenuItem key={b.id} onClick={() => setCurrent(b)} className="gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <span className="flex-1 truncate">{b.name}</span>
+                {b.id === current.id && <Check className="h-4 w-4 text-primary" />}
+              </DropdownMenuItem>
             ))}
-          </SelectContent>
-        </Select>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/onboarding")} className="text-primary">
+              <Plus className="h-4 w-4 mr-1" /> Add new business
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       <div className="ml-auto flex items-center gap-2">
@@ -72,3 +82,4 @@ export function AppTopbar() {
     </header>
   );
 }
+

@@ -68,27 +68,75 @@ export interface PdfInvoice {
   lines: PdfLine[];
 }
 
+export interface InvoiceDesign {
+  template?: string;            // 'classic' | 'modern' | 'minimal'
+  accent_color?: string;        // hex like '#2563EB'
+  footer_text?: string | null;
+  signature_label?: string | null;
+  show_signature?: boolean;
+  show_amount_in_words?: boolean;
+}
+
 const PAGE_W = 210; // A4 mm
 const MARGIN = 12;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const v = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(v, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 
 export function generateInvoicePdf(
   business: PdfBusiness,
   party: PdfParty | null,
   invoice: PdfInvoice,
+  design?: InvoiceDesign,
 ): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const meta = INVOICE_TYPE_META[invoice.type];
   const isQuotation = invoice.type === "quotation";
   const docTitle = isQuotation ? "QUOTATION" : "TAX INVOICE";
 
-  // Header band
-  doc.setFillColor(37, 99, 235); // primary blue
-  doc.rect(0, 0, PAGE_W, 28, "F");
+  const template = design?.template ?? "classic";
+  const isMinimal = template === "minimal";
+  const isModern = template === "modern";
+  const accent: [number, number, number] = isMinimal
+    ? [30, 30, 30]
+    : hexToRgb(design?.accent_color ?? "#2563EB");
+  const showSig = design?.show_signature ?? true;
+  const showWords = design?.show_amount_in_words ?? true;
+  const sigLabel = design?.signature_label ?? "Authorised Signatory";
+  const footer = design?.footer_text ?? "This is a computer-generated invoice and does not require a physical signature.";
 
-  doc.setTextColor(255, 255, 255);
+  // Header band
+  if (isModern) {
+    // Left accent stripe instead of full band
+    doc.setFillColor(...accent);
+    doc.rect(0, 0, 4, 297, "F");
+    doc.setTextColor(30, 30, 30);
+  } else {
+    doc.setFillColor(...accent);
+    doc.rect(0, 0, PAGE_W, 28, "F");
+    doc.setTextColor(isMinimal ? 30 : 255, isMinimal ? 30 : 255, isMinimal ? 30 : 255);
+    if (isMinimal) {
+      // For minimal, draw only a bottom border line
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, PAGE_W, 28, "F");
+      doc.setDrawColor(30);
+      doc.setLineWidth(0.5);
+      doc.line(MARGIN, 28, PAGE_W - MARGIN, 28);
+      doc.setTextColor(30, 30, 30);
+    }
+  }
+
+
+  // Header text colour: white if dark band, dark for minimal/modern
+  if (isModern || isMinimal) doc.setTextColor(30, 30, 30);
+  else doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text(business.name, MARGIN, 12);
+  doc.text(business.name, isModern ? MARGIN + 4 : MARGIN, 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -100,7 +148,7 @@ export function generateInvoicePdf(
   const contact = [business.phone, business.email].filter(Boolean).join(" · ");
   if (contact) headerLines.push(contact);
   if (business.gstin) headerLines.push(`GSTIN: ${business.gstin}`);
-  doc.text(headerLines, MARGIN, 17, { maxWidth: 120 });
+  doc.text(headerLines, isModern ? MARGIN + 4 : MARGIN, 17, { maxWidth: 120 });
 
   // Title (right side)
   doc.setFont("helvetica", "bold");
@@ -199,7 +247,7 @@ export function generateInvoicePdf(
     body,
     theme: "grid",
     styles: { font: "helvetica", fontSize: 9, cellPadding: 2.2, lineColor: [220, 220, 220] },
-    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold", halign: "center" },
+    headStyles: { fillColor: accent, textColor: isMinimal ? 30 : 255, fontStyle: "bold", halign: "center" },
     columnStyles: {
       0: { halign: "center", cellWidth: 8 },
       1: { cellWidth: 50 },
@@ -252,28 +300,30 @@ export function generateInvoicePdf(
   });
 
   // Grand total bar
-  doc.setFillColor(37, 99, 235);
+  doc.setFillColor(...accent);
   doc.rect(totalsX, ty - 1, totalsW, 8, "F");
-  doc.setTextColor(255);
+  doc.setTextColor(isMinimal ? 30 : 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text("TOTAL", totalsX + 3, ty + 4.5);
   doc.text(formatINR(invoice.total_amount), totalsX + totalsW - 3, ty + 4.5, { align: "right" });
 
   // Amount in words (left side)
-  doc.setTextColor(30);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("AMOUNT IN WORDS", MARGIN, cy + 5);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(numberToWordsINR(invoice.total_amount), MARGIN, cy + 10, { maxWidth: PAGE_W - MARGIN * 2 - totalsW - 4 });
+  if (showWords) {
+    doc.setTextColor(30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("AMOUNT IN WORDS", MARGIN, cy + 5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(numberToWordsINR(invoice.total_amount), MARGIN, cy + 10, { maxWidth: PAGE_W - MARGIN * 2 - totalsW - 4 });
+  }
 
   if (typeof invoice.paid_amount === "number" && invoice.paid_amount > 0) {
     doc.setFontSize(8);
     doc.setTextColor(80);
     doc.text(`Paid: ${formatINR(invoice.paid_amount)}   Balance: ${formatINR(invoice.balance_amount ?? 0)}`,
-      MARGIN, cy + 18);
+      MARGIN, cy + (showWords ? 18 : 6));
   }
 
   // Notes & Terms
@@ -305,23 +355,25 @@ export function generateInvoicePdf(
 
   // Signature
   const pageH = doc.internal.pageSize.getHeight();
-  const sigY = Math.max(by + 14, pageH - 30);
-  doc.setDrawColor(180);
-  doc.line(PAGE_W - MARGIN - 60, sigY, PAGE_W - MARGIN, sigY);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(80);
-  doc.text(`For ${business.name}`, PAGE_W - MARGIN, sigY + 4, { align: "right" });
-  doc.setFontSize(8);
-  doc.text("Authorised Signatory", PAGE_W - MARGIN, sigY + 9, { align: "right" });
+  let sigY = by + 14;
+  if (showSig) {
+    sigY = Math.max(by + 14, pageH - 30);
+    doc.setDrawColor(180);
+    doc.line(PAGE_W - MARGIN - 60, sigY, PAGE_W - MARGIN, sigY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+    doc.text(`For ${business.name}`, PAGE_W - MARGIN, sigY + 4, { align: "right" });
+    doc.setFontSize(8);
+    doc.text(sigLabel, PAGE_W - MARGIN, sigY + 9, { align: "right" });
+  }
 
   // Footer
-  doc.setFontSize(7);
-  doc.setTextColor(140);
-  doc.text(
-    "This is a computer-generated invoice and does not require a physical signature.",
-    PAGE_W / 2, pageH - 8, { align: "center" }
-  );
+  if (footer) {
+    doc.setFontSize(7);
+    doc.setTextColor(140);
+    doc.text(footer, PAGE_W / 2, pageH - 8, { align: "center" });
+  }
 
   return doc;
 }

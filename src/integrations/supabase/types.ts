@@ -265,6 +265,54 @@ export type Database = {
           },
         ]
       }
+      invoice_settings: {
+        Row: {
+          accent_color: string
+          business_id: string
+          created_at: string
+          created_by: string | null
+          default_notes: string | null
+          default_terms: string | null
+          footer_text: string | null
+          id: string
+          show_amount_in_words: boolean
+          show_signature: boolean
+          signature_label: string | null
+          template: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          default_notes?: string | null
+          default_terms?: string | null
+          footer_text?: string | null
+          id?: string
+          show_amount_in_words?: boolean
+          show_signature?: boolean
+          signature_label?: string | null
+          template?: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          default_notes?: string | null
+          default_terms?: string | null
+          footer_text?: string | null
+          id?: string
+          show_amount_in_words?: boolean
+          show_signature?: boolean
+          signature_label?: string | null
+          template?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           balance_amount: number
@@ -809,7 +857,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "owner" | "staff" | "accountant"
+      app_role: "owner" | "staff" | "accountant" | "admin"
       invoice_status:
         | "draft"
         | "unpaid"
@@ -964,7 +1012,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "staff", "accountant"],
+      app_role: ["owner", "staff", "accountant", "admin"],
       invoice_status: [
         "draft",
         "unpaid",
