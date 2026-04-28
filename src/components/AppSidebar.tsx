@@ -6,6 +6,7 @@ import {
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
   Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
+  BarChart3, Sparkles,
 } from "lucide-react";
 
 const groups = [
@@ -42,6 +43,13 @@ const groups = [
     items: [
       { to: "/payments", label: "Payments", icon: Wallet },
       { to: "/expenses", label: "Expenses", icon: ReceiptIcon },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { to: "/reports", label: "Reports", icon: BarChart3 },
+      { to: "/ai-insights", label: "AI Insights", icon: Sparkles },
     ],
   },
 ];
