@@ -68,22 +68,68 @@ export interface PdfInvoice {
   lines: PdfLine[];
 }
 
+export interface InvoiceDesign {
+  template?: string;            // 'classic' | 'modern' | 'minimal'
+  accent_color?: string;        // hex like '#2563EB'
+  footer_text?: string | null;
+  signature_label?: string | null;
+  show_signature?: boolean;
+  show_amount_in_words?: boolean;
+}
+
 const PAGE_W = 210; // A4 mm
 const MARGIN = 12;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  const v = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const n = parseInt(v, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 
 export function generateInvoicePdf(
   business: PdfBusiness,
   party: PdfParty | null,
   invoice: PdfInvoice,
+  design?: InvoiceDesign,
 ): jsPDF {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const meta = INVOICE_TYPE_META[invoice.type];
   const isQuotation = invoice.type === "quotation";
   const docTitle = isQuotation ? "QUOTATION" : "TAX INVOICE";
 
+  const template = design?.template ?? "classic";
+  const isMinimal = template === "minimal";
+  const isModern = template === "modern";
+  const accent: [number, number, number] = isMinimal
+    ? [30, 30, 30]
+    : hexToRgb(design?.accent_color ?? "#2563EB");
+  const showSig = design?.show_signature ?? true;
+  const showWords = design?.show_amount_in_words ?? true;
+  const sigLabel = design?.signature_label ?? "Authorised Signatory";
+  const footer = design?.footer_text ?? "This is a computer-generated invoice and does not require a physical signature.";
+
   // Header band
-  doc.setFillColor(37, 99, 235); // primary blue
-  doc.rect(0, 0, PAGE_W, 28, "F");
+  if (isModern) {
+    // Left accent stripe instead of full band
+    doc.setFillColor(...accent);
+    doc.rect(0, 0, 4, 297, "F");
+    doc.setTextColor(30, 30, 30);
+  } else {
+    doc.setFillColor(...accent);
+    doc.rect(0, 0, PAGE_W, 28, "F");
+    doc.setTextColor(isMinimal ? 30 : 255, isMinimal ? 30 : 255, isMinimal ? 30 : 255);
+    if (isMinimal) {
+      // For minimal, draw only a bottom border line
+      doc.setFillColor(255, 255, 255);
+      doc.rect(0, 0, PAGE_W, 28, "F");
+      doc.setDrawColor(30);
+      doc.setLineWidth(0.5);
+      doc.line(MARGIN, 28, PAGE_W - MARGIN, 28);
+      doc.setTextColor(30, 30, 30);
+    }
+  }
+
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
