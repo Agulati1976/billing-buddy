@@ -2,3 +2,6 @@ project_id = "qbxombgwzqqumubpaogo"
 
 [functions.send-payment-reminder]
 verify_jwt = true
+
+[functions.ai-insights]
+verify_jwt = true

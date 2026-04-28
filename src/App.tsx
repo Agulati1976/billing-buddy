@@ -20,6 +20,8 @@ import InvoiceEditor from "./pages/InvoiceEditor";
 import Payments from "./pages/Payments";
 import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
+import Reports from "./pages/Reports";
+import AiInsights from "./pages/AiInsights";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -53,6 +55,8 @@ const App = () => (
                 <Route path="/quotations/:id" element={<InvoiceEditor type="quotation" />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/expenses" element={<Expenses />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/ai-insights" element={<AiInsights />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
