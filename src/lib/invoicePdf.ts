@@ -131,10 +131,12 @@ export function generateInvoicePdf(
   }
 
 
-  doc.setTextColor(255, 255, 255);
+  // Header text colour: white if dark band, dark for minimal/modern
+  if (isModern || isMinimal) doc.setTextColor(30, 30, 30);
+  else doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text(business.name, MARGIN, 12);
+  doc.text(business.name, isModern ? MARGIN + 4 : MARGIN, 12);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -146,7 +148,7 @@ export function generateInvoicePdf(
   const contact = [business.phone, business.email].filter(Boolean).join(" · ");
   if (contact) headerLines.push(contact);
   if (business.gstin) headerLines.push(`GSTIN: ${business.gstin}`);
-  doc.text(headerLines, MARGIN, 17, { maxWidth: 120 });
+  doc.text(headerLines, isModern ? MARGIN + 4 : MARGIN, 17, { maxWidth: 120 });
 
   // Title (right side)
   doc.setFont("helvetica", "bold");
