@@ -3,14 +3,21 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminShopkeeperDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [biz, setBiz] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [counts, setCounts] = useState({ items: 0, parties: 0, invoices: 0, revenue: 0, paid: 0, due: 0, members: 0 });
   const [members, setMembers] = useState<any[]>([]);
+  const [posEnabled, setPosEnabled] = useState(false);
+  const [savingPos, setSavingPos] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
