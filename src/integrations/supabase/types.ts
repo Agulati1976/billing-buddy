@@ -64,6 +64,33 @@ export type Database = {
           },
         ]
       }
+      business_features: {
+        Row: {
+          business_id: string
+          created_at: string
+          pos_enabled: boolean
+          pos_enabled_at: string | null
+          pos_enabled_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          pos_enabled?: boolean
+          pos_enabled_at?: string | null
+          pos_enabled_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          pos_enabled?: boolean
+          pos_enabled_at?: string | null
+          pos_enabled_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       businesses: {
         Row: {
           address: string | null
@@ -333,6 +360,7 @@ export type Database = {
           paid_amount: number
           party_id: string | null
           party_state_code: string | null
+          pos_session_id: string | null
           round_off: number
           sgst_amount: number
           status: Database["public"]["Enums"]["invoice_status"]
@@ -362,6 +390,7 @@ export type Database = {
           paid_amount?: number
           party_id?: string | null
           party_state_code?: string | null
+          pos_session_id?: string | null
           round_off?: number
           sgst_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -391,6 +420,7 @@ export type Database = {
           paid_amount?: number
           party_id?: string | null
           party_state_code?: string | null
+          pos_session_id?: string | null
           round_off?: number
           sgst_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -698,6 +728,96 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pos_held_carts: {
+        Row: {
+          business_id: string
+          cart: Json
+          created_at: string
+          created_by: string
+          id: string
+          label: string | null
+          party_id: string | null
+        }
+        Insert: {
+          business_id: string
+          cart: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          label?: string | null
+          party_id?: string | null
+        }
+        Update: {
+          business_id?: string
+          cart?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string | null
+          party_id?: string | null
+        }
+        Relationships: []
+      }
+      pos_sessions: {
+        Row: {
+          business_id: string
+          closed_at: string | null
+          closing_cash: number | null
+          expected_cash: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string
+          opening_cash: number
+        }
+        Insert: {
+          business_id: string
+          closed_at?: string | null
+          closing_cash?: number | null
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by: string
+          opening_cash?: number
+        }
+        Update: {
+          business_id?: string
+          closed_at?: string | null
+          closing_cash?: number | null
+          expected_cash?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_cash?: number
+        }
+        Relationships: []
+      }
+      pos_user_access: {
+        Row: {
+          business_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          granted_by?: string | null
           id?: string
           user_id?: string
         }

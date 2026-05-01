@@ -24,6 +24,7 @@ import Team from "./pages/Team";
 import InvoiceDesign from "./pages/InvoiceDesign";
 import Reports from "./pages/Reports";
 import AiInsights from "./pages/AiInsights";
+import Pos from "./pages/Pos";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -72,6 +73,7 @@ const App = () => (
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/ai-insights" element={<AiInsights />} />
+                <Route path="/pos" element={<Pos />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/settings/team" element={<Team />} />
                 <Route path="/settings/invoice" element={<InvoiceDesign />} />

@@ -6,10 +6,14 @@ import {
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
   Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
-  BarChart3, Sparkles,
+  BarChart3, Sparkles, ShoppingCart,
 } from "lucide-react";
+import { usePosAccess } from "@/hooks/usePosAccess";
 
-const groups = [
+type NavItem = { to: string; label: string; icon: any; end?: boolean; soon?: boolean };
+type NavGroup = { label: string; items: NavItem[] };
+
+const groups: NavGroup[] = [
   {
     label: "Overview",
     items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, end: true }],
@@ -58,6 +62,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { canUsePos } = usePosAccess();
+
+  const visibleGroups = canUsePos
+    ? [
+        { label: "Quick Actions", items: [{ to: "/pos", label: "Point of Sale", icon: ShoppingCart }] },
+        ...groups,
+      ]
+    : groups;
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -71,7 +83,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {groups.map((g) => (
+        {visibleGroups.map((g) => (
           <SidebarGroup key={g.label}>
             {!collapsed && <SidebarGroupLabel>{g.label}</SidebarGroupLabel>}
             <SidebarGroupContent>

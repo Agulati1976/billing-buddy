@@ -3,14 +3,21 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminShopkeeperDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [biz, setBiz] = useState<any>(null);
   const [owner, setOwner] = useState<any>(null);
   const [counts, setCounts] = useState({ items: 0, parties: 0, invoices: 0, revenue: 0, paid: 0, due: 0, members: 0 });
   const [members, setMembers] = useState<any[]>([]);
+  const [posEnabled, setPosEnabled] = useState(false);
+  const [savingPos, setSavingPos] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,9 +57,25 @@ export default function AdminShopkeeperDetail() {
         const map = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
         setMembers((roles.data ?? []).map((r: any) => ({ ...r, ...(map.get(r.user_id) ?? {}) })));
       }
+      const { data: feat } = await supabase.from("business_features").select("pos_enabled").eq("business_id", id).maybeSingle();
+      setPosEnabled(!!feat?.pos_enabled);
       setLoading(false);
     })();
   }, [id]);
+
+  const togglePos = async (next: boolean) => {
+    if (!id || !user) return;
+    setSavingPos(true);
+    const payload = {
+      business_id: id, pos_enabled: next,
+      pos_enabled_at: next ? new Date().toISOString() : null,
+      pos_enabled_by: next ? user.id : null,
+    };
+    const { error } = await supabase.from("business_features").upsert(payload, { onConflict: "business_id" });
+    setSavingPos(false);
+    if (error) toast.error(error.message);
+    else { setPosEnabled(next); toast.success(next ? "POS enabled" : "POS disabled"); }
+  };
 
   if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
   if (!biz) return <div>Not found.</div>;
@@ -86,6 +109,22 @@ export default function AdminShopkeeperDetail() {
           <Field label="Phone" value={owner?.phone} />
         </Card>
       </div>
+
+      <Card className="p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <ShoppingCart className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h3 className="font-medium">Point of Sale (POS)</h3>
+              <p className="text-sm text-muted-foreground">Enable POS for this shopkeeper. Once enabled, the owner can grant POS access to specific staff in Settings → Team.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">{posEnabled ? "Enabled" : "Disabled"}</Label>
+            <Switch checked={posEnabled} disabled={savingPos} onCheckedChange={togglePos} />
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Items" value={counts.items} />

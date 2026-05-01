@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, Trash2, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Users, UserPlus, Trash2, ShieldCheck, ArrowLeft, ShoppingCart } from "lucide-react";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions, type Role } from "@/hooks/usePermissions";
+import { usePosAccess } from "@/hooks/usePosAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -32,7 +34,9 @@ export default function Team() {
   const { current } = useBusiness();
   const { user } = useAuth();
   const { canManageTeam, role: myRole, loading: permsLoading } = usePermissions();
+  const { posEnabled } = usePosAccess();
   const [members, setMembers] = useState<Member[]>([]);
+  const [posUserIds, setPosUserIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [newRole, setNewRole] = useState<Role>("staff");
@@ -54,9 +58,28 @@ export default function Team() {
       email: profMap.get(r.user_id)?.email ?? null,
       full_name: profMap.get(r.user_id)?.full_name ?? null,
     })));
+    const { data: posAccess } = await supabase.from("pos_user_access").select("user_id").eq("business_id", current.id);
+    setPosUserIds(new Set((posAccess ?? []).map((p: any) => p.user_id)));
     setLoading(false);
   };
   useEffect(() => { load(); }, [current?.id]);
+
+  const togglePosAccess = async (m: Member, next: boolean) => {
+    if (!current) return;
+    if (next) {
+      const { error } = await supabase.from("pos_user_access").insert({ business_id: current.id, user_id: m.user_id, granted_by: user?.id });
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from("pos_user_access").delete().eq("business_id", current.id).eq("user_id", m.user_id);
+      if (error) { toast.error(error.message); return; }
+    }
+    setPosUserIds((prev) => {
+      const next2 = new Set(prev);
+      if (next) next2.add(m.user_id); else next2.delete(m.user_id);
+      return next2;
+    });
+    toast.success(next ? "POS access granted" : "POS access removed");
+  };
 
   const invite = async () => {
     if (!current) return;
@@ -202,6 +225,45 @@ export default function Team() {
             ))}
           </TableBody>
         </Table>
+      </Card>
+
+      <Card className="p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" /> POS Access
+          </h2>
+          {!posEnabled && <Badge variant="outline">POS not enabled</Badge>}
+        </div>
+        {!posEnabled ? (
+          <p className="text-sm text-muted-foreground">
+            Point of Sale is not enabled for this business yet. Contact the platform admin to enable POS, then you'll be able to grant access to specific staff here.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Owners and Admins can use POS by default. Toggle access on for staff who should be able to ring up sales at the till.
+            </p>
+            <div className="space-y-2">
+              {members.map((m) => {
+                const implicit = m.role === "owner" || m.role === "admin";
+                const checked = implicit || posUserIds.has(m.user_id);
+                return (
+                  <div key={m.id} className="flex items-center justify-between border-b last:border-0 pb-2">
+                    <div className="text-sm">
+                      <div className="font-medium">{m.full_name ?? m.email ?? "—"} {implicit && <Badge variant="secondary" className="ml-1 text-[10px]">auto · {m.role}</Badge>}</div>
+                      <div className="text-xs text-muted-foreground">{m.email}</div>
+                    </div>
+                    <Switch
+                      checked={checked}
+                      disabled={implicit}
+                      onCheckedChange={(v) => togglePosAccess(m, v)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </Card>
 
       <Card className="p-6">
