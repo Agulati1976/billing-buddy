@@ -227,6 +227,45 @@ export default function Team() {
         </Table>
       </Card>
 
+      <Card className="p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" /> POS Access
+          </h2>
+          {!posEnabled && <Badge variant="outline">POS not enabled</Badge>}
+        </div>
+        {!posEnabled ? (
+          <p className="text-sm text-muted-foreground">
+            Point of Sale is not enabled for this business yet. Contact the platform admin to enable POS, then you'll be able to grant access to specific staff here.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Owners and Admins can use POS by default. Toggle access on for staff who should be able to ring up sales at the till.
+            </p>
+            <div className="space-y-2">
+              {members.map((m) => {
+                const implicit = m.role === "owner" || m.role === "admin";
+                const checked = implicit || posUserIds.has(m.user_id);
+                return (
+                  <div key={m.id} className="flex items-center justify-between border-b last:border-0 pb-2">
+                    <div className="text-sm">
+                      <div className="font-medium">{m.full_name ?? m.email ?? "—"} {implicit && <Badge variant="secondary" className="ml-1 text-[10px]">auto · {m.role}</Badge>}</div>
+                      <div className="text-xs text-muted-foreground">{m.email}</div>
+                    </div>
+                    <Switch
+                      checked={checked}
+                      disabled={implicit}
+                      onCheckedChange={(v) => togglePosAccess(m, v)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </Card>
+
       <Card className="p-6">
         <h2 className="font-semibold mb-3">Role permissions</h2>
         <div className="space-y-2 text-sm">
