@@ -175,8 +175,9 @@ export default function Items() {
         </Table>
       </Card>
 
-      <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} />
+      <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} presetBarcode={presetBarcode} />
       <StockAdjustDialog open={adjustOpen} onOpenChange={setAdjustOpen} item={adjustItem} onSaved={load} />
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScan} />
     </div>
   );
 }
