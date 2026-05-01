@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      barcode_catalog: {
+        Row: {
+          barcode: string
+          brand: string | null
+          color: string | null
+          contributed_by: string | null
+          contributor_business_id: string | null
+          created_at: string
+          description: string | null
+          flavour: string | null
+          hsn_code: string | null
+          id: string
+          image_url: string | null
+          mrp: number
+          name: string
+          scan_count: number
+          tax_rate: number
+          unit: string
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          barcode: string
+          brand?: string | null
+          color?: string | null
+          contributed_by?: string | null
+          contributor_business_id?: string | null
+          created_at?: string
+          description?: string | null
+          flavour?: string | null
+          hsn_code?: string | null
+          id?: string
+          image_url?: string | null
+          mrp?: number
+          name: string
+          scan_count?: number
+          tax_rate?: number
+          unit?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          barcode?: string
+          brand?: string | null
+          color?: string | null
+          contributed_by?: string | null
+          contributor_business_id?: string | null
+          created_at?: string
+          description?: string | null
+          flavour?: string | null
+          hsn_code?: string | null
+          id?: string
+          image_url?: string | null
+          mrp?: number
+          name?: string
+          scan_count?: number
+          tax_rate?: number
+          unit?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       batches: {
         Row: {
           batch_number: string
