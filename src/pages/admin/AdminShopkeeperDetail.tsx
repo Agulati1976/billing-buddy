@@ -110,6 +110,22 @@ export default function AdminShopkeeperDetail() {
         </Card>
       </div>
 
+      <Card className="p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <ShoppingCart className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <h3 className="font-medium">Point of Sale (POS)</h3>
+              <p className="text-sm text-muted-foreground">Enable POS for this shopkeeper. Once enabled, the owner can grant POS access to specific staff in Settings → Team.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">{posEnabled ? "Enabled" : "Disabled"}</Label>
+            <Switch checked={posEnabled} disabled={savingPos} onCheckedChange={togglePos} />
+          </div>
+        </div>
+      </Card>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Items" value={counts.items} />
         <Stat label="Customers/Suppliers" value={counts.parties} />
