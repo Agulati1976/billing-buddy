@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
 
-const groups = [
+type NavItem = { to: string; label: string; icon: any; end?: boolean; soon?: boolean };
+type NavGroup = { label: string; items: NavItem[] };
+
+const groups: NavGroup[] = [
   {
     label: "Overview",
     items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, end: true }],
