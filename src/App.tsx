@@ -24,6 +24,12 @@ import Team from "./pages/Team";
 import InvoiceDesign from "./pages/InvoiceDesign";
 import Reports from "./pages/Reports";
 import AiInsights from "./pages/AiInsights";
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminShopkeepers from "./pages/admin/AdminShopkeepers";
+import AdminShopkeeperDetail from "./pages/admin/AdminShopkeeperDetail";
+import AdminAdmins from "./pages/admin/AdminAdmins";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -38,6 +44,13 @@ const App = () => (
           <BusinessProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminOverview />} />
+                <Route path="shopkeepers" element={<AdminShopkeepers />} />
+                <Route path="shopkeepers/:id" element={<AdminShopkeeperDetail />} />
+                <Route path="admins" element={<AdminAdmins />} />
+              </Route>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Dashboard />} />
