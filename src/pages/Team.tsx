@@ -58,9 +58,28 @@ export default function Team() {
       email: profMap.get(r.user_id)?.email ?? null,
       full_name: profMap.get(r.user_id)?.full_name ?? null,
     })));
+    const { data: posAccess } = await supabase.from("pos_user_access").select("user_id").eq("business_id", current.id);
+    setPosUserIds(new Set((posAccess ?? []).map((p: any) => p.user_id)));
     setLoading(false);
   };
   useEffect(() => { load(); }, [current?.id]);
+
+  const togglePosAccess = async (m: Member, next: boolean) => {
+    if (!current) return;
+    if (next) {
+      const { error } = await supabase.from("pos_user_access").insert({ business_id: current.id, user_id: m.user_id, granted_by: user?.id });
+      if (error) { toast.error(error.message); return; }
+    } else {
+      const { error } = await supabase.from("pos_user_access").delete().eq("business_id", current.id).eq("user_id", m.user_id);
+      if (error) { toast.error(error.message); return; }
+    }
+    setPosUserIds((prev) => {
+      const next2 = new Set(prev);
+      if (next) next2.add(m.user_id); else next2.delete(m.user_id);
+      return next2;
+    });
+    toast.success(next ? "POS access granted" : "POS access removed");
+  };
 
   const invite = async () => {
     if (!current) return;
