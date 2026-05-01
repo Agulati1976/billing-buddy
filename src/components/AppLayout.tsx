@@ -4,12 +4,14 @@ import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness } from "@/hooks/useBusiness";
+import { usePlatformAdmin } from "@/hooks/usePlatformAdmin";
 
 export default function AppLayout() {
   const { user, loading: authLoading } = useAuth();
   const { businesses, loading: bizLoading } = useBusiness();
+  const { isAdmin, loading: adminLoading } = usePlatformAdmin();
 
-  if (authLoading || bizLoading) {
+  if (authLoading || bizLoading || adminLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-sm text-muted-foreground">Loading…</div>
@@ -18,7 +20,10 @@ export default function AppLayout() {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
-  if (businesses.length === 0) return <Navigate to="/onboarding" replace />;
+  if (businesses.length === 0) {
+    if (isAdmin) return <Navigate to="/admin" replace />;
+    return <Navigate to="/onboarding" replace />;
+  }
 
   return (
     <SidebarProvider>
@@ -34,3 +39,4 @@ export default function AppLayout() {
     </SidebarProvider>
   );
 }
+
