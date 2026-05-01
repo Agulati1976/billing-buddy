@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,10 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { ScanLine, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { ensureCatalogEntry, lookupBarcode, type CatalogEntry } from "@/lib/barcodeCatalog";
 
 export interface ItemRow {
   id: string;
@@ -28,6 +32,12 @@ export interface ItemRow {
   description: string | null;
   category_id: string | null;
   is_batch_tracked: boolean;
+  brand?: string | null;
+  flavour?: string | null;
+  color?: string | null;
+  mrp?: number | null;
+  image_url?: string | null;
+  catalog_id?: string | null;
 }
 
 const UNITS = ["pcs", "kg", "g", "box", "ltr", "ml", "mtr", "ft", "dozen", "pack"];
@@ -38,19 +48,29 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   item?: ItemRow | null;
   onSaved: () => void;
+  /** Optional barcode to preset (used by Items page after scanning unknown code) */
+  presetBarcode?: string;
 }
 
-export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
+const emptyForm = {
+  name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
+  unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
+  opening_stock: "0", low_stock_alert: "0", description: "",
+  category_id: "", is_batch_tracked: false,
+  brand: "", flavour: "", color: "", mrp: "0",
+};
+
+export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }: Props) {
   const { current } = useBusiness();
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [catalogHit, setCatalogHit] = useState<CatalogEntry | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [form, setForm] = useState({
-    name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
-    unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
-    opening_stock: "0", low_stock_alert: "0", description: "",
-    category_id: "", is_batch_tracked: false,
-  });
+  const [form, setForm] = useState(emptyForm);
+  const [catalogId, setCatalogId] = useState<string | null>(null);
+  const lookupTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (!current) return;
@@ -59,6 +79,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
   }, [current?.id, open]);
 
   useEffect(() => {
+    if (!open) return;
+    setCatalogHit(null);
     if (item) {
       setForm({
         name: item.name, type: item.type, sku: item.sku ?? "",
@@ -69,21 +91,86 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
         category_id: item.category_id ?? "",
         is_batch_tracked: !!item.is_batch_tracked,
+        brand: item.brand ?? "", flavour: item.flavour ?? "", color: item.color ?? "",
+        mrp: String(item.mrp ?? 0),
       });
+      setCatalogId(item.catalog_id ?? null);
     } else {
-      setForm({
-        name: "", type: "product", sku: "", barcode: "", hsn_code: "", unit: "pcs",
-        sale_price: "0", purchase_price: "0", tax_rate: "18",
-        opening_stock: "0", low_stock_alert: "0", description: "",
-        category_id: "", is_batch_tracked: false,
-      });
+      setForm({ ...emptyForm, barcode: presetBarcode ?? "" });
+      setCatalogId(null);
+      if (presetBarcode) {
+        // trigger lookup immediately
+        void runLookup(presetBarcode);
+      }
     }
-  }, [item, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item, open, presetBarcode]);
+
+  const runLookup = async (code: string) => {
+    const c = code.trim();
+    if (!c) { setCatalogHit(null); return; }
+    setCatalogLoading(true);
+    const hit = await lookupBarcode(c);
+    setCatalogLoading(false);
+    if (hit) {
+      setCatalogHit(hit);
+      // Only auto-prefill if user hasn't typed details yet
+      setForm((f) => ({
+        ...f,
+        name: f.name || hit.name,
+        hsn_code: f.hsn_code || (hit.hsn_code ?? ""),
+        unit: hit.unit || f.unit,
+        tax_rate: String(hit.tax_rate ?? f.tax_rate),
+        brand: f.brand || (hit.brand ?? ""),
+        flavour: f.flavour || (hit.flavour ?? ""),
+        color: f.color || (hit.color ?? ""),
+        mrp: f.mrp === "0" ? String(hit.mrp ?? 0) : f.mrp,
+        sale_price: f.sale_price === "0" ? String(hit.mrp ?? 0) : f.sale_price,
+        description: f.description || (hit.description ?? ""),
+      }));
+      setCatalogId(hit.id);
+    } else {
+      setCatalogHit(null);
+    }
+  };
+
+  const onBarcodeChange = (v: string) => {
+    setForm((f) => ({ ...f, barcode: v }));
+    if (item) return; // don't auto-overwrite when editing
+    if (lookupTimer.current) window.clearTimeout(lookupTimer.current);
+    lookupTimer.current = window.setTimeout(() => runLookup(v), 350);
+  };
+
+  const onScanned = (code: string) => {
+    setForm((f) => ({ ...f, barcode: code }));
+    void runLookup(code);
+  };
 
   const submit = async () => {
     if (!current || !user) return;
     if (!form.name.trim()) { toast.error("Name is required"); return; }
     setSaving(true);
+
+    let resolvedCatalogId = catalogId;
+    // Contribute to global catalog if barcode provided and not yet known
+    if (form.barcode.trim() && !catalogHit && !item) {
+      const created = await ensureCatalogEntry({
+        barcode: form.barcode.trim(),
+        name: form.name.trim(),
+        brand: form.brand.trim() || null,
+        flavour: form.flavour.trim() || null,
+        color: form.color.trim() || null,
+        mrp: Number(form.mrp) || 0,
+        hsn_code: form.hsn_code.trim() || null,
+        tax_rate: Number(form.tax_rate) || 0,
+        unit: form.unit,
+        description: form.description.trim() || null,
+        contributed_by: user.id,
+        contributor_business_id: current.id,
+      });
+      if (created) resolvedCatalogId = created.id;
+    }
+
     const payload = {
       business_id: current.id,
       name: form.name.trim(),
@@ -100,6 +187,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
       description: form.description.trim() || null,
       category_id: form.category_id || null,
       is_batch_tracked: form.type === "product" ? form.is_batch_tracked : false,
+      brand: form.brand.trim() || null,
+      flavour: form.flavour.trim() || null,
+      color: form.color.trim() || null,
+      mrp: Number(form.mrp) || null,
+      catalog_id: resolvedCatalogId,
       created_by: user.id,
     };
     const { error } = item
@@ -127,18 +219,59 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="col-span-2">
+            <Label>Barcode</Label>
+            <div className="flex gap-2">
+              <Input
+                value={form.barcode}
+                onChange={(e) => onBarcodeChange(e.target.value)}
+                placeholder="EAN / UPC / scan to lookup catalog"
+              />
+              <Button type="button" variant="outline" onClick={() => setScannerOpen(true)}>
+                <ScanLine className="h-4 w-4" /> Scan
+              </Button>
+            </div>
+            {catalogLoading && (
+              <p className="text-xs text-muted-foreground mt-1">Looking up catalog…</p>
+            )}
+            {catalogHit && (
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <Badge variant="secondary" className="gap-1">
+                  <Sparkles className="h-3 w-3" /> Catalog match
+                </Badge>
+                <span className="text-muted-foreground">
+                  {catalogHit.name}{catalogHit.brand ? ` · ${catalogHit.brand}` : ""}
+                  {catalogHit.scan_count > 1 ? ` · used by ${catalogHit.scan_count} shops` : ""}
+                </span>
+              </div>
+            )}
+            {!catalogHit && !catalogLoading && form.barcode && !item && (
+              <p className="text-xs text-muted-foreground mt-1">
+                New barcode — basic details you enter below will be shared so other shops auto-fill next time.
+              </p>
+            )}
+          </div>
+
           <div className="col-span-2">
             <Label>Name *</Label>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </div>
           <div>
-            <Label>SKU</Label>
-            <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+            <Label>Brand</Label>
+            <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
           </div>
           <div>
-            <Label>Barcode</Label>
-            <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-              placeholder="EAN / UPC / custom" />
+            <Label>Flavour / Variant</Label>
+            <Input value={form.flavour} onChange={(e) => setForm({ ...form, flavour: e.target.value })} />
+          </div>
+          <div>
+            <Label>Color</Label>
+            <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
+          </div>
+          <div>
+            <Label>SKU</Label>
+            <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
           </div>
           <div className="col-span-2">
             <Label>HSN/SAC Code</Label>
@@ -159,7 +292,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
             </Select>
           </div>
           <div>
-            <Label>Sale Price (₹)</Label>
+            <Label>MRP (₹)</Label>
+            <Input type="number" step="0.01" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
+          </div>
+          <div>
+            <Label>Sale Price (₹) — incl. GST</Label>
             <Input type="number" step="0.01" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value })} />
           </div>
           <div>
@@ -211,6 +348,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
         </DialogFooter>
+        <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScanned} />
       </DialogContent>
     </Dialog>
   );
