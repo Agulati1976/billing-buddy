@@ -17,6 +17,7 @@ import { computeInvoice, nextInvoiceNumber, type InvoiceLineInput } from "@/lib/
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 
 interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
