@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      barcode_catalog: {
+        Row: {
+          barcode: string
+          brand: string | null
+          color: string | null
+          contributed_by: string | null
+          contributor_business_id: string | null
+          created_at: string
+          description: string | null
+          flavour: string | null
+          hsn_code: string | null
+          id: string
+          image_url: string | null
+          mrp: number
+          name: string
+          scan_count: number
+          tax_rate: number
+          unit: string
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          barcode: string
+          brand?: string | null
+          color?: string | null
+          contributed_by?: string | null
+          contributor_business_id?: string | null
+          created_at?: string
+          description?: string | null
+          flavour?: string | null
+          hsn_code?: string | null
+          id?: string
+          image_url?: string | null
+          mrp?: number
+          name: string
+          scan_count?: number
+          tax_rate?: number
+          unit?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          barcode?: string
+          brand?: string | null
+          color?: string | null
+          contributed_by?: string | null
+          contributor_business_id?: string | null
+          created_at?: string
+          description?: string | null
+          flavour?: string | null
+          hsn_code?: string | null
+          id?: string
+          image_url?: string | null
+          mrp?: number
+          name?: string
+          scan_count?: number
+          tax_rate?: number
+          unit?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       batches: {
         Row: {
           batch_number: string
@@ -451,16 +514,22 @@ export type Database = {
       items: {
         Row: {
           barcode: string | null
+          brand: string | null
           business_id: string
+          catalog_id: string | null
           category_id: string | null
+          color: string | null
           created_at: string
           created_by: string | null
           current_stock: number
           description: string | null
+          flavour: string | null
           hsn_code: string | null
           id: string
+          image_url: string | null
           is_batch_tracked: boolean
           low_stock_alert: number
+          mrp: number | null
           name: string
           opening_stock: number
           purchase_price: number
@@ -473,16 +542,22 @@ export type Database = {
         }
         Insert: {
           barcode?: string | null
+          brand?: string | null
           business_id: string
+          catalog_id?: string | null
           category_id?: string | null
+          color?: string | null
           created_at?: string
           created_by?: string | null
           current_stock?: number
           description?: string | null
+          flavour?: string | null
           hsn_code?: string | null
           id?: string
+          image_url?: string | null
           is_batch_tracked?: boolean
           low_stock_alert?: number
+          mrp?: number | null
           name: string
           opening_stock?: number
           purchase_price?: number
@@ -495,16 +570,22 @@ export type Database = {
         }
         Update: {
           barcode?: string | null
+          brand?: string | null
           business_id?: string
+          catalog_id?: string | null
           category_id?: string | null
+          color?: string | null
           created_at?: string
           created_by?: string | null
           current_stock?: number
           description?: string | null
+          flavour?: string | null
           hsn_code?: string | null
           id?: string
+          image_url?: string | null
           is_batch_tracked?: boolean
           low_stock_alert?: number
+          mrp?: number | null
           name?: string
           opening_stock?: number
           purchase_price?: number
@@ -521,6 +602,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "barcode_catalog"
             referencedColumns: ["id"]
           },
           {

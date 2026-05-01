@@ -20,6 +20,7 @@ import {
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
@@ -126,12 +127,7 @@ export default function InvoiceEditor({ type }: Props) {
     [lines, isInterState, isGst, extraDiscount]
   );
 
-  const handleScanned = (code: string) => {
-    const it = items.find((x) => (x.barcode ?? "").trim() === code.trim());
-    if (!it) {
-      toast.error(`No item with barcode ${code}`);
-      return;
-    }
+  const addItemToLines = (it: Item) => {
     const isPurchase = type === "purchase" || type === "purchase_return";
     setLines((ls) => {
       const existingIdx = ls.findIndex((l) => l.item_id === it.id);
@@ -148,6 +144,35 @@ export default function InvoiceEditor({ type }: Props) {
       return lastEmpty ? [...ls.slice(0, -1), newLine] : [...ls, newLine];
     });
     toast.success(`Added: ${it.name}`);
+  };
+
+  const handleScanned = async (code: string) => {
+    const trimmed = code.trim();
+    const it = items.find((x) => (x.barcode ?? "").trim() === trimmed);
+    if (it) { addItemToLines(it); return; }
+    if (!current || !user) { toast.error(`No item with barcode ${code}`); return; }
+    const hit = await lookupBarcode(trimmed);
+    if (!hit) {
+      toast.error(`Unknown barcode ${code}. Add it from Items page first.`);
+      return;
+    }
+    try {
+      const created: any = await createItemFromCatalog(hit, current.id, user.id);
+      const newItem: Item = {
+        id: created.id, name: created.name, barcode: created.barcode,
+        hsn_code: created.hsn_code,
+        sale_price: Number(created.sale_price) || 0,
+        purchase_price: Number(created.purchase_price) || 0,
+        tax_rate: Number(created.tax_rate) || 0,
+        unit: created.unit,
+        is_batch_tracked: !!created.is_batch_tracked,
+      };
+      setItems((prev) => [newItem, ...prev]);
+      addItemToLines(newItem);
+      toast.success(`Added ${newItem.name} (from catalog)`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not auto-create item from catalog");
+    }
   };
 
   const updateLine = (idx: number, patch: Partial<InvoiceLineInput>) => {

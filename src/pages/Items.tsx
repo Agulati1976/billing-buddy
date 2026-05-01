@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown, ScanLine } from "lucide-react";
 import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { StockAdjustDialog } from "@/components/StockAdjustDialog";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 
@@ -19,8 +20,26 @@ export default function Items() {
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [presetBarcode, setPresetBarcode] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<ItemRow | null>(null);
   const [adjustItem, setAdjustItem] = useState<ItemRow | null>(null);
+
+  const handleScan = (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    const existing = items.find((i) => (i.barcode ?? "").trim() === trimmed);
+    if (existing) {
+      setEditing(existing);
+      setPresetBarcode(undefined);
+      setDialogOpen(true);
+      toast.info(`Found: ${existing.name}`);
+    } else {
+      setEditing(null);
+      setPresetBarcode(trimmed);
+      setDialogOpen(true);
+    }
+  };
 
   const load = async () => {
     if (!current) return;
@@ -58,9 +77,14 @@ export default function Items() {
           </h1>
           <p className="text-sm text-muted-foreground">Products & services in your inventory</p>
         </div>
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4" /> New Item
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setScannerOpen(true)}>
+            <ScanLine className="h-4 w-4" /> Scan Barcode
+          </Button>
+          <Button onClick={() => { setEditing(null); setPresetBarcode(undefined); setDialogOpen(true); }}>
+            <Plus className="h-4 w-4" /> New Item
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -151,8 +175,9 @@ export default function Items() {
         </Table>
       </Card>
 
-      <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} />
+      <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} presetBarcode={presetBarcode} />
       <StockAdjustDialog open={adjustOpen} onOpenChange={setAdjustOpen} item={adjustItem} onSaved={load} />
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScan} />
     </div>
   );
 }
