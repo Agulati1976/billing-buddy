@@ -57,9 +57,25 @@ export default function AdminShopkeeperDetail() {
         const map = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
         setMembers((roles.data ?? []).map((r: any) => ({ ...r, ...(map.get(r.user_id) ?? {}) })));
       }
+      const { data: feat } = await supabase.from("business_features").select("pos_enabled").eq("business_id", id).maybeSingle();
+      setPosEnabled(!!feat?.pos_enabled);
       setLoading(false);
     })();
   }, [id]);
+
+  const togglePos = async (next: boolean) => {
+    if (!id || !user) return;
+    setSavingPos(true);
+    const payload = {
+      business_id: id, pos_enabled: next,
+      pos_enabled_at: next ? new Date().toISOString() : null,
+      pos_enabled_by: next ? user.id : null,
+    };
+    const { error } = await supabase.from("business_features").upsert(payload, { onConflict: "business_id" });
+    setSavingPos(false);
+    if (error) toast.error(error.message);
+    else { setPosEnabled(next); toast.success(next ? "POS enabled" : "POS disabled"); }
+  };
 
   if (loading) return <div className="text-muted-foreground text-sm">Loading…</div>;
   if (!biz) return <div>Not found.</div>;
