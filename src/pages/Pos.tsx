@@ -532,7 +532,7 @@ export default function Pos() {
       </div>
 
       {/* Scanner */}
-      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onDetected={onScan} />
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScan} />
 
       {/* Payment dialog */}
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
