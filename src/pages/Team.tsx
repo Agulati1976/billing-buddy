@@ -34,7 +34,9 @@ export default function Team() {
   const { current } = useBusiness();
   const { user } = useAuth();
   const { canManageTeam, role: myRole, loading: permsLoading } = usePermissions();
+  const { posEnabled } = usePosAccess();
   const [members, setMembers] = useState<Member[]>([]);
+  const [posUserIds, setPosUserIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [newRole, setNewRole] = useState<Role>("staff");
