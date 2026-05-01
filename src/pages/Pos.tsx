@@ -117,11 +117,36 @@ export default function Pos() {
     });
   };
 
-  const onScan = (code: string) => {
+  const onScan = async (code: string) => {
     setScannerOpen(false);
-    const found = items.find((i) => i.barcode === code);
-    if (found) { addToCart(found); toast.success(`Added ${found.name}`); }
-    else toast.error(`No item with barcode ${code}`);
+    const trimmed = code.trim();
+    const found = items.find((i) => (i.barcode ?? "").trim() === trimmed);
+    if (found) { addToCart(found); toast.success(`Added ${found.name}`); return; }
+    if (!current || !user) { toast.error(`No item with barcode ${code}`); return; }
+    // Try global catalog
+    const hit = await lookupBarcode(trimmed);
+    if (!hit) {
+      toast.error(`Unknown barcode ${code}. Add it from Items page first.`);
+      return;
+    }
+    try {
+      const created: any = await createItemFromCatalog(hit, current.id, user.id);
+      const newItem: Item = {
+        id: created.id,
+        name: created.name,
+        barcode: created.barcode,
+        sale_price: Number(created.sale_price) || 0,
+        tax_rate: Number(created.tax_rate) || 0,
+        unit: created.unit,
+        hsn_code: created.hsn_code,
+        current_stock: Number(created.current_stock) || 0,
+      };
+      setItems((prev) => [newItem, ...prev]);
+      addToCart(newItem);
+      toast.success(`Added ${newItem.name} (from catalog) — set your sale price in Items.`);
+    } catch (e: any) {
+      toast.error(e.message || "Could not auto-create item from catalog");
+    }
   };
 
   const updateLine = (key: string, patch: Partial<CartLine>) => {
