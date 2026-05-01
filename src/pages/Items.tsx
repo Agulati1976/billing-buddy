@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown, ScanLine } from "lucide-react";
 import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { StockAdjustDialog } from "@/components/StockAdjustDialog";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 
@@ -19,8 +20,26 @@ export default function Items() {
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [presetBarcode, setPresetBarcode] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<ItemRow | null>(null);
   const [adjustItem, setAdjustItem] = useState<ItemRow | null>(null);
+
+  const handleScan = (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    const existing = items.find((i) => (i.barcode ?? "").trim() === trimmed);
+    if (existing) {
+      setEditing(existing);
+      setPresetBarcode(undefined);
+      setDialogOpen(true);
+      toast.info(`Found: ${existing.name}`);
+    } else {
+      setEditing(null);
+      setPresetBarcode(trimmed);
+      setDialogOpen(true);
+    }
+  };
 
   const load = async () => {
     if (!current) return;
