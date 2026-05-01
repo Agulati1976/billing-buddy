@@ -77,7 +77,10 @@ export default function Items() {
           </h1>
           <p className="text-sm text-muted-foreground">Products & services in your inventory</p>
         </div>
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Button variant="outline" onClick={() => setScannerOpen(true)}>
+          <ScanLine className="h-4 w-4" /> Scan Barcode
+        </Button>
+        <Button onClick={() => { setEditing(null); setPresetBarcode(undefined); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" /> New Item
         </Button>
       </div>
