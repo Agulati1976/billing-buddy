@@ -88,6 +88,9 @@ export interface InvoiceDesign {
   signature_label?: string | null;
   show_signature?: boolean;
   show_amount_in_words?: boolean;
+  upi_id?: string | null;
+  upi_payee_name?: string | null;
+  show_upi_qr?: boolean;
 }
 
 const PAGE_W = 210; // A4 mm
