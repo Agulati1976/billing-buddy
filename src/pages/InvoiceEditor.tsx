@@ -280,7 +280,7 @@ export default function InvoiceEditor({ type }: Props) {
     // Load invoice design (best-effort; fall back to defaults)
     const { data: design } = await supabase
       .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
-    const doc = generateInvoicePdf(
+    const doc = await generateInvoicePdf(
       {
         name: current.name,
         gstin: current.gstin, phone: current.phone, email: current.email,
@@ -305,6 +305,8 @@ export default function InvoiceEditor({ type }: Props) {
         template: design.template, accent_color: design.accent_color,
         footer_text: design.footer_text, signature_label: design.signature_label,
         show_signature: design.show_signature, show_amount_in_words: design.show_amount_in_words,
+        upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name,
+        show_upi_qr: (design as any).show_upi_qr,
       } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
