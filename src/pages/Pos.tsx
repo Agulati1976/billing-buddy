@@ -272,7 +272,9 @@ export default function Pos() {
     // Build a lightweight A4 invoice from current cart (preview before sale)
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
     if (!current) return;
-    const pdf = generateInvoicePdf(
+    const { data: design } = await supabase
+      .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
+    const pdf = await generateInvoicePdf(
       { name: current.name, gstin: current.gstin, phone: current.phone, email: current.email, address: current.address, state: current.state, state_code: current.state_code },
       party ? { name: party.name, gstin: party.gstin, phone: party.phone, state_code: party.state_code } : null,
       {
@@ -288,7 +290,14 @@ export default function Pos() {
           price: l.price, discount_pct: l.discount_pct, tax_rate: l.tax_rate,
           taxable_amount: l.taxable_amount, tax_amount: l.tax_amount, total_amount: l.total_amount,
         })),
-      }
+      },
+      design ? {
+        template: design.template, accent_color: design.accent_color,
+        footer_text: design.footer_text, signature_label: design.signature_label,
+        show_signature: design.show_signature, show_amount_in_words: design.show_amount_in_words,
+        upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name,
+        show_upi_qr: (design as any).show_upi_qr,
+      } : undefined,
     );
     pdf.save(`POS-${Date.now()}.pdf`);
   };

@@ -1,6 +1,7 @@
 // Professional Tax Invoice PDF generator (jsPDF + autotable)
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 // PDF-safe currency: "Rs." prefix (built-in PDF fonts lack the ₹ glyph)
 const formatINR = (n: number): string => {
   const v = Number(n) || 0;
@@ -12,6 +13,18 @@ const formatINR = (n: number): string => {
   return `${sign}Rs. ${formatted}`;
 };
 import { INVOICE_TYPE_META, type InvoiceType } from "@/lib/invoice";
+
+/** Build a UPI deep-link string per NPCI spec. */
+export function buildUpiUri(opts: { pa: string; pn?: string; am?: number; tn?: string; tr?: string }) {
+  const params = new URLSearchParams();
+  params.set("pa", opts.pa);
+  if (opts.pn) params.set("pn", opts.pn);
+  if (opts.am && opts.am > 0) params.set("am", opts.am.toFixed(2));
+  params.set("cu", "INR");
+  if (opts.tn) params.set("tn", opts.tn);
+  if (opts.tr) params.set("tr", opts.tr);
+  return `upi://pay?${params.toString()}`;
+}
 
 export interface PdfBusiness {
   name: string;
@@ -75,6 +88,9 @@ export interface InvoiceDesign {
   signature_label?: string | null;
   show_signature?: boolean;
   show_amount_in_words?: boolean;
+  upi_id?: string | null;
+  upi_payee_name?: string | null;
+  show_upi_qr?: boolean;
 }
 
 const PAGE_W = 210; // A4 mm
@@ -87,12 +103,12 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-export function generateInvoicePdf(
+export async function generateInvoicePdf(
   business: PdfBusiness,
   party: PdfParty | null,
   invoice: PdfInvoice,
   design?: InvoiceDesign,
-): jsPDF {
+): Promise<jsPDF> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const meta = INVOICE_TYPE_META[invoice.type];
   const isQuotation = invoice.type === "quotation";
@@ -353,8 +369,41 @@ export function generateInvoicePdf(
     by += 4 + tLines.length * 4 + 4;
   }
 
-  // Signature
+  // UPI QR (sale invoices only, when configured)
+  const showQr = (design?.show_upi_qr ?? true) && !!design?.upi_id && invoice.type === "sale" && invoice.total_amount > 0;
   const pageH = doc.internal.pageSize.getHeight();
+  if (showQr) {
+    try {
+      const upiUri = buildUpiUri({
+        pa: design!.upi_id!,
+        pn: design!.upi_payee_name || business.name,
+        am: invoice.balance_amount && invoice.balance_amount > 0 ? invoice.balance_amount : invoice.total_amount,
+        tn: `Inv ${invoice.invoice_number}`,
+        tr: invoice.invoice_number,
+      });
+      const dataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 256, errorCorrectionLevel: "M" });
+      const qrSize = 30;
+      const qrY = Math.min(by + 4, pageH - qrSize - 22);
+      doc.addImage(dataUrl, "PNG", MARGIN, qrY, qrSize, qrSize);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(30);
+      doc.text("Pay via UPI", MARGIN + qrSize + 3, qrY + 5);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(80);
+      doc.text(`UPI ID: ${design!.upi_id}`, MARGIN + qrSize + 3, qrY + 10);
+      doc.text(`Amount: ${formatINR(invoice.balance_amount && invoice.balance_amount > 0 ? invoice.balance_amount : invoice.total_amount)}`,
+        MARGIN + qrSize + 3, qrY + 15);
+      doc.setFontSize(7);
+      doc.setTextColor(120);
+      doc.text("Scan with any UPI app (GPay, PhonePe, Paytm, BHIM)", MARGIN + qrSize + 3, qrY + 20, { maxWidth: 90 });
+      by = qrY + qrSize + 4;
+    } catch (e) {
+      // ignore QR failure — invoice still renders
+    }
+  }
+
   let sigY = by + 14;
   if (showSig) {
     sigY = Math.max(by + 14, pageH - 30);

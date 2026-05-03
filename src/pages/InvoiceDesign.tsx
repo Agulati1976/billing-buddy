@@ -31,6 +31,9 @@ interface Settings {
   signature_label: string;
   show_signature: boolean;
   show_amount_in_words: boolean;
+  upi_id: string;
+  upi_payee_name: string;
+  show_upi_qr: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -42,6 +45,9 @@ const DEFAULTS: Settings = {
   signature_label: "Authorised Signatory",
   show_signature: true,
   show_amount_in_words: true,
+  upi_id: "",
+  upi_payee_name: "",
+  show_upi_qr: true,
 };
 
 export default function InvoiceDesign() {
@@ -63,6 +69,9 @@ export default function InvoiceDesign() {
         default_notes: data.default_notes ?? "",
         signature_label: data.signature_label ?? "Authorised Signatory",
         show_signature: data.show_signature, show_amount_in_words: data.show_amount_in_words,
+        upi_id: (data as any).upi_id ?? "",
+        upi_payee_name: (data as any).upi_payee_name ?? "",
+        show_upi_qr: (data as any).show_upi_qr ?? true,
       });
       setLoading(false);
     })();
@@ -79,10 +88,10 @@ export default function InvoiceDesign() {
     else toast.success("Invoice design saved");
   };
 
-  const preview = () => {
+  const preview = async () => {
     if (!current) return;
     const design: InvoiceDesign = { ...s };
-    const doc = generateInvoicePdf(
+    const doc = await generateInvoicePdf(
       {
         name: current.name, gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
@@ -215,6 +224,39 @@ export default function InvoiceDesign() {
             <div className="text-xs text-muted-foreground">e.g. "Eleven Thousand Two Hundred Ten Rupees Only".</div>
           </div>
           <Switch checked={s.show_amount_in_words} onCheckedChange={(v) => setS({ ...s, show_amount_in_words: v })} />
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold">UPI Payment QR</h2>
+          <p className="text-xs text-muted-foreground">Print a UPI QR on each sale invoice. Customer scans with any UPI app to pay the invoice amount instantly.</p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium text-sm">Show UPI QR on sale invoices</div>
+            <div className="text-xs text-muted-foreground">Auto-fills the invoice amount in the QR.</div>
+          </div>
+          <Switch checked={s.show_upi_qr} onCheckedChange={(v) => setS({ ...s, show_upi_qr: v })} />
+        </div>
+        <div>
+          <Label>UPI ID (VPA)</Label>
+          <Input
+            placeholder="yourname@okicici"
+            value={s.upi_id}
+            onChange={(e) => setS({ ...s, upi_id: e.target.value.trim() })}
+            disabled={!s.show_upi_qr}
+          />
+          <p className="text-xs text-muted-foreground mt-1">Example: 9876543210@paytm, shop@okhdfcbank, business@ybl</p>
+        </div>
+        <div>
+          <Label>Payee Name (shown in payer's app)</Label>
+          <Input
+            placeholder={current?.name ?? "Your shop name"}
+            value={s.upi_payee_name}
+            onChange={(e) => setS({ ...s, upi_payee_name: e.target.value })}
+            disabled={!s.show_upi_qr}
+          />
         </div>
       </Card>
     </div>

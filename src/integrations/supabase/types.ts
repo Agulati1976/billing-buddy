@@ -367,9 +367,12 @@ export type Database = {
           id: string
           show_amount_in_words: boolean
           show_signature: boolean
+          show_upi_qr: boolean
           signature_label: string | null
           template: string
           updated_at: string
+          upi_id: string | null
+          upi_payee_name: string | null
         }
         Insert: {
           accent_color?: string
@@ -382,9 +385,12 @@ export type Database = {
           id?: string
           show_amount_in_words?: boolean
           show_signature?: boolean
+          show_upi_qr?: boolean
           signature_label?: string | null
           template?: string
           updated_at?: string
+          upi_id?: string | null
+          upi_payee_name?: string | null
         }
         Update: {
           accent_color?: string
@@ -397,9 +403,12 @@ export type Database = {
           id?: string
           show_amount_in_words?: boolean
           show_signature?: boolean
+          show_upi_qr?: boolean
           signature_label?: string | null
           template?: string
           updated_at?: string
+          upi_id?: string | null
+          upi_payee_name?: string | null
         }
         Relationships: []
       }
