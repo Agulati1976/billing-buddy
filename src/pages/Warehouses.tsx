@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,12 @@ export default function Warehouses() {
   const [address, setAddress] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.name, r.address].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
+  }, [rows, search]);
 
   const load = async () => {
     if (!current) return;
@@ -73,6 +80,7 @@ export default function Warehouses() {
       </div>
 
       <Card>
+        <div className="p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search warehouses…" className="max-w-sm" /></div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -83,9 +91,9 @@ export default function Warehouses() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No warehouses yet</TableCell></TableRow>
-            ) : rows.map((w) => (
+            {filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No warehouses yet" : "No matches"}</TableCell></TableRow>
+            ) : filtered.map((w) => (
               <TableRow key={w.id}>
                 <TableCell className="font-medium">{w.name}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{w.address ?? "—"}</TableCell>
