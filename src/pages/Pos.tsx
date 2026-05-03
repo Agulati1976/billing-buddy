@@ -64,6 +64,7 @@ export default function Pos() {
   const [returnsItems, setReturnsItems] = useState<any[]>([]);
   const [returnsSearch, setReturnsSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const voice = useVoiceInput({ onResult: (text) => setSearch(text) });
 
   // Load reference data
   useEffect(() => {
@@ -473,6 +474,16 @@ export default function Pos() {
                 }
               }}
             />
+            {voice.supported && (
+              <Button
+                variant={voice.listening ? "default" : "outline"}
+                onClick={voice.toggle}
+                title={voice.listening ? "Listening… click to stop" : "Voice search"}
+                className={voice.listening ? "animate-pulse" : ""}
+              >
+                {voice.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setScannerOpen(true)}><ScanLine className="h-4 w-4 mr-1" />Scan</Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[calc(100vh-260px)] overflow-auto">
