@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
 import { format } from "date-fns";
 
@@ -50,6 +51,12 @@ export default function Payments() {
   const [invoiceId, setInvoiceId] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [search, setSearch] = useState("");
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.parties?.name, r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+  }, [rows, search]);
 
   const load = async () => {
     if (!current) return;
@@ -137,11 +144,12 @@ export default function Payments() {
         </Card>
       </div>
 
-      <Card className="p-4">
-        {rows.length === 0 ? (
+      <Card className="p-4 space-y-4">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search by party, invoice, method, reference…" className="max-w-md" />
+        {filteredRows.length === 0 ? (
           <div className="text-center py-12">
             <Wallet className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No payments yet</p>
+            <p className="text-sm text-muted-foreground">{rows.length === 0 ? "No payments yet" : "No matches"}</p>
           </div>
         ) : (
           <Table>
@@ -156,7 +164,7 @@ export default function Payments() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => (
+              {filteredRows.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="text-muted-foreground">{format(new Date(r.payment_date), "dd MMM yyyy")}</TableCell>
                   <TableCell>
