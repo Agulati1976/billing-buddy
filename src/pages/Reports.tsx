@@ -3,11 +3,17 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, TrendingUp, Receipt, Package, Wallet, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BarChart3, TrendingUp, Receipt, Package, Wallet, FileText, CalendarIcon } from "lucide-react";
 import { useBusiness } from "@/hooks/useBusiness";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/states";
 import { toast } from "sonner";
+import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type Inv = {
   id: string; invoice_date: string; total_amount: number; tax_amount: number;
@@ -18,8 +24,32 @@ type Inv = {
 type Item = { invoice_id: string; item_name: string; quantity: number; total_amount: number; taxable_amount: number; tax_rate: number; };
 type Exp = { category: string; amount: number; expense_date: string; };
 
-const startOf = (d: Date) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
-const fmtDate = (d: Date) => d.toISOString().slice(0, 10);
+const fmtDate = (d: Date) => format(d, "yyyy-MM-dd");
+
+type Preset =
+  | "today" | "yesterday"
+  | "last_7" | "last_30" | "last_90"
+  | "this_week" | "this_month" | "last_month"
+  | "this_quarter" | "this_year" | "last_365"
+  | "custom";
+
+function rangeFor(preset: Preset, custom: { from: Date; to: Date }): { from: Date; to: Date; label: string } {
+  const now = new Date();
+  switch (preset) {
+    case "today":        return { from: startOfDay(now), to: endOfDay(now), label: "Today" };
+    case "yesterday":    { const y = subDays(now, 1); return { from: startOfDay(y), to: endOfDay(y), label: "Yesterday" }; }
+    case "last_7":       return { from: startOfDay(subDays(now, 6)), to: endOfDay(now), label: "Last 7 days" };
+    case "last_30":      return { from: startOfDay(subDays(now, 29)), to: endOfDay(now), label: "Last 30 days" };
+    case "last_90":      return { from: startOfDay(subDays(now, 89)), to: endOfDay(now), label: "Last 90 days" };
+    case "this_week":    return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), label: "This week" };
+    case "this_month":   return { from: startOfMonth(now), to: endOfMonth(now), label: "This month" };
+    case "last_month":   { const lm = subMonths(now, 1); return { from: startOfMonth(lm), to: endOfMonth(lm), label: "Last month" }; }
+    case "this_quarter": return { from: startOfQuarter(now), to: endOfQuarter(now), label: "This quarter" };
+    case "this_year":    return { from: startOfYear(now), to: endOfYear(now), label: "This year (FY)" };
+    case "last_365":     return { from: startOfDay(subDays(now, 364)), to: endOfDay(now), label: "Last 12 months" };
+    case "custom":       return { from: startOfDay(custom.from), to: endOfDay(custom.to), label: "Custom range" };
+  }
+}
 
 export default function Reports() {
   const { current } = useBusiness();
@@ -29,15 +59,26 @@ export default function Reports() {
   const [items, setItems] = useState<Item[]>([]);
   const [expenses, setExpenses] = useState<Exp[]>([]);
 
+  // Filter state
+  const [preset, setPreset] = useState<Preset>("this_month");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+
+  const range = useMemo(
+    () => rangeFor(preset, { from: customFrom, to: customTo }),
+    [preset, customFrom, customTo]
+  );
+
   useEffect(() => {
     if (!current) return;
     (async () => {
       setLoading(true);
-      const since = fmtDate(new Date(Date.now() - 365 * 86400000));
+      const since = fmtDate(range.from);
+      const until = fmtDate(range.to);
       const [s, p, e] = await Promise.all([
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", since),
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").gte("invoice_date", since),
-        supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", since).lte("invoice_date", until),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").gte("invoice_date", since).lte("invoice_date", until),
+        supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since).lte("expense_date", until),
       ]);
       if (s.error || p.error || e.error) toast.error("Failed to load reports");
       const allInvIds = [...(s.data ?? []), ...(p.data ?? [])].map((i: any) => i.id);
@@ -54,28 +95,26 @@ export default function Reports() {
       setItems(it);
       setLoading(false);
     })();
-  }, [current?.id]);
+  }, [current?.id, range.from, range.to]);
 
   /* ------------------------- aggregations ------------------------- */
-  const now = new Date();
-  const today = startOf(now);
-  const wkStart = startOf(new Date(now.getTime() - 6 * 86400000));
-  const moStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const sumIn = (arr: Inv[], from: Date) =>
-    arr.filter((i) => new Date(i.invoice_date) >= from)
-       .reduce((s, i) => s + Number(i.total_amount || 0), 0);
+  // Totals for the selected range
+  const totals = useMemo(() => {
+    const salesTotal = sales.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    return {
+      sales: salesTotal,
+      purchases: purchasesTotal,
+      expenses: expensesTotal,
+      net: salesTotal - purchasesTotal - expensesTotal,
+      salesCount: sales.length,
+      purchasesCount: purchases.length,
+    };
+  }, [sales, purchases, expenses]);
 
-  const periods = {
-    today: { sales: sumIn(sales, today), purchases: sumIn(purchases, today),
-             expenses: expenses.filter(e => new Date(e.expense_date) >= today).reduce((s,e)=>s+Number(e.amount||0),0) },
-    week:  { sales: sumIn(sales, wkStart), purchases: sumIn(purchases, wkStart),
-             expenses: expenses.filter(e => new Date(e.expense_date) >= wkStart).reduce((s,e)=>s+Number(e.amount||0),0) },
-    month: { sales: sumIn(sales, moStart), purchases: sumIn(purchases, moStart),
-             expenses: expenses.filter(e => new Date(e.expense_date) >= moStart).reduce((s,e)=>s+Number(e.amount||0),0) },
-  };
-
-  // P&L (financial year-to-date approximation = last 365d)
+  // P&L for the selected range
   const pnl = useMemo(() => {
     const revenue = sales.reduce((s, i) => s + Number(i.subtotal || 0), 0); // pre-tax
     const cogs = purchases.reduce((s, i) => s + Number(i.subtotal || 0), 0);
@@ -132,6 +171,22 @@ export default function Reports() {
 
   const expTotal = expBreakdown.reduce((s, e) => s + e.total, 0);
 
+  // Daily trend within range (for at-a-glance daily report)
+  const daily = useMemo(() => {
+    const byDate = new Map<string, { sales: number; purchases: number; expenses: number }>();
+    const ensure = (k: string) => {
+      let v = byDate.get(k);
+      if (!v) { v = { sales: 0, purchases: 0, expenses: 0 }; byDate.set(k, v); }
+      return v;
+    };
+    sales.forEach((i) => { ensure(i.invoice_date).sales += Number(i.total_amount || 0); });
+    purchases.forEach((i) => { ensure(i.invoice_date).purchases += Number(i.total_amount || 0); });
+    expenses.forEach((e) => { ensure(e.expense_date).expenses += Number(e.amount || 0); });
+    return Array.from(byDate.entries())
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([date, v]) => ({ date, ...v, net: v.sales - v.purchases - v.expenses }));
+  }, [sales, purchases, expenses]);
+
   /* ------------------------- ui helpers ------------------------- */
   const Stat = ({ label, value, tone = "primary" }: { label: string; value: string; tone?: string }) => (
     <Card className="p-4">
@@ -142,52 +197,146 @@ export default function Reports() {
     </Card>
   );
 
-  if (loading) {
-    return <div className="text-center text-muted-foreground py-10">Loading reports…</div>;
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" /> Reports & Analytics
-        </h1>
-        <p className="text-sm text-muted-foreground">Last 12 months of activity for {current?.name ?? "your business"}.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-primary" /> Reports & Analytics
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {range.label} · {format(range.from, "dd MMM yyyy")} — {format(range.to, "dd MMM yyyy")}
+          </p>
+        </div>
+
+        {/* Date filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={preset} onValueChange={(v) => setPreset(v as Preset)}>
+            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today (Daily)</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="last_7">Last 7 days</SelectItem>
+              <SelectItem value="last_30">Last 30 days</SelectItem>
+              <SelectItem value="last_90">Last 90 days</SelectItem>
+              <SelectItem value="this_week">This week</SelectItem>
+              <SelectItem value="this_month">This month (Monthly)</SelectItem>
+              <SelectItem value="last_month">Last month</SelectItem>
+              <SelectItem value="this_quarter">This quarter</SelectItem>
+              <SelectItem value="this_year">This year (Yearly)</SelectItem>
+              <SelectItem value="last_365">Last 12 months</SelectItem>
+              <SelectItem value="custom">Custom range…</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {preset === "custom" && (
+            <>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("justify-start text-left font-normal w-[160px]")}>
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {format(customFrom, "dd MMM yyyy")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customFrom}
+                    onSelect={(d) => d && setCustomFrom(d)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-muted-foreground text-sm">to</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("justify-start text-left font-normal w-[160px]")}>
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {format(customTo, "dd MMM yyyy")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={customTo}
+                    onSelect={(d) => d && setCustomTo(d)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+        </div>
       </div>
 
+      {loading ? (
+        <div className="text-center text-muted-foreground py-10">Loading reports…</div>
+      ) : (
       <Tabs defaultValue="overview">
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview"><TrendingUp className="h-4 w-4 mr-1" />Overview</TabsTrigger>
+          <TabsTrigger value="daily"><CalendarIcon className="h-4 w-4 mr-1" />Daily Breakdown</TabsTrigger>
           <TabsTrigger value="pnl"><FileText className="h-4 w-4 mr-1" />Profit & Loss</TabsTrigger>
           <TabsTrigger value="gst"><Receipt className="h-4 w-4 mr-1" />GST</TabsTrigger>
           <TabsTrigger value="products"><Package className="h-4 w-4 mr-1" />Top Products</TabsTrigger>
           <TabsTrigger value="expenses"><Wallet className="h-4 w-4 mr-1" />Expenses</TabsTrigger>
         </TabsList>
 
-        {/* OVERVIEW: Daily / Weekly / Monthly */}
+        {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
-          {(["today","week","month"] as const).map((k) => {
-            const p = periods[k];
-            const label = k === "today" ? "Today" : k === "week" ? "Last 7 Days" : "This Month";
-            const profit = p.sales - p.purchases - p.expenses;
-            return (
-              <div key={k}>
-                <div className="text-sm font-medium mb-2 text-muted-foreground">{label}</div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Stat label="Sales" value={formatINR(p.sales)} tone="success" />
-                  <Stat label="Purchases" value={formatINR(p.purchases)} />
-                  <Stat label="Expenses" value={formatINR(p.expenses)} />
-                  <Stat label="Net" value={formatINR(profit)} tone={profit >= 0 ? "success" : "danger"} />
-                </div>
-              </div>
-            );
-          })}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Sales" value={formatINR(totals.sales)} tone="success" />
+            <Stat label="Purchases" value={formatINR(totals.purchases)} />
+            <Stat label="Expenses" value={formatINR(totals.expenses)} />
+            <Stat label="Net" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Sales Invoices" value={String(totals.salesCount)} />
+            <Stat label="Purchase Invoices" value={String(totals.purchasesCount)} />
+            <Stat
+              label="Avg. Sale"
+              value={formatINR(totals.salesCount ? totals.sales / totals.salesCount : 0)}
+            />
+          </div>
+        </TabsContent>
+
+        {/* DAILY BREAKDOWN */}
+        <TabsContent value="daily">
+          <Card>
+            <div className="p-4 border-b font-medium">Daily breakdown — {range.label}</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Sales</TableHead>
+                  <TableHead className="text-right">Purchases</TableHead>
+                  <TableHead className="text-right">Expenses</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {daily.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No activity in this range.</TableCell></TableRow>
+                ) : daily.map((d) => (
+                  <TableRow key={d.date}>
+                    <TableCell className="font-medium">{format(new Date(d.date), "dd MMM yyyy")}</TableCell>
+                    <TableCell className="text-right tabular-nums text-success">{formatINR(d.sales)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatINR(d.purchases)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatINR(d.expenses)}</TableCell>
+                    <TableCell className={cn("text-right tabular-nums font-semibold", d.net >= 0 ? "text-success" : "text-danger")}>{formatINR(d.net)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
         </TabsContent>
 
         {/* P&L */}
         <TabsContent value="pnl">
           <Card className="p-6">
-            <div className="text-sm text-muted-foreground mb-4">Profit & Loss — last 12 months</div>
+            <div className="text-sm text-muted-foreground mb-4">Profit & Loss — {range.label}</div>
             <Table>
               <TableBody>
                 <TableRow><TableCell>Revenue (Sales)</TableCell><TableCell className="text-right tabular-nums">{formatINR(pnl.revenue)}</TableCell></TableRow>
@@ -211,7 +360,7 @@ export default function Reports() {
             <Stat label="Net GST Liability" value={formatINR(gst.liability)} tone={gst.liability > 0 ? "danger" : "success"} />
           </div>
           <Card>
-            <div className="p-4 border-b font-medium">GST Summary (last 12 months)</div>
+            <div className="p-4 border-b font-medium">GST Summary — {range.label}</div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -248,7 +397,7 @@ export default function Reports() {
         {/* Top Products */}
         <TabsContent value="products">
           <Card>
-            <div className="p-4 border-b font-medium">Top 10 Selling Products / Services</div>
+            <div className="p-4 border-b font-medium">Top 10 Selling Products / Services — {range.label}</div>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -260,7 +409,7 @@ export default function Reports() {
               </TableHeader>
               <TableBody>
                 {topProducts.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No sales yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No sales in this range.</TableCell></TableRow>
                 ) : topProducts.map((p, idx) => (
                   <TableRow key={p.name}>
                     <TableCell><Badge variant={idx < 3 ? "default" : "secondary"}>{idx + 1}</Badge></TableCell>
@@ -278,7 +427,7 @@ export default function Reports() {
         <TabsContent value="expenses">
           <Card>
             <div className="p-4 border-b flex items-center justify-between">
-              <div className="font-medium">Expenses by Category</div>
+              <div className="font-medium">Expenses by Category — {range.label}</div>
               <div className="text-sm text-muted-foreground">Total: <span className="font-semibold tabular-nums">{formatINR(expTotal)}</span></div>
             </div>
             <Table>
@@ -291,7 +440,7 @@ export default function Reports() {
               </TableHeader>
               <TableBody>
                 {expBreakdown.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No expenses yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No expenses in this range.</TableCell></TableRow>
                 ) : expBreakdown.map((e) => {
                   const pct = expTotal > 0 ? (e.total / expTotal) * 100 : 0;
                   return (
@@ -307,6 +456,7 @@ export default function Reports() {
           </Card>
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 }
