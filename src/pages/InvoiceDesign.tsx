@@ -31,6 +31,9 @@ interface Settings {
   signature_label: string;
   show_signature: boolean;
   show_amount_in_words: boolean;
+  upi_id: string;
+  upi_payee_name: string;
+  show_upi_qr: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -42,6 +45,9 @@ const DEFAULTS: Settings = {
   signature_label: "Authorised Signatory",
   show_signature: true,
   show_amount_in_words: true,
+  upi_id: "",
+  upi_payee_name: "",
+  show_upi_qr: true,
 };
 
 export default function InvoiceDesign() {
