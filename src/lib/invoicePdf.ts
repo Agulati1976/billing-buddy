@@ -103,12 +103,12 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-export function generateInvoicePdf(
+export async function generateInvoicePdf(
   business: PdfBusiness,
   party: PdfParty | null,
   invoice: PdfInvoice,
   design?: InvoiceDesign,
-): jsPDF {
+): Promise<jsPDF> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const meta = INVOICE_TYPE_META[invoice.type];
   const isQuotation = invoice.type === "quotation";
