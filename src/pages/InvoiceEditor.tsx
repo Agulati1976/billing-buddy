@@ -123,9 +123,17 @@ export default function InvoiceEditor({ type }: Props) {
     return party.state_code !== current.state_code;
   }, [party, current]);
 
+  const extraDiscountValue = useMemo(() => {
+    const v = Number(extraDiscount) || 0;
+    if (extraDiscountMode === "amt") return v;
+    // % of taxable-after-line-discounts
+    const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
+    return (baseLines.taxable_total * v) / 100;
+  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst]);
+
   const totals = useMemo(
-    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 }),
-    [lines, isInterState, isGst, extraDiscount]
+    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue }),
+    [lines, isInterState, isGst, extraDiscountValue]
   );
 
   const addItemToLines = (it: Item) => {
