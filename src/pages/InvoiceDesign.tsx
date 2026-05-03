@@ -69,6 +69,9 @@ export default function InvoiceDesign() {
         default_notes: data.default_notes ?? "",
         signature_label: data.signature_label ?? "Authorised Signatory",
         show_signature: data.show_signature, show_amount_in_words: data.show_amount_in_words,
+        upi_id: (data as any).upi_id ?? "",
+        upi_payee_name: (data as any).upi_payee_name ?? "",
+        show_upi_qr: (data as any).show_upi_qr ?? true,
       });
       setLoading(false);
     })();
