@@ -36,6 +36,12 @@ export default function Batches() {
   const [quantity, setQuantity] = useState("0");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.batch_number, r.items?.name, r.notes].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
+  }, [rows, search]);
 
   const load = async () => {
     if (!current) return;
