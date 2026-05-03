@@ -710,7 +710,7 @@ export default function Pos() {
       <Dialog open={returnsOpen} onOpenChange={setReturnsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Return from a recent sale</DialogTitle></DialogHeader>
-          <Input placeholder="Search invoice number" value={returnsSearch} onChange={(e) => setReturnsSearch(e.target.value)} />
+          <SearchBar value={returnsSearch} onChange={setReturnsSearch} placeholder="Search invoice number" />
           <div className="max-h-[400px] overflow-auto divide-y">
             {returnsItems.filter((r) => !returnsSearch || r.invoice_number.toLowerCase().includes(returnsSearch.toLowerCase())).map((r) => (
               <div key={r.id} className="flex items-center justify-between py-2">
