@@ -5,6 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet, FileT
 import { formatINR } from "@/lib/states";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { DashboardChart } from "@/components/DashboardChart";
 
 const StatCard = ({
   label, value, icon: Icon, tone = "primary",
