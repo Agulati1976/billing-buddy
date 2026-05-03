@@ -79,10 +79,10 @@ export default function InvoiceDesign() {
     else toast.success("Invoice design saved");
   };
 
-  const preview = () => {
+  const preview = async () => {
     if (!current) return;
     const design: InvoiceDesign = { ...s };
-    const doc = generateInvoicePdf(
+    const doc = await generateInvoicePdf(
       {
         name: current.name, gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
