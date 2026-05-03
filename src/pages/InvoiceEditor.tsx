@@ -474,9 +474,37 @@ export default function InvoiceEditor({ type }: Props) {
                   )}
                 </TableCell>
                 <TableCell>
-                  {readOnly ? <span className="num">{l.discount_pct}</span> : (
-                    <Input className="h-8 num" type="number" step="0.01" value={l.discount_pct} onChange={(e) => updateLine(idx, { discount_pct: Number(e.target.value) })} />
-                  )}
+                  {readOnly ? (
+                    <span className="num">{l.discount_pct}%</span>
+                  ) : (() => {
+                    const mode = l.discount_mode ?? "pct";
+                    const val = mode === "amt" ? (l.discount_amount ?? 0) : (l.discount_pct ?? 0);
+                    return (
+                      <div className="flex gap-1">
+                        <Input
+                          className="h-8 num"
+                          type="number"
+                          step="0.01"
+                          value={val || ""}
+                          onChange={(e) => {
+                            const n = Number(e.target.value) || 0;
+                            if (mode === "amt") updateLine(idx, { discount_amount: n, discount_pct: 0 });
+                            else updateLine(idx, { discount_pct: n, discount_amount: 0 });
+                          }}
+                        />
+                        <Select
+                          value={mode}
+                          onValueChange={(v: "pct" | "amt") => updateLine(idx, { discount_mode: v, discount_amount: 0, discount_pct: 0 })}
+                        >
+                          <SelectTrigger className="h-8 w-[58px] px-2"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pct">%</SelectItem>
+                            <SelectItem value="amt">₹</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {readOnly ? <span className="num">{l.tax_rate}</span> : (
