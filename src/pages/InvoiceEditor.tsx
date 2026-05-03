@@ -47,13 +47,14 @@ export default function InvoiceEditor({ type }: Props) {
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
   const [isGst, setIsGst] = useState(true);
   const [extraDiscount, setExtraDiscount] = useState("0");
+  const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
 
   function emptyLine(): InvoiceLineInput {
-    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, tax_rate: 0, batch_id: null };
+    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, discount_amount: 0, discount_mode: "pct", tax_rate: 0, batch_id: null };
   }
 
   // Load parties & items
@@ -122,9 +123,17 @@ export default function InvoiceEditor({ type }: Props) {
     return party.state_code !== current.state_code;
   }, [party, current]);
 
+  const extraDiscountValue = useMemo(() => {
+    const v = Number(extraDiscount) || 0;
+    if (extraDiscountMode === "amt") return v;
+    // % of taxable-after-line-discounts
+    const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
+    return (baseLines.taxable_total * v) / 100;
+  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst]);
+
   const totals = useMemo(
-    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 }),
-    [lines, isInterState, isGst, extraDiscount]
+    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue }),
+    [lines, isInterState, isGst, extraDiscountValue]
   );
 
   const addItemToLines = (it: Item) => {
@@ -208,7 +217,7 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     setSaving(true);
-    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 });
+    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: extraDiscountValue });
     const status = type === "quotation" ? "draft" : "unpaid";
 
     const { data: inv, error } = await supabase.from("invoices").insert({
@@ -394,7 +403,7 @@ export default function InvoiceEditor({ type }: Props) {
               <TableHead>HSN</TableHead>
               <TableHead className="w-[80px]">Qty</TableHead>
               <TableHead className="w-[110px]">Price</TableHead>
-              <TableHead className="w-[80px]">Disc %</TableHead>
+              <TableHead className="w-[140px]">Discount</TableHead>
               <TableHead className="w-[80px]">Tax %</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               {!readOnly && <TableHead className="w-[40px]"></TableHead>}
@@ -465,9 +474,37 @@ export default function InvoiceEditor({ type }: Props) {
                   )}
                 </TableCell>
                 <TableCell>
-                  {readOnly ? <span className="num">{l.discount_pct}</span> : (
-                    <Input className="h-8 num" type="number" step="0.01" value={l.discount_pct} onChange={(e) => updateLine(idx, { discount_pct: Number(e.target.value) })} />
-                  )}
+                  {readOnly ? (
+                    <span className="num">{l.discount_pct}%</span>
+                  ) : (() => {
+                    const mode = l.discount_mode ?? "pct";
+                    const val = mode === "amt" ? (l.discount_amount ?? 0) : (l.discount_pct ?? 0);
+                    return (
+                      <div className="flex gap-1">
+                        <Input
+                          className="h-8 num"
+                          type="number"
+                          step="0.01"
+                          value={val || ""}
+                          onChange={(e) => {
+                            const n = Number(e.target.value) || 0;
+                            if (mode === "amt") updateLine(idx, { discount_amount: n, discount_pct: 0 });
+                            else updateLine(idx, { discount_pct: n, discount_amount: 0 });
+                          }}
+                        />
+                        <Select
+                          value={mode}
+                          onValueChange={(v: "pct" | "amt") => updateLine(idx, { discount_mode: v, discount_amount: 0, discount_pct: 0 })}
+                        >
+                          <SelectTrigger className="h-8 w-[58px] px-2"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pct">%</SelectItem>
+                            <SelectItem value="amt">₹</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {readOnly ? <span className="num">{l.tax_rate}</span> : (
@@ -514,15 +551,27 @@ export default function InvoiceEditor({ type }: Props) {
             {totals.discount_amount > 0 && <Row label="Discount" value={`− ${formatINR(totals.discount_amount)}`} />}
             {!readOnly && (
               <div className="flex items-center justify-between gap-2 py-1">
-                <Label className="text-muted-foreground text-sm">Extra Discount (₹)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  className="h-8 w-32 num text-right"
-                  value={extraDiscount}
-                  onChange={(e) => setExtraDiscount(e.target.value)}
-                />
+                <Label className="text-muted-foreground text-sm">Overall Discount</Label>
+                <div className="flex gap-1">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="h-8 w-24 num text-right"
+                    value={extraDiscount}
+                    onChange={(e) => setExtraDiscount(e.target.value)}
+                  />
+                  <Select value={extraDiscountMode} onValueChange={(v: "amt" | "pct") => setExtraDiscountMode(v)}>
+                    <SelectTrigger className="h-8 w-[58px] px-2"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="amt">₹</SelectItem>
+                      <SelectItem value="pct">%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            )}
+            {extraDiscountMode === "pct" && extraDiscountValue > 0 && (
+              <Row label={`Overall Discount (${extraDiscount}%)`} value={`− ${formatINR(extraDiscountValue)}`} />
             )}
             <Row label="Taxable Amount" value={formatINR(totals.taxable_total)} />
             {isGst && isInterState && <Row label="IGST" value={formatINR(totals.igst_amount)} />}

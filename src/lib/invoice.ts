@@ -4,6 +4,8 @@ import type { Database } from "@/integrations/supabase/types";
 export type InvoiceType = Database["public"]["Enums"]["invoice_type"];
 export type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
 
+export type DiscountMode = "pct" | "amt";
+
 export interface InvoiceLineInput {
   item_id: string | null;
   item_name: string;
@@ -12,6 +14,10 @@ export interface InvoiceLineInput {
   unit: string | null;
   price: number;
   discount_pct: number;
+  /** Optional flat ₹ discount on this line. When set & > 0, overrides discount_pct. */
+  discount_amount?: number;
+  /** UI-only: how the user is entering the discount. Not persisted. */
+  discount_mode?: DiscountMode;
   tax_rate: number;
   batch_id?: string | null;
 }
@@ -45,13 +51,20 @@ export function computeInvoice(
   const extraDiscount = Number(opts.extraDiscount) || 0;
 
   const computed: ComputedLine[] = lines.map((l) => {
-    const gross = (Number(l.quantity) || 0) * (Number(l.price) || 0);
-    const discount = (gross * (Number(l.discount_pct) || 0)) / 100;
+    const qty = Number(l.quantity) || 0;
+    const price = Number(l.price) || 0;
+    const gross = qty * price;
+    // Flat ₹ discount takes precedence when > 0
+    const flat = Number(l.discount_amount) || 0;
+    const pct = Number(l.discount_pct) || 0;
+    const discount = flat > 0 ? Math.min(flat, gross) : (gross * pct) / 100;
+    const effectivePct = gross > 0 ? (discount / gross) * 100 : 0;
     const taxable = gross - discount;
     const effectiveRate = isGst ? (Number(l.tax_rate) || 0) : 0;
     const tax = (taxable * effectiveRate) / 100;
     return {
       ...l,
+      discount_pct: round2(effectivePct),
       tax_rate: effectiveRate,
       taxable_amount: round2(taxable),
       tax_amount: round2(tax),
@@ -64,7 +77,7 @@ export function computeInvoice(
     0
   );
   const lineDiscount = computed.reduce(
-    (s, l) => s + ((Number(l.quantity) || 0) * (Number(l.price) || 0) * (Number(l.discount_pct) || 0)) / 100,
+    (s, l) => s + ((Number(l.quantity) || 0) * (Number(l.price) || 0) - l.taxable_amount),
     0
   );
   const discount_amount = lineDiscount + extraDiscount;
