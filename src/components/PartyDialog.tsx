@@ -145,6 +145,19 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
             <Input id="pob" type="number" step="0.01" value={form.opening_balance} onChange={(e) => set("opening_balance", e.target.value)} />
           </div>
 
+          {type === "supplier" && (
+            <div className="space-y-2">
+              <Label htmlFor="psup">What they supply</Label>
+              <Textarea
+                id="psup"
+                rows={2}
+                placeholder="e.g. Dairy products, beverages, packaging materials"
+                value={form.supplies}
+                onChange={(e) => set("supplies", e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="pnt">Notes</Label>
             <Textarea id="pnt" rows={2} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
