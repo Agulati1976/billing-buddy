@@ -23,7 +23,7 @@ interface Props {
 const empty = {
   name: "", phone: "", email: "", gstin: "",
   billing_address: "", shipping_address: "",
-  state_code: "", opening_balance: "0", notes: "",
+  state_code: "", opening_balance: "0", notes: "", supplies: "",
 };
 
 export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props) {
@@ -44,6 +44,7 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
         state_code: party.state_code ?? "",
         opening_balance: String(party.opening_balance ?? 0),
         notes: party.notes ?? "",
+        supplies: (party as any).supplies ?? "",
       });
     } else {
       setForm(empty);
@@ -70,6 +71,7 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
       state_code: form.state_code || null,
       opening_balance: Number(form.opening_balance) || 0,
       notes: form.notes || null,
+      ...(type === "supplier" ? { supplies: form.supplies.trim() || null } : {}),
     };
     const { error } = party
       ? await supabase.from("parties").update(payload).eq("id", party.id)
@@ -142,6 +144,19 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
             </Label>
             <Input id="pob" type="number" step="0.01" value={form.opening_balance} onChange={(e) => set("opening_balance", e.target.value)} />
           </div>
+
+          {type === "supplier" && (
+            <div className="space-y-2">
+              <Label htmlFor="psup">What they supply</Label>
+              <Textarea
+                id="psup"
+                rows={2}
+                placeholder="e.g. Dairy products, beverages, packaging materials"
+                value={form.supplies}
+                onChange={(e) => set("supplies", e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="pnt">Notes</Label>
