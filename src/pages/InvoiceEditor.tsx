@@ -47,6 +47,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
   const [isGst, setIsGst] = useState(true);
   const [extraDiscount, setExtraDiscount] = useState("0");
+  const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
