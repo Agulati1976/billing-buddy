@@ -4,6 +4,7 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Phone, Mail, Pencil, Trash2, Search, Users, Truck, ChevronRight } from "lucide-react";
