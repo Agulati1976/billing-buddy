@@ -4,6 +4,8 @@ import type { Database } from "@/integrations/supabase/types";
 export type InvoiceType = Database["public"]["Enums"]["invoice_type"];
 export type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
 
+export type DiscountMode = "pct" | "amt";
+
 export interface InvoiceLineInput {
   item_id: string | null;
   item_name: string;
@@ -12,6 +14,10 @@ export interface InvoiceLineInput {
   unit: string | null;
   price: number;
   discount_pct: number;
+  /** Optional flat ₹ discount on this line. When set & > 0, overrides discount_pct. */
+  discount_amount?: number;
+  /** UI-only: how the user is entering the discount. Not persisted. */
+  discount_mode?: DiscountMode;
   tax_rate: number;
   batch_id?: string | null;
 }
