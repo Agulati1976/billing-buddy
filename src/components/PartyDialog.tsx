@@ -44,6 +44,7 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
         state_code: party.state_code ?? "",
         opening_balance: String(party.opening_balance ?? 0),
         notes: party.notes ?? "",
+        supplies: (party as any).supplies ?? "",
       });
     } else {
       setForm(empty);
