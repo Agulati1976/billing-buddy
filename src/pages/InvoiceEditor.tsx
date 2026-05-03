@@ -217,7 +217,7 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     setSaving(true);
-    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: Number(extraDiscount) || 0 });
+    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: extraDiscountValue });
     const status = type === "quotation" ? "draft" : "unpaid";
 
     const { data: inv, error } = await supabase.from("invoices").insert({
