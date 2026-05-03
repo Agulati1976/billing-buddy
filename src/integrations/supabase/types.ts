@@ -645,6 +645,7 @@ export type Database = {
           shipping_address: string | null
           state: string | null
           state_code: string | null
+          supplies: string | null
           type: Database["public"]["Enums"]["party_type"]
           updated_at: string
         }
@@ -663,6 +664,7 @@ export type Database = {
           shipping_address?: string | null
           state?: string | null
           state_code?: string | null
+          supplies?: string | null
           type?: Database["public"]["Enums"]["party_type"]
           updated_at?: string
         }
@@ -681,6 +683,7 @@ export type Database = {
           shipping_address?: string | null
           state?: string | null
           state_code?: string | null
+          supplies?: string | null
           type?: Database["public"]["Enums"]["party_type"]
           updated_at?: string
         }
