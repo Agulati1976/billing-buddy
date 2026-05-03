@@ -5,6 +5,7 @@ import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet, FileT
 import { formatINR } from "@/lib/states";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
+import { DashboardChart } from "@/components/DashboardChart";
 
 const StatCard = ({
   label, value, icon: Icon, tone = "primary",
@@ -115,6 +116,8 @@ export default function Dashboard() {
         <StatCard label="To Receive" value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
         <StatCard label="To Pay" value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
       </div>
+
+      <DashboardChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-6">
