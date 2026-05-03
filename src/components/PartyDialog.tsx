@@ -23,7 +23,7 @@ interface Props {
 const empty = {
   name: "", phone: "", email: "", gstin: "",
   billing_address: "", shipping_address: "",
-  state_code: "", opening_balance: "0", notes: "",
+  state_code: "", opening_balance: "0", notes: "", supplies: "",
 };
 
 export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props) {
