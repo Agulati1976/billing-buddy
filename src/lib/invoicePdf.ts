@@ -1,6 +1,7 @@
 // Professional Tax Invoice PDF generator (jsPDF + autotable)
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 // PDF-safe currency: "Rs." prefix (built-in PDF fonts lack the ₹ glyph)
 const formatINR = (n: number): string => {
   const v = Number(n) || 0;
@@ -12,6 +13,18 @@ const formatINR = (n: number): string => {
   return `${sign}Rs. ${formatted}`;
 };
 import { INVOICE_TYPE_META, type InvoiceType } from "@/lib/invoice";
+
+/** Build a UPI deep-link string per NPCI spec. */
+export function buildUpiUri(opts: { pa: string; pn?: string; am?: number; tn?: string; tr?: string }) {
+  const params = new URLSearchParams();
+  params.set("pa", opts.pa);
+  if (opts.pn) params.set("pn", opts.pn);
+  if (opts.am && opts.am > 0) params.set("am", opts.am.toFixed(2));
+  params.set("cu", "INR");
+  if (opts.tn) params.set("tn", opts.tn);
+  if (opts.tr) params.set("tr", opts.tr);
+  return `upi://pay?${params.toString()}`;
+}
 
 export interface PdfBusiness {
   name: string;
