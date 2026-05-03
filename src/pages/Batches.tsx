@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Boxes, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { SearchBar } from "@/components/SearchBar";
 import { format, differenceInDays, parseISO } from "date-fns";
 
 interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; }
@@ -36,6 +37,12 @@ export default function Batches() {
   const [quantity, setQuantity] = useState("0");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.batch_number, r.items?.name, r.notes].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
+  }, [rows, search]);
 
   const load = async () => {
     if (!current) return;
@@ -142,6 +149,7 @@ export default function Batches() {
       )}
 
       <Card>
+        <div className="p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search batches…" className="max-w-sm" /></div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -154,9 +162,9 @@ export default function Batches() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No batches yet</TableCell></TableRow>
-            ) : rows.map((b) => (
+            {filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No batches yet" : "No matches"}</TableCell></TableRow>
+            ) : filtered.map((b) => (
               <TableRow key={b.id}>
                 <TableCell className="font-medium">{b.items?.name ?? "—"}</TableCell>
                 <TableCell>{b.batch_number}</TableCell>

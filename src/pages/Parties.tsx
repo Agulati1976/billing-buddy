@@ -4,6 +4,7 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Phone, Mail, Pencil, Trash2, Search, Users, Truck, ChevronRight } from "lucide-react";
@@ -101,15 +102,7 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
 
       <Card>
         <div className="p-4 border-b flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={`Search ${type}s…`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder={`Search ${type}s…`} className="max-w-sm" />
         </div>
 
         <Table>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
@@ -62,7 +63,7 @@ export default function AdminShopkeepers() {
           <h1 className="text-2xl font-semibold">Shopkeepers</h1>
           <p className="text-sm text-muted-foreground">{rows.length} businesses on the platform</p>
         </div>
-        <Input placeholder="Search…" className="max-w-xs" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="max-w-xs w-full"><SearchBar value={q} onChange={setQ} placeholder="Search shopkeepers…" /></div>
       </div>
       <Card>
         <Table>

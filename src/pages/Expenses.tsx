@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
+import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
 import { format } from "date-fns";
 
@@ -38,6 +39,12 @@ export default function Expenses() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState("cash");
   const [description, setDescription] = useState("");
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.category, r.description, r.method].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+  }, [rows, search]);
 
   const load = async () => {
     if (!current) return;
@@ -102,11 +109,12 @@ export default function Expenses() {
         </Card>
       </div>
 
-      <Card className="p-4">
-        {rows.length === 0 ? (
+      <Card className="p-4 space-y-4">
+        <SearchBar value={search} onChange={setSearch} placeholder="Search expenses by category or description…" className="max-w-md" />
+        {filtered.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No expenses yet</p>
+            <p className="text-sm text-muted-foreground">{rows.length === 0 ? "No expenses yet" : "No matches"}</p>
           </div>
         ) : (
           <Table>
@@ -120,7 +128,7 @@ export default function Expenses() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((r) => (
+              {filtered.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="text-muted-foreground">{format(new Date(r.expense_date), "dd MMM yyyy")}</TableCell>
                   <TableCell><span className="px-2 py-0.5 rounded bg-muted text-xs">{r.category}</span></TableCell>

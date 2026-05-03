@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/SearchBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -106,10 +107,7 @@ export default function Items() {
 
       <Card>
         <div className="p-4 border-b flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Search items, SKU, HSN…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
+          <SearchBar value={q} onChange={setQ} placeholder="Search items, SKU, HSN…" className="max-w-sm" />
         </div>
         <Table>
           <TableHeader>

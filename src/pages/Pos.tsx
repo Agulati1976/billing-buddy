@@ -18,6 +18,9 @@ import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
+import { SearchBar } from "@/components/SearchBar";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { Mic, MicOff } from "lucide-react";
 
 interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
@@ -61,6 +64,7 @@ export default function Pos() {
   const [returnsItems, setReturnsItems] = useState<any[]>([]);
   const [returnsSearch, setReturnsSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const voice = useVoiceInput({ onResult: (text) => setSearch(text) });
 
   // Load reference data
   useEffect(() => {
@@ -470,6 +474,16 @@ export default function Pos() {
                 }
               }}
             />
+            {voice.supported && (
+              <Button
+                variant={voice.listening ? "default" : "outline"}
+                onClick={voice.toggle}
+                title={voice.listening ? "Listening… click to stop" : "Voice search"}
+                className={voice.listening ? "animate-pulse" : ""}
+              >
+                {voice.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setScannerOpen(true)}><ScanLine className="h-4 w-4 mr-1" />Scan</Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[calc(100vh-260px)] overflow-auto">
@@ -696,7 +710,7 @@ export default function Pos() {
       <Dialog open={returnsOpen} onOpenChange={setReturnsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Return from a recent sale</DialogTitle></DialogHeader>
-          <Input placeholder="Search invoice number" value={returnsSearch} onChange={(e) => setReturnsSearch(e.target.value)} />
+          <SearchBar value={returnsSearch} onChange={setReturnsSearch} placeholder="Search invoice number" />
           <div className="max-h-[400px] overflow-auto divide-y">
             {returnsItems.filter((r) => !returnsSearch || r.invoice_number.toLowerCase().includes(returnsSearch.toLowerCase())).map((r) => (
               <div key={r.id} className="flex items-center justify-between py-2">

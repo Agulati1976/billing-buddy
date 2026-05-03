@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +24,12 @@ export default function Categories() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => [r.name, r.description].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
+  }, [rows, search]);
 
   const load = async () => {
     if (!current) return;
@@ -68,6 +75,7 @@ export default function Categories() {
       </div>
 
       <Card>
+        <div className="p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search categories…" className="max-w-sm" /></div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -77,9 +85,9 @@ export default function Categories() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No categories yet</TableCell></TableRow>
-            ) : rows.map((c) => (
+            {filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No categories yet" : "No matches"}</TableCell></TableRow>
+            ) : filtered.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{c.description ?? "—"}</TableCell>

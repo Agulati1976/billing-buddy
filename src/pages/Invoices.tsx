@@ -5,6 +5,7 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, FileText, Trash2, Eye } from "lucide-react";
 import { formatINR } from "@/lib/states";
@@ -104,9 +105,8 @@ export default function Invoices({ type }: Props) {
       </div>
 
       <Card className="p-4">
-        <div className="relative max-w-sm mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search number or party…" className="pl-9" />
+        <div className="max-w-sm mb-4">
+          <SearchBar value={q} onChange={setQ} placeholder="Search number or party…" />
         </div>
 
         {loading ? (
