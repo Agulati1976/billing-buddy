@@ -117,6 +117,8 @@ export default function Dashboard() {
         <StatCard label="To Pay" value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
       </div>
 
+      <DashboardChart />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
