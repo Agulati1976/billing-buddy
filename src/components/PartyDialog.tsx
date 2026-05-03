@@ -71,6 +71,7 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
       state_code: form.state_code || null,
       opening_balance: Number(form.opening_balance) || 0,
       notes: form.notes || null,
+      ...(type === "supplier" ? { supplies: form.supplies.trim() || null } : {}),
     };
     const { error } = party
       ? await supabase.from("parties").update(payload).eq("id", party.id)
