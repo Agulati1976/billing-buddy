@@ -62,7 +62,7 @@ export default function AdminShopkeepers() {
           <h1 className="text-2xl font-semibold">Shopkeepers</h1>
           <p className="text-sm text-muted-foreground">{rows.length} businesses on the platform</p>
         </div>
-        <Input placeholder="Search…" className="max-w-xs" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="max-w-xs w-full"><SearchBar value={q} onChange={setQ} placeholder="Search shopkeepers…" /></div>
       </div>
       <Card>
         <Table>

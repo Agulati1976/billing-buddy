@@ -101,15 +101,7 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
 
       <Card>
         <div className="p-4 border-b flex items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={`Search ${type}s…`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-9"
-            />
-          </div>
+          <SearchBar value={search} onChange={setSearch} placeholder={`Search ${type}s…`} className="max-w-sm" />
         </div>
 
         <Table>
