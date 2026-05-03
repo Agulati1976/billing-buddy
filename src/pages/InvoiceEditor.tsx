@@ -403,7 +403,7 @@ export default function InvoiceEditor({ type }: Props) {
               <TableHead>HSN</TableHead>
               <TableHead className="w-[80px]">Qty</TableHead>
               <TableHead className="w-[110px]">Price</TableHead>
-              <TableHead className="w-[80px]">Disc %</TableHead>
+              <TableHead className="w-[140px]">Discount</TableHead>
               <TableHead className="w-[80px]">Tax %</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               {!readOnly && <TableHead className="w-[40px]"></TableHead>}
