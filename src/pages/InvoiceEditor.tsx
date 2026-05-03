@@ -551,15 +551,27 @@ export default function InvoiceEditor({ type }: Props) {
             {totals.discount_amount > 0 && <Row label="Discount" value={`− ${formatINR(totals.discount_amount)}`} />}
             {!readOnly && (
               <div className="flex items-center justify-between gap-2 py-1">
-                <Label className="text-muted-foreground text-sm">Extra Discount (₹)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  className="h-8 w-32 num text-right"
-                  value={extraDiscount}
-                  onChange={(e) => setExtraDiscount(e.target.value)}
-                />
+                <Label className="text-muted-foreground text-sm">Overall Discount</Label>
+                <div className="flex gap-1">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="h-8 w-24 num text-right"
+                    value={extraDiscount}
+                    onChange={(e) => setExtraDiscount(e.target.value)}
+                  />
+                  <Select value={extraDiscountMode} onValueChange={(v: "amt" | "pct") => setExtraDiscountMode(v)}>
+                    <SelectTrigger className="h-8 w-[58px] px-2"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="amt">₹</SelectItem>
+                      <SelectItem value="pct">%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            )}
+            {extraDiscountMode === "pct" && extraDiscountValue > 0 && (
+              <Row label={`Overall Discount (${extraDiscount}%)`} value={`− ${formatINR(extraDiscountValue)}`} />
             )}
             <Row label="Taxable Amount" value={formatINR(totals.taxable_total)} />
             {isGst && isInterState && <Row label="IGST" value={formatINR(totals.igst_amount)} />}
