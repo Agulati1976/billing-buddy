@@ -14,7 +14,8 @@ import { Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
+import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
 
 const CATEGORIES = ["Rent", "Salary", "Utilities", "Travel", "Office Supplies", "Marketing", "Repairs", "Tax", "Other"];
 
@@ -40,11 +41,16 @@ export default function Expenses() {
   const [method, setMethod] = useState("cash");
   const [description, setDescription] = useState("");
   const [search, setSearch] = useState("");
+  const [preset, setPreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+  const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
+  const dateFiltered = useDateFilter(rows, (r) => r.expense_date, range);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => [r.category, r.description, r.method].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
-  }, [rows, search]);
+    if (!q) return dateFiltered;
+    return dateFiltered.filter((r) => [r.category, r.description, r.method].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+  }, [dateFiltered, search]);
 
   const load = async () => {
     if (!current) return;
@@ -72,14 +78,14 @@ export default function Expenses() {
   };
 
   const totals = useMemo(() => {
-    const total = rows.reduce((s, r) => s + Number(r.amount), 0);
-    const byCat = rows.reduce((acc, r) => {
+    const total = dateFiltered.reduce((s, r) => s + Number(r.amount), 0);
+    const byCat = dateFiltered.reduce((acc, r) => {
       acc[r.category] = (acc[r.category] ?? 0) + Number(r.amount);
       return acc;
     }, {} as Record<string, number>);
     const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
-    return { total, top, count: rows.length };
-  }, [rows]);
+    return { total, top, count: dateFiltered.length };
+  }, [dateFiltered]);
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -110,7 +116,10 @@ export default function Expenses() {
       </div>
 
       <Card className="p-4 space-y-4">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search expenses by category or description…" className="max-w-md" />
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search expenses by category or description…" className="max-w-md flex-1 min-w-[220px]" />
+          <DateRangeFilter preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
+        </div>
         {filtered.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
