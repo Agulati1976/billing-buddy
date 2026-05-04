@@ -14,7 +14,8 @@ import { Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
+import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
 
 interface PaymentRow {
   id: string;
@@ -52,11 +53,16 @@ export default function Payments() {
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [search, setSearch] = useState("");
+  const [preset, setPreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+  const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
+  const dateFiltered = useDateFilter(rows, (r) => r.payment_date, range);
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => [r.parties?.name, r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
-  }, [rows, search]);
+    if (!q) return dateFiltered;
+    return dateFiltered.filter((r) => [r.parties?.name, r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+  }, [dateFiltered, search]);
 
   const load = async () => {
     if (!current) return;
@@ -108,10 +114,10 @@ export default function Payments() {
   };
 
   const totals = useMemo(() => {
-    const inAmt = rows.filter((r) => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0);
-    const outAmt = rows.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0);
+    const inAmt = dateFiltered.filter((r) => r.direction === "in").reduce((s, r) => s + Number(r.amount), 0);
+    const outAmt = dateFiltered.filter((r) => r.direction === "out").reduce((s, r) => s + Number(r.amount), 0);
     return { inAmt, outAmt, net: inAmt - outAmt };
-  }, [rows]);
+  }, [dateFiltered]);
 
   const filteredParties = parties.filter((p) =>
     direction === "in" ? p.type === "customer" : p.type === "supplier"
@@ -145,7 +151,10 @@ export default function Payments() {
       </div>
 
       <Card className="p-4 space-y-4">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search by party, invoice, method, reference…" className="max-w-md" />
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search by party, invoice, method, reference…" className="max-w-md flex-1 min-w-[220px]" />
+          <DateRangeFilter preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
+        </div>
         {filteredRows.length === 0 ? (
           <div className="text-center py-12">
             <Wallet className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
