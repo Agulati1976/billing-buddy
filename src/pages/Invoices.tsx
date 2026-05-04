@@ -11,7 +11,8 @@ import { Plus, Search, FileText, Trash2, Eye } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
+import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
 
 interface Props {
   type: InvoiceType;
@@ -54,20 +55,26 @@ export default function Invoices({ type }: Props) {
 
   useEffect(() => { load(); }, [current?.id, type]);
 
+  const [preset, setPreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+  const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
+  const dateFiltered = useDateFilter(rows, (r) => r.invoice_date, range);
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    if (!s) return rows;
-    return rows.filter((r) =>
+    if (!s) return dateFiltered;
+    return dateFiltered.filter((r) =>
       r.invoice_number.toLowerCase().includes(s) ||
       r.parties?.name?.toLowerCase().includes(s)
     );
-  }, [rows, q]);
+  }, [dateFiltered, q]);
 
   const totals = useMemo(() => {
-    const total = rows.reduce((s, r) => s + Number(r.total_amount || 0), 0);
-    const balance = rows.reduce((s, r) => s + Number(r.balance_amount || 0), 0);
-    return { total, balance, count: rows.length };
-  }, [rows]);
+    const total = dateFiltered.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+    const balance = dateFiltered.reduce((s, r) => s + Number(r.balance_amount || 0), 0);
+    return { total, balance, count: dateFiltered.length };
+  }, [dateFiltered]);
 
   const remove = async (id: string) => {
     if (!confirm("Delete this entry? This cannot be undone.")) return;
@@ -105,8 +112,11 @@ export default function Invoices({ type }: Props) {
       </div>
 
       <Card className="p-4">
-        <div className="max-w-sm mb-4">
-          <SearchBar value={q} onChange={setQ} placeholder="Search number or party…" />
+        <div className="flex flex-wrap items-center gap-3 justify-between mb-4">
+          <div className="max-w-sm flex-1 min-w-[220px]">
+            <SearchBar value={q} onChange={setQ} placeholder="Search number or party…" />
+          </div>
+          <DateRangeFilter preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
         </div>
 
         {loading ? (
