@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart3, TrendingUp, Receipt, Package, Wallet, FileText, CalendarIcon } from "lucide-react";
+import { BarChart3, TrendingUp, Receipt, Package, Wallet, FileText, CalendarIcon, Download } from "lucide-react";
 import { useBusiness } from "@/hooks/useBusiness";
 import { supabase } from "@/integrations/supabase/client";
 import { formatINR } from "@/lib/states";
 import { toast } from "sonner";
+import { downloadCsv } from "@/lib/csv";
 import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
 import { cn } from "@/lib/utils";
 
