@@ -757,6 +757,7 @@ export default function InvoiceEditor({ type }: Props) {
       </div>
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
+      <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
     </div>
   );
 }
