@@ -629,6 +629,75 @@ export type Database = {
           },
         ]
       }
+      loyalty_settings: {
+        Row: {
+          amount_per_point: number
+          business_id: string
+          created_at: string
+          enabled: boolean
+          min_redeem_points: number
+          point_value: number
+          updated_at: string
+        }
+        Insert: {
+          amount_per_point?: number
+          business_id: string
+          created_at?: string
+          enabled?: boolean
+          min_redeem_points?: number
+          point_value?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_per_point?: number
+          business_id?: string
+          created_at?: string
+          enabled?: boolean
+          min_redeem_points?: number
+          point_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      loyalty_transactions: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          party_id: string
+          points_earned: number
+          points_redeemed: number
+          redeem_value: number
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          party_id: string
+          points_earned?: number
+          points_redeemed?: number
+          redeem_value?: number
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          party_id?: string
+          points_earned?: number
+          points_redeemed?: number
+          redeem_value?: number
+        }
+        Relationships: []
+      }
       parties: {
         Row: {
           billing_address: string | null

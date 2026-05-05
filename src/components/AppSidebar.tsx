@@ -6,7 +6,7 @@ import {
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
   Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
-  BarChart3, Sparkles, ShoppingCart,
+  BarChart3, Sparkles, ShoppingCart, Gift,
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
 
@@ -47,6 +47,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/payments", label: "Payments", icon: Wallet },
       { to: "/expenses", label: "Expenses", icon: ReceiptIcon },
+      { to: "/loyalty", label: "Loyalty Rewards", icon: Gift },
     ],
   },
   {

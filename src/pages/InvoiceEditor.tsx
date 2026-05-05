@@ -53,6 +53,11 @@ export default function InvoiceEditor({ type }: Props) {
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
 
+  // Loyalty
+  const [loyaltyCfg, setLoyaltyCfg] = useState<{ enabled: boolean; amount_per_point: number; point_value: number; min_redeem_points: number } | null>(null);
+  const [partyPoints, setPartyPoints] = useState(0);
+  const [redeemPoints, setRedeemPoints] = useState(0);
+
   function emptyLine(): InvoiceLineInput {
     return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, discount_amount: 0, discount_mode: "pct", tax_rate: 0, batch_id: null };
   }
@@ -87,6 +92,26 @@ export default function InvoiceEditor({ type }: Props) {
         setNumber(nextInvoiceNumber(meta.prefix, last));
       });
   }, [current?.id, isNew, type]);
+
+  // Load loyalty config (sale only)
+  useEffect(() => {
+    if (!current || type !== "sale") return;
+    supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle()
+      .then(({ data }) => { if (data) setLoyaltyCfg(data as any); });
+  }, [current?.id, type]);
+
+  // Load points balance for selected customer
+  useEffect(() => {
+    if (!current || !partyId || type !== "sale") { setPartyPoints(0); setRedeemPoints(0); return; }
+    supabase.from("loyalty_transactions")
+      .select("points_earned, points_redeemed")
+      .eq("business_id", current.id).eq("party_id", partyId)
+      .then(({ data }) => {
+        const bal = (data ?? []).reduce((s: number, t: any) => s + Number(t.points_earned || 0) - Number(t.points_redeemed || 0), 0);
+        setPartyPoints(bal);
+        setRedeemPoints(0);
+      });
+  }, [current?.id, partyId, type]);
 
   // Load existing
   useEffect(() => {
@@ -123,18 +148,32 @@ export default function InvoiceEditor({ type }: Props) {
     return party.state_code !== current.state_code;
   }, [party, current]);
 
+  const redeemValue = useMemo(() => {
+    if (type !== "sale" || !loyaltyCfg?.enabled) return 0;
+    return (Number(redeemPoints) || 0) * Number(loyaltyCfg.point_value || 0);
+  }, [redeemPoints, loyaltyCfg, type]);
+
   const extraDiscountValue = useMemo(() => {
     const v = Number(extraDiscount) || 0;
-    if (extraDiscountMode === "amt") return v;
-    // % of taxable-after-line-discounts
-    const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
-    return (baseLines.taxable_total * v) / 100;
-  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst]);
+    let manual = v;
+    if (extraDiscountMode === "pct") {
+      const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
+      manual = (baseLines.taxable_total * v) / 100;
+    }
+    return manual + redeemValue;
+  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst, redeemValue]);
 
   const totals = useMemo(
     () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue }),
     [lines, isInterState, isGst, extraDiscountValue]
   );
+
+  const earnedPoints = useMemo(() => {
+    if (type !== "sale" || !loyaltyCfg?.enabled) return 0;
+    const per = Number(loyaltyCfg.amount_per_point) || 0;
+    if (per <= 0) return 0;
+    return Math.floor(Number(totals.total_amount || 0) / per);
+  }, [totals.total_amount, loyaltyCfg, type]);
 
   const addItemToLines = (it: Item) => {
     const isPurchase = type === "purchase" || type === "purchase_return";
@@ -266,6 +305,19 @@ export default function InvoiceEditor({ type }: Props) {
         total_amount: l.total_amount,
       }))
     );
+
+    // Loyalty: record earned + redeemed for sale
+    if (type === "sale" && partyId && loyaltyCfg?.enabled && (earnedPoints > 0 || redeemPoints > 0)) {
+      await supabase.from("loyalty_transactions").insert({
+        business_id: current.id,
+        party_id: partyId,
+        invoice_id: inv.id,
+        points_earned: earnedPoints,
+        points_redeemed: Number(redeemPoints) || 0,
+        redeem_value: redeemValue,
+        created_by: user.id,
+      });
+    }
 
     setSaving(false);
     if (liErr) { toast.error(liErr.message); return; }
@@ -572,8 +624,8 @@ export default function InvoiceEditor({ type }: Props) {
                 </div>
               </div>
             )}
-            {extraDiscountMode === "pct" && extraDiscountValue > 0 && (
-              <Row label={`Overall Discount (${extraDiscount}%)`} value={`− ${formatINR(extraDiscountValue)}`} />
+            {extraDiscountMode === "pct" && Number(extraDiscount) > 0 && (
+              <Row label={`Overall Discount (${extraDiscount}%)`} value={`− ${formatINR(extraDiscountValue - redeemValue)}`} />
             )}
             <Row label="Taxable Amount" value={formatINR(totals.taxable_total)} />
             {isGst && isInterState && <Row label="IGST" value={formatINR(totals.igst_amount)} />}
@@ -584,6 +636,38 @@ export default function InvoiceEditor({ type }: Props) {
               </>
             )}
             {totals.round_off !== 0 && <Row label="Round Off" value={formatINR(totals.round_off)} />}
+            {type === "sale" && loyaltyCfg?.enabled && partyId && !readOnly && (
+              <div className="border-t pt-2 mt-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm flex items-center gap-1.5">
+                    🎁 Loyalty points available
+                  </Label>
+                  <span className="text-sm font-medium">{partyPoints} pts <span className="text-xs text-muted-foreground">(₹{(partyPoints * loyaltyCfg.point_value).toFixed(2)})</span></span>
+                </div>
+                {partyPoints >= loyaltyCfg.min_redeem_points && (
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-muted-foreground text-sm">Redeem points</Label>
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="number" min="0" max={partyPoints}
+                        className="h-8 w-24 num text-right"
+                        value={redeemPoints || ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const n = Math.max(0, Math.min(partyPoints, Math.floor(Number(e.target.value) || 0)));
+                          setRedeemPoints(n);
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">pts</span>
+                    </div>
+                  </div>
+                )}
+                {redeemValue > 0 && <Row label={`Loyalty Redeemed (${redeemPoints} pts)`} value={`− ${formatINR(redeemValue)}`} />}
+                {earnedPoints > 0 && (
+                  <div className="text-xs text-success">Customer will earn {earnedPoints} point{earnedPoints === 1 ? "" : "s"} on this sale.</div>
+                )}
+              </div>
+            )}
             <div className="border-t pt-2 mt-2">
               <Row label="Total" value={formatINR(totals.total_amount)} bold />
             </div>
