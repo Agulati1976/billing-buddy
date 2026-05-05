@@ -456,6 +456,11 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
+          {!readOnly && (type === "purchase" || type === "purchase_return") && (
+            <Button variant="outline" onClick={() => setBillScanOpen(true)} className="gap-1.5">
+              <Sparkles className="h-4 w-4 text-primary" /> Scan Bill
+            </Button>
+          )}
           {!readOnly && (
             <Button variant="outline" onClick={() => setScannerOpen(true)} className="gap-1.5">
               <ScanLine className="h-4 w-4" /> Scan
