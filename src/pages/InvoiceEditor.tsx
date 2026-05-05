@@ -21,6 +21,8 @@ import {
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
+import { PurchaseInvoiceScanner, type ExtractedInvoice } from "@/components/PurchaseInvoiceScanner";
+import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
@@ -49,6 +51,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [billScanOpen, setBillScanOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
@@ -223,6 +226,79 @@ export default function InvoiceEditor({ type }: Props) {
     }
   };
 
+  const applyExtractedBill = async (data: ExtractedInvoice) => {
+    if (!current || !user) return;
+    try {
+      // Header
+      if (data.invoice_number) setNumber(data.invoice_number);
+      if (data.invoice_date && /^\d{4}-\d{2}-\d{2}$/.test(data.invoice_date)) setDate(data.invoice_date);
+
+      // Find or create supplier
+      if (data.supplier_name) {
+        const target = data.supplier_name.trim().toLowerCase();
+        let supplier = parties.find((p) => p.name.trim().toLowerCase() === target);
+        if (!supplier) {
+          const { data: created, error } = await supabase.from("parties").insert({
+            business_id: current.id,
+            type: "supplier",
+            name: data.supplier_name.trim(),
+            gstin: data.supplier_gstin || null,
+            phone: data.supplier_phone || null,
+            billing_address: data.supplier_address || null,
+            created_by: user.id,
+          }).select("id, name, state_code, gstin").single();
+          if (!error && created) {
+            supplier = created as any;
+            setParties((ps) => [...ps, created as any]);
+          }
+        }
+        if (supplier) setPartyId(supplier.id);
+      }
+
+      // Items: match by name (case-insensitive), else create new
+      const newLines: InvoiceLineInput[] = [];
+      let localItems = [...items];
+      for (const ex of data.items) {
+        const target = (ex.name || "").trim();
+        if (!target) continue;
+        let it = localItems.find((x) => x.name.trim().toLowerCase() === target.toLowerCase());
+        if (!it) {
+          const { data: created, error } = await supabase.from("items").insert({
+            business_id: current.id,
+            name: target,
+            type: "product",
+            unit: ex.unit || "pcs",
+            hsn_code: ex.hsn_code || null,
+            purchase_price: Number(ex.price) || 0,
+            sale_price: Number(ex.price) || 0,
+            tax_rate: Number(ex.tax_rate) || 0,
+            opening_stock: 0,
+            created_by: user.id,
+          }).select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").single();
+          if (error || !created) continue;
+          it = created as any;
+          localItems.push(it!);
+        }
+        newLines.push({
+          item_id: it!.id,
+          item_name: it!.name,
+          hsn_code: ex.hsn_code || it!.hsn_code,
+          quantity: Number(ex.quantity) || 1,
+          unit: ex.unit || it!.unit,
+          price: Number(ex.price) || Number(it!.purchase_price) || 0,
+          discount_pct: Number(ex.discount_pct) || 0,
+          tax_rate: Number(ex.tax_rate ?? it!.tax_rate) || 0,
+          batch_id: null,
+        });
+      }
+      setItems(localItems);
+      if (newLines.length) setLines(newLines);
+      toast.success(`Added ${newLines.length} item${newLines.length === 1 ? "" : "s"} from the bill. Review and Save to update inventory.`);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not apply scanned bill");
+    }
+  };
+
   const updateLine = (idx: number, patch: Partial<InvoiceLineInput>) => {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   };
@@ -380,6 +456,11 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
+          {!readOnly && (type === "purchase" || type === "purchase_return") && (
+            <Button variant="outline" onClick={() => setBillScanOpen(true)} className="gap-1.5">
+              <Sparkles className="h-4 w-4 text-primary" /> Scan Bill
+            </Button>
+          )}
           {!readOnly && (
             <Button variant="outline" onClick={() => setScannerOpen(true)} className="gap-1.5">
               <ScanLine className="h-4 w-4" /> Scan
@@ -676,6 +757,7 @@ export default function InvoiceEditor({ type }: Props) {
       </div>
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
+      <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
     </div>
   );
 }
