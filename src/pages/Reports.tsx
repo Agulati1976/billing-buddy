@@ -269,6 +269,49 @@ export default function Reports() {
               </Popover>
             </>
           )}
+          <Button variant="outline" size="sm" onClick={() => {
+            const tag = `${fmtDate(range.from)}_to_${fmtDate(range.to)}`;
+            const summary: (string | number)[][] = [
+              ["Report", current?.name ?? "", `${range.label} (${fmtDate(range.from)} to ${fmtDate(range.to)})`],
+              [],
+              ["Section", "Metric", "Value"],
+              ["Overview", "Sales", totals.sales],
+              ["Overview", "Purchases", totals.purchases],
+              ["Overview", "Expenses", totals.expenses],
+              ["Overview", "Net", totals.net],
+              ["Overview", "Sales Invoices", totals.salesCount],
+              ["Overview", "Purchase Invoices", totals.purchasesCount],
+              [],
+              ["P&L", "Revenue", pnl.revenue],
+              ["P&L", "COGS", pnl.cogs],
+              ["P&L", "Gross Profit", pnl.gross],
+              ["P&L", "Operating Expenses", pnl.opex],
+              ["P&L", "Net Profit", pnl.net],
+              [],
+              ["GST", "Output Taxable", gst.out.taxable],
+              ["GST", "Output CGST", gst.out.cgst],
+              ["GST", "Output SGST", gst.out.sgst],
+              ["GST", "Output IGST", gst.out.igst],
+              ["GST", "Input Taxable", gst.inp.taxable],
+              ["GST", "Input CGST", gst.inp.cgst],
+              ["GST", "Input SGST", gst.inp.sgst],
+              ["GST", "Input IGST", gst.inp.igst],
+              ["GST", "Net Liability", gst.liability],
+              [],
+              ["Daily", "Date", "Sales", "Purchases", "Expenses", "Net"] as any,
+              ...daily.map((d) => ["Daily", d.date, d.sales, d.purchases, d.expenses, d.net] as any),
+              [],
+              ["Top Products", "Item", "Qty", "Revenue"] as any,
+              ...topProducts.map((p) => ["Top Products", p.name, p.qty, p.revenue] as any),
+              [],
+              ["Expenses", "Category", "Amount"] as any,
+              ...expBreakdown.map((e) => ["Expenses", e.category, e.total] as any),
+            ];
+            downloadCsv(`report_${tag}.csv`, summary);
+            toast.success("Report downloaded");
+          }} className="gap-1.5">
+            <Download className="h-4 w-4" /> Download CSV
+          </Button>
         </div>
       </div>
 
