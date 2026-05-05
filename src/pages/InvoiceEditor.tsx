@@ -53,6 +53,11 @@ export default function InvoiceEditor({ type }: Props) {
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
 
+  // Loyalty
+  const [loyaltyCfg, setLoyaltyCfg] = useState<{ enabled: boolean; amount_per_point: number; point_value: number; min_redeem_points: number } | null>(null);
+  const [partyPoints, setPartyPoints] = useState(0);
+  const [redeemPoints, setRedeemPoints] = useState(0);
+
   function emptyLine(): InvoiceLineInput {
     return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, discount_amount: 0, discount_mode: "pct", tax_rate: 0, batch_id: null };
   }
