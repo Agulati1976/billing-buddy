@@ -93,6 +93,26 @@ export default function InvoiceEditor({ type }: Props) {
       });
   }, [current?.id, isNew, type]);
 
+  // Load loyalty config (sale only)
+  useEffect(() => {
+    if (!current || type !== "sale") return;
+    supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle()
+      .then(({ data }) => { if (data) setLoyaltyCfg(data as any); });
+  }, [current?.id, type]);
+
+  // Load points balance for selected customer
+  useEffect(() => {
+    if (!current || !partyId || type !== "sale") { setPartyPoints(0); setRedeemPoints(0); return; }
+    supabase.from("loyalty_transactions")
+      .select("points_earned, points_redeemed")
+      .eq("business_id", current.id).eq("party_id", partyId)
+      .then(({ data }) => {
+        const bal = (data ?? []).reduce((s: number, t: any) => s + Number(t.points_earned || 0) - Number(t.points_redeemed || 0), 0);
+        setPartyPoints(bal);
+        setRedeemPoints(0);
+      });
+  }, [current?.id, partyId, type]);
+
   // Load existing
   useEffect(() => {
     if (isNew || !id || !current) return;
