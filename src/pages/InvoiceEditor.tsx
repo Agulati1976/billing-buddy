@@ -624,8 +624,8 @@ export default function InvoiceEditor({ type }: Props) {
                 </div>
               </div>
             )}
-            {extraDiscountMode === "pct" && extraDiscountValue > 0 && (
-              <Row label={`Overall Discount (${extraDiscount}%)`} value={`− ${formatINR(extraDiscountValue)}`} />
+            {extraDiscountMode === "pct" && Number(extraDiscount) > 0 && (
+              <Row label={`Overall Discount (${extraDiscount}%)`} value={`− ${formatINR(extraDiscountValue - redeemValue)}`} />
             )}
             <Row label="Taxable Amount" value={formatINR(totals.taxable_total)} />
             {isGst && isInterState && <Row label="IGST" value={formatINR(totals.igst_amount)} />}
@@ -636,6 +636,38 @@ export default function InvoiceEditor({ type }: Props) {
               </>
             )}
             {totals.round_off !== 0 && <Row label="Round Off" value={formatINR(totals.round_off)} />}
+            {type === "sale" && loyaltyCfg?.enabled && partyId && !readOnly && (
+              <div className="border-t pt-2 mt-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm flex items-center gap-1.5">
+                    🎁 Loyalty points available
+                  </Label>
+                  <span className="text-sm font-medium">{partyPoints} pts <span className="text-xs text-muted-foreground">(₹{(partyPoints * loyaltyCfg.point_value).toFixed(2)})</span></span>
+                </div>
+                {partyPoints >= loyaltyCfg.min_redeem_points && (
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-muted-foreground text-sm">Redeem points</Label>
+                    <div className="flex gap-1 items-center">
+                      <Input
+                        type="number" min="0" max={partyPoints}
+                        className="h-8 w-24 num text-right"
+                        value={redeemPoints || ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const n = Math.max(0, Math.min(partyPoints, Math.floor(Number(e.target.value) || 0)));
+                          setRedeemPoints(n);
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">pts</span>
+                    </div>
+                  </div>
+                )}
+                {redeemValue > 0 && <Row label={`Loyalty Redeemed (${redeemPoints} pts)`} value={`− ${formatINR(redeemValue)}`} />}
+                {earnedPoints > 0 && (
+                  <div className="text-xs text-success">Customer will earn {earnedPoints} point{earnedPoints === 1 ? "" : "s"} on this sale.</div>
+                )}
+              </div>
+            )}
             <div className="border-t pt-2 mt-2">
               <Row label="Total" value={formatINR(totals.total_amount)} bold />
             </div>
