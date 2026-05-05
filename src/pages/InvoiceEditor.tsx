@@ -306,6 +306,19 @@ export default function InvoiceEditor({ type }: Props) {
       }))
     );
 
+    // Loyalty: record earned + redeemed for sale
+    if (type === "sale" && partyId && loyaltyCfg?.enabled && (earnedPoints > 0 || redeemPoints > 0)) {
+      await supabase.from("loyalty_transactions").insert({
+        business_id: current.id,
+        party_id: partyId,
+        invoice_id: inv.id,
+        points_earned: earnedPoints,
+        points_redeemed: Number(redeemPoints) || 0,
+        redeem_value: redeemValue,
+        created_by: user.id,
+      });
+    }
+
     setSaving(false);
     if (liErr) { toast.error(liErr.message); return; }
     toast.success(`${meta.label} saved`);
