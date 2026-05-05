@@ -148,18 +148,32 @@ export default function InvoiceEditor({ type }: Props) {
     return party.state_code !== current.state_code;
   }, [party, current]);
 
+  const redeemValue = useMemo(() => {
+    if (type !== "sale" || !loyaltyCfg?.enabled) return 0;
+    return (Number(redeemPoints) || 0) * Number(loyaltyCfg.point_value || 0);
+  }, [redeemPoints, loyaltyCfg, type]);
+
   const extraDiscountValue = useMemo(() => {
     const v = Number(extraDiscount) || 0;
-    if (extraDiscountMode === "amt") return v;
-    // % of taxable-after-line-discounts
-    const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
-    return (baseLines.taxable_total * v) / 100;
-  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst]);
+    let manual = v;
+    if (extraDiscountMode === "pct") {
+      const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
+      manual = (baseLines.taxable_total * v) / 100;
+    }
+    return manual + redeemValue;
+  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst, redeemValue]);
 
   const totals = useMemo(
     () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue }),
     [lines, isInterState, isGst, extraDiscountValue]
   );
+
+  const earnedPoints = useMemo(() => {
+    if (type !== "sale" || !loyaltyCfg?.enabled) return 0;
+    const per = Number(loyaltyCfg.amount_per_point) || 0;
+    if (per <= 0) return 0;
+    return Math.floor(Number(totals.total_amount || 0) / per);
+  }, [totals.total_amount, loyaltyCfg, type]);
 
   const addItemToLines = (it: Item) => {
     const isPurchase = type === "purchase" || type === "purchase_return";
