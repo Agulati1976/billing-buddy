@@ -41,13 +41,20 @@ export interface ThermalReceipt {
 
 export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt): jsPDF {
   const W = 80;          // 80mm paper width
-  const M = 4;           // margin
+  const M = 3;           // margin
   const innerW = W - M * 2;
-  // Estimate height
-  const estHeight = 80 + r.lines.length * 8 + (r.party_name ? 8 : 0);
+
+  // Column layout (right-aligned columns)
+  const COL_AMT = W - M;          // right edge for Amount
+  const COL_RATE = COL_AMT - 18;  // right edge for Rate
+  const COL_QTY = COL_RATE - 14;  // right edge for Qty
+  const NAME_W = COL_QTY - M - 16; // wrap width for item name (leave gap before qty)
+
+  // Estimate height (rough — extra padding so nothing clips)
+  const estHeight = 95 + r.lines.length * 9 + (r.party_name ? 6 : 0) + (r.footer ? 12 : 0);
   const doc = new jsPDF({ unit: "mm", format: [W, estHeight] });
 
-  let y = M + 2;
+  let y = M + 3;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text(biz.name, W / 2, y, { align: "center" });
@@ -64,57 +71,63 @@ export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt):
 
   y += 1;
   doc.setLineDashPattern([0.5, 0.5], 0);
-  doc.line(M, y, W - M, y); y += 3;
+  doc.line(M, y, W - M, y); y += 3.5;
   doc.setLineDashPattern([], 0);
 
   doc.setFontSize(8);
   doc.text(`Bill: ${r.invoice_number}`, M, y);
   doc.text(r.invoice_date, W - M, y, { align: "right" }); y += 4;
-  if (r.party_name) { doc.text(`Customer: ${r.party_name}`, M, y); y += 3; }
-  if (r.cashier) { doc.text(`Cashier: ${r.cashier}`, M, y); y += 3; }
+  if (r.party_name) { doc.text(`Customer: ${r.party_name}`, M, y); y += 3.5; }
+  if (r.cashier) { doc.text(`Cashier: ${r.cashier}`, M, y); y += 3.5; }
 
   y += 1;
   doc.setLineDashPattern([0.5, 0.5], 0);
-  doc.line(M, y, W - M, y); y += 3;
+  doc.line(M, y, W - M, y); y += 3.5;
   doc.setLineDashPattern([], 0);
 
+  // Item header
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.text("Item", M, y);
-  doc.text("Qty", W - M - 22, y, { align: "right" });
-  doc.text("Rate", W - M - 12, y, { align: "right" });
-  doc.text("Amt", W - M, y, { align: "right" });
-  y += 3;
-  doc.line(M, y - 1, W - M, y - 1);
+  doc.text("Qty", COL_QTY, y, { align: "right" });
+  doc.text("Rate", COL_RATE, y, { align: "right" });
+  doc.text("Amt", COL_AMT, y, { align: "right" });
+  y += 1.5;
+  doc.setLineWidth(0.2);
+  doc.line(M, y, W - M, y); y += 3;
   doc.setFont("helvetica", "normal");
 
+  // Items
   for (const ln of r.lines) {
-    const name = doc.splitTextToSize(ln.item_name, innerW - 30);
-    doc.text(name, M, y);
-    const lineH = name.length * 3;
-    doc.text(`${ln.quantity}${ln.unit ? ln.unit : ""}`, W - M - 22, y, { align: "right" });
-    doc.text(formatRs(ln.price).replace("Rs.", ""), W - M - 12, y, { align: "right" });
-    doc.text(formatRs(ln.total_amount).replace("Rs.", ""), W - M, y, { align: "right" });
-    y += Math.max(lineH, 3) + 1;
+    const nameLines = doc.splitTextToSize(ln.item_name, NAME_W);
+    const qty = `${ln.quantity}${ln.unit ? " " + ln.unit : ""}`;
+    doc.text(nameLines, M, y);
+    doc.text(qty, COL_QTY, y, { align: "right" });
+    doc.text(formatRs(ln.price).replace("Rs.", ""), COL_RATE, y, { align: "right" });
+    doc.text(formatRs(ln.total_amount).replace("Rs.", ""), COL_AMT, y, { align: "right" });
+    const lineH = Math.max(nameLines.length * 3.2, 3.2);
+    y += lineH + 1.5;
   }
 
   doc.setLineDashPattern([0.5, 0.5], 0);
-  doc.line(M, y, W - M, y); y += 3;
+  doc.line(M, y, W - M, y); y += 3.5;
   doc.setLineDashPattern([], 0);
 
   const row = (label: string, val: string, bold = false) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.text(label, M, y);
     doc.text(val, W - M, y, { align: "right" });
-    y += bold ? 4 : 3.2;
+    y += bold ? 4.2 : 3.6;
   };
+  doc.setFontSize(8);
   row("Subtotal", formatRs(r.subtotal));
   if (r.discount_amount) row("Discount", `- ${formatRs(r.discount_amount)}`);
   if (r.tax_amount) row("Tax", formatRs(r.tax_amount));
   if (r.round_off) row("Round off", formatRs(r.round_off));
-  doc.setFontSize(9);
+  y += 0.5;
+  doc.setFontSize(10);
   row("TOTAL", formatRs(r.total_amount), true);
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   if (r.payment_method) row(`Paid (${r.payment_method})`, formatRs(r.paid_amount));
   else row("Paid", formatRs(r.paid_amount));
   if (r.balance_amount > 0) row("Balance", formatRs(r.balance_amount), true);
@@ -122,13 +135,14 @@ export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt):
 
   y += 2;
   doc.setLineDashPattern([0.5, 0.5], 0);
-  doc.line(M, y, W - M, y); y += 3;
+  doc.line(M, y, W - M, y); y += 4;
   doc.setLineDashPattern([], 0);
 
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.text("Thank you! Visit again.", W / 2, y, { align: "center" });
   if (r.footer) {
-    y += 3;
+    y += 3.5;
+    doc.setFontSize(7);
     const f = doc.splitTextToSize(r.footer, innerW);
     doc.text(f, W / 2, y, { align: "center" });
   }
