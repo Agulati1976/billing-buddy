@@ -659,6 +659,7 @@ export default function InvoiceEditor({ type }: Props) {
             ))}
           </TableBody>
         </Table>
+        </div>
         {!readOnly && (
           <div className="p-3 border-t">
             <Button size="sm" variant="outline" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1.5">
