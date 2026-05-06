@@ -444,38 +444,38 @@ export default function InvoiceEditor({ type }: Props) {
   if (!loaded) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="space-y-4 max-w-6xl">
+    <div className="space-y-3 sm:space-y-4 max-w-6xl pb-24 md:pb-0">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/${type}s`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-semibold">{readOnly ? "View" : "New"} {meta.label}</h1>
-            <p className="text-sm text-muted-foreground">{readOnly ? "View mode" : "Fill the details below"}</p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-semibold truncate">{readOnly ? "View" : "New"} {meta.label}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{readOnly ? "View mode" : "Fill the details below"}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 sm:gap-2">
           {!readOnly && (type === "purchase" || type === "purchase_return") && (
-            <Button variant="outline" onClick={() => setBillScanOpen(true)} className="gap-1.5">
-              <Sparkles className="h-4 w-4 text-primary" /> Scan Bill
+            <Button variant="outline" size="sm" onClick={() => setBillScanOpen(true)} className="gap-1.5 px-2 sm:px-3">
+              <Sparkles className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">Scan Bill</span>
             </Button>
           )}
           {!readOnly && (
-            <Button variant="outline" onClick={() => setScannerOpen(true)} className="gap-1.5">
-              <ScanLine className="h-4 w-4" /> Scan
+            <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="gap-1.5 px-2 sm:px-3">
+              <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline">Scan</span>
             </Button>
           )}
-          <Button variant="outline" onClick={downloadPdf} className="gap-1.5">
-            <Download className="h-4 w-4" /> Download PDF
+          <Button variant="outline" size="sm" onClick={downloadPdf} className="gap-1.5 px-2 sm:px-3">
+            <Download className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
           </Button>
           {readOnly && (
-            <Button variant="outline" onClick={() => window.print()} className="gap-1.5">
-              <Printer className="h-4 w-4" /> Print
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 px-2 sm:px-3">
+              <Printer className="h-4 w-4" /> <span className="hidden sm:inline">Print</span>
             </Button>
           )}
           {!readOnly && (
-            <Button onClick={save} disabled={saving} className="gap-1.5">
+            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 hidden sm:inline-flex">
               <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
             </Button>
           )}
