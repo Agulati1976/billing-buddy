@@ -17,14 +17,14 @@ const StatCard = ({
     danger: "bg-danger-soft text-danger",
   };
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <div className="text-2xl font-semibold mt-1 num">{value}</div>
+    <Card className="p-3 sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">{label}</div>
+          <div className="text-lg sm:text-2xl font-semibold mt-1 num truncate">{value}</div>
         </div>
-        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${toneMap[tone]}`}>
-          <Icon className="h-5 w-5" />
+        <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0 ${toneMap[tone]}`}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
     </Card>
@@ -102,15 +102,15 @@ export default function Dashboard() {
   }, [current?.id]);
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-xl sm:text-2xl font-semibold">Dashboard</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Welcome back to <span className="font-medium text-foreground">{current?.name}</span>
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Today's Sales" value={formatINR(stats?.todaySales ?? 0)} icon={TrendingUp} tone="primary" />
         <StatCard label="This Month" value={formatINR(stats?.monthSales ?? 0)} icon={ArrowUpRight} tone="success" />
         <StatCard label="To Receive" value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
