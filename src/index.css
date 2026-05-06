@@ -110,7 +110,19 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+  /* Larger tap targets on mobile */
+  @media (max-width: 767px) {
+    button, [role="button"], a { touch-action: manipulation; }
+    input, select, textarea { font-size: 16px; } /* prevent iOS zoom */
   }
   /* tabular numerals for amounts */
   .num { font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+  /* Make any table scroll horizontally on mobile when wrapped in this */
+  .table-scroll { @apply -mx-3 sm:mx-0 overflow-x-auto; }
 }

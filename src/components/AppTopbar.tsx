@@ -23,15 +23,18 @@ export function AppTopbar() {
   };
 
   return (
-    <header className="h-14 border-b bg-card flex items-center gap-3 px-4 sticky top-0 z-30">
+    <header
+      className="h-14 border-b bg-card flex items-center gap-2 sm:gap-3 px-2 sm:px-4 sticky top-0 z-30"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <SidebarTrigger />
 
       {current && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2 max-w-[260px]">
+            <Button variant="outline" size="sm" className="h-9 gap-2 max-w-[160px] sm:max-w-[260px] px-2 sm:px-3">
               <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="truncate">{current.name}</span>
+              <span className="truncate text-sm">{current.name}</span>
               <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
             </Button>
           </DropdownMenuTrigger>
@@ -56,7 +59,7 @@ export function AppTopbar() {
 
       <div className="ml-auto flex items-center gap-2">
         <Button size="sm" className="gap-1.5" onClick={() => navigate("/sales/new")}>
-          <Plus className="h-4 w-4" /> New Sale
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New Sale</span>
         </Button>
 
         <DropdownMenu>
