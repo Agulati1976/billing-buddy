@@ -532,6 +532,7 @@ export default function InvoiceEditor({ type }: Props) {
 
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[28%]">Item</TableHead>
