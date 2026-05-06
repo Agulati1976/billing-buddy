@@ -444,38 +444,38 @@ export default function InvoiceEditor({ type }: Props) {
   if (!loaded) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="space-y-4 max-w-6xl">
+    <div className="space-y-3 sm:space-y-4 max-w-6xl pb-24 md:pb-0">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/${type}s`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-semibold">{readOnly ? "View" : "New"} {meta.label}</h1>
-            <p className="text-sm text-muted-foreground">{readOnly ? "View mode" : "Fill the details below"}</p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-semibold truncate">{readOnly ? "View" : "New"} {meta.label}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{readOnly ? "View mode" : "Fill the details below"}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 sm:gap-2">
           {!readOnly && (type === "purchase" || type === "purchase_return") && (
-            <Button variant="outline" onClick={() => setBillScanOpen(true)} className="gap-1.5">
-              <Sparkles className="h-4 w-4 text-primary" /> Scan Bill
+            <Button variant="outline" size="sm" onClick={() => setBillScanOpen(true)} className="gap-1.5 px-2 sm:px-3">
+              <Sparkles className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">Scan Bill</span>
             </Button>
           )}
           {!readOnly && (
-            <Button variant="outline" onClick={() => setScannerOpen(true)} className="gap-1.5">
-              <ScanLine className="h-4 w-4" /> Scan
+            <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="gap-1.5 px-2 sm:px-3">
+              <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline">Scan</span>
             </Button>
           )}
-          <Button variant="outline" onClick={downloadPdf} className="gap-1.5">
-            <Download className="h-4 w-4" /> Download PDF
+          <Button variant="outline" size="sm" onClick={downloadPdf} className="gap-1.5 px-2 sm:px-3">
+            <Download className="h-4 w-4" /> <span className="hidden sm:inline">PDF</span>
           </Button>
           {readOnly && (
-            <Button variant="outline" onClick={() => window.print()} className="gap-1.5">
-              <Printer className="h-4 w-4" /> Print
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 px-2 sm:px-3">
+              <Printer className="h-4 w-4" /> <span className="hidden sm:inline">Print</span>
             </Button>
           )}
           {!readOnly && (
-            <Button onClick={save} disabled={saving} className="gap-1.5">
+            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 hidden sm:inline-flex">
               <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
             </Button>
           )}
@@ -531,7 +531,8 @@ export default function InvoiceEditor({ type }: Props) {
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[28%]">Item</TableHead>
@@ -658,6 +659,7 @@ export default function InvoiceEditor({ type }: Props) {
             ))}
           </TableBody>
         </Table>
+        </div>
         {!readOnly && (
           <div className="p-3 border-t">
             <Button size="sm" variant="outline" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1.5">
@@ -758,6 +760,22 @@ export default function InvoiceEditor({ type }: Props) {
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
+
+      {/* Mobile sticky save bar */}
+      {!readOnly && (
+        <div
+          className="md:hidden fixed inset-x-0 z-30 bg-card border-t px-3 py-2 flex items-center gap-3 shadow-lg"
+          style={{ bottom: "calc(56px + env(safe-area-inset-bottom))" }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total</div>
+            <div className="text-base font-semibold num truncate">{formatINR(totals.total_amount)}</div>
+          </div>
+          <Button onClick={save} disabled={saving} className="gap-1.5 h-11 px-5">
+            <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

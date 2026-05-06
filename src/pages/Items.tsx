@@ -70,107 +70,152 @@ export default function Items() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Package className="h-6 w-6 text-primary" /> Items
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Package className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /> Items
           </h1>
-          <p className="text-sm text-muted-foreground">Products & services in your inventory</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Products & services</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setScannerOpen(true)}>
-            <ScanLine className="h-4 w-4" /> Scan Barcode
+        <div className="flex gap-1.5 sm:gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="px-2 sm:px-3">
+            <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Scan</span>
           </Button>
-          <Button onClick={() => { setEditing(null); setPresetBarcode(undefined); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4" /> New Item
+          <Button size="sm" onClick={() => { setEditing(null); setPresetBarcode(undefined); setDialogOpen(true); }}>
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline ml-1">New</span>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Total Items</div>
-          <div className="text-2xl font-bold tabular-nums mt-1">{items.length}</div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <Card className="p-3 sm:p-4">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Total</div>
+          <div className="text-base sm:text-2xl font-bold tabular-nums mt-0.5 sm:mt-1">{items.length}</div>
         </Card>
-        <Card className="p-4">
-          <div className="text-xs text-muted-foreground uppercase tracking-wide">Products</div>
-          <div className="text-2xl font-bold tabular-nums mt-1">{items.filter(i => i.type === "product").length}</div>
+        <Card className="p-3 sm:p-4">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Products</div>
+          <div className="text-base sm:text-2xl font-bold tabular-nums mt-0.5 sm:mt-1">{items.filter(i => i.type === "product").length}</div>
         </Card>
-        <Card className="p-4 border-warning/40">
-          <div className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3 text-warning" /> Low Stock
+        <Card className="p-3 sm:p-4 border-warning/40">
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3 text-warning" /> Low
           </div>
-          <div className="text-2xl font-bold tabular-nums mt-1 text-warning">{lowStockCount}</div>
+          <div className="text-base sm:text-2xl font-bold tabular-nums mt-0.5 sm:mt-1 text-warning">{lowStockCount}</div>
         </Card>
       </div>
 
       <Card>
-        <div className="p-4 border-b flex items-center gap-2">
-          <SearchBar value={q} onChange={setQ} placeholder="Search items, SKU, HSN…" className="max-w-sm" />
+        <div className="p-3 sm:p-4 border-b">
+          <SearchBar value={q} onChange={setQ} placeholder="Search items, SKU, HSN…" />
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>SKU / HSN</TableHead>
-              <TableHead className="text-right">Sale Price</TableHead>
-              <TableHead className="text-right">Tax</TableHead>
-              <TableHead className="text-right">Stock</TableHead>
-              <TableHead className="text-right w-[180px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                {items.length === 0 ? "No items yet. Click 'New Item' to add your first one." : "No items match your search."}
-              </TableCell></TableRow>
-            ) : filtered.map((i) => {
-              const low = i.type === "product" && i.current_stock <= i.low_stock_alert && i.low_stock_alert > 0;
-              return (
-                <TableRow key={i.id}>
-                  <TableCell>
-                    <div className="font-medium">{i.name}</div>
-                    <div className="text-xs text-muted-foreground capitalize">{i.type}</div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {i.sku && <div>SKU: {i.sku}</div>}
-                    {i.hsn_code && <div>HSN: {i.hsn_code}</div>}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(i.sale_price)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{i.tax_rate}%</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {i.type === "service" ? (
-                      <span className="text-muted-foreground">—</span>
-                    ) : (
-                      <Badge variant={low ? "destructive" : "secondary"}>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-2 space-y-2">
+          {loading ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              {items.length === 0 ? "No items yet. Tap 'New' to add one." : "No matches."}
+            </div>
+          ) : filtered.map((i) => {
+            const low = i.type === "product" && i.current_stock <= i.low_stock_alert && i.low_stock_alert > 0;
+            return (
+              <div key={i.id} className="mobile-card flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{i.name}</div>
+                  <div className="text-[11px] text-muted-foreground capitalize">
+                    {i.type}{i.sku ? ` · SKU ${i.sku}` : ""}
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-sm font-semibold num">{formatINR(i.sale_price)}</span>
+                    {i.type === "product" ? (
+                      <Badge variant={low ? "destructive" : "secondary"} className="text-[10px] py-0 px-1.5">
                         {i.current_stock} {i.unit}
                       </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {i.type === "product" && (
-                        <Button size="icon" variant="ghost" title="Adjust stock"
-                          onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
-                          <ArrowUpDown className="h-4 w-4" />
-                        </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {i.type === "product" && (
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                      <ArrowUpDown className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(i); setDialogOpen(true); }}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>SKU / HSN</TableHead>
+                <TableHead className="text-right">Sale Price</TableHead>
+                <TableHead className="text-right">Tax</TableHead>
+                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right w-[180px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  {items.length === 0 ? "No items yet." : "No matches."}
+                </TableCell></TableRow>
+              ) : filtered.map((i) => {
+                const low = i.type === "product" && i.current_stock <= i.low_stock_alert && i.low_stock_alert > 0;
+                return (
+                  <TableRow key={i.id}>
+                    <TableCell>
+                      <div className="font-medium">{i.name}</div>
+                      <div className="text-xs text-muted-foreground capitalize">{i.type}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {i.sku && <div>SKU: {i.sku}</div>}
+                      {i.hsn_code && <div>HSN: {i.hsn_code}</div>}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{formatINR(i.sale_price)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{i.tax_rate}%</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {i.type === "service" ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <Badge variant={low ? "destructive" : "secondary"}>
+                          {i.current_stock} {i.unit}
+                        </Badge>
                       )}
-                      <Button size="icon" variant="ghost" onClick={() => { setEditing(i); setDialogOpen(true); }}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(i.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {i.type === "product" && (
+                          <Button size="icon" variant="ghost" title="Adjust stock"
+                            onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                            <ArrowUpDown className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" onClick={() => { setEditing(i); setDialogOpen(true); }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => handleDelete(i.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} presetBarcode={presetBarcode} />
