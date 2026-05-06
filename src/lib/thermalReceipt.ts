@@ -44,14 +44,14 @@ export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt):
   const M = 3;           // margin
   const innerW = W - M * 2;
 
-  // Column layout (right-aligned columns)
-  const COL_AMT = W - M;          // right edge for Amount
-  const COL_RATE = COL_AMT - 18;  // right edge for Rate
-  const COL_QTY = COL_RATE - 14;  // right edge for Qty
-  const NAME_W = COL_QTY - M - 16; // wrap width for item name (leave gap before qty)
+  // Column layout (right-aligned columns) — widened gaps to avoid overlap
+  const COL_AMT = W - M;            // right edge for Amount
+  const COL_RATE = COL_AMT - 20;    // right edge for Rate
+  const COL_QTY = COL_RATE - 18;    // right edge for Qty
+  const NAME_W = COL_QTY - M - 14;  // wrap width for item name (gap before qty)
 
-  // Estimate height (rough — extra padding so nothing clips)
-  const estHeight = 95 + r.lines.length * 9 + (r.party_name ? 6 : 0) + (r.footer ? 12 : 0);
+  // Estimate height (extra padding so nothing clips)
+  const estHeight = 100 + r.lines.length * 10 + (r.party_name ? 6 : 0) + (r.footer ? 12 : 0);
   const doc = new jsPDF({ unit: "mm", format: [W, estHeight] });
 
   let y = M + 3;
@@ -92,9 +92,10 @@ export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt):
   doc.text("Qty", COL_QTY, y, { align: "right" });
   doc.text("Rate", COL_RATE, y, { align: "right" });
   doc.text("Amt", COL_AMT, y, { align: "right" });
-  y += 1.5;
+  y += 2;
   doc.setLineWidth(0.2);
-  doc.line(M, y, W - M, y); y += 3;
+  doc.line(M, y, W - M, y);
+  y += 4;
   doc.setFont("helvetica", "normal");
 
   // Items
@@ -106,7 +107,7 @@ export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt):
     doc.text(formatRs(ln.price).replace("Rs.", ""), COL_RATE, y, { align: "right" });
     doc.text(formatRs(ln.total_amount).replace("Rs.", ""), COL_AMT, y, { align: "right" });
     const lineH = Math.max(nameLines.length * 3.2, 3.2);
-    y += lineH + 1.5;
+    y += lineH + 2;
   }
 
   doc.setLineDashPattern([0.5, 0.5], 0);
