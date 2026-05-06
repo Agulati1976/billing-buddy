@@ -125,4 +125,23 @@
 @layer components {
   /* Make any table scroll horizontally on mobile when wrapped in this */
   .table-scroll { @apply -mx-3 sm:mx-0 overflow-x-auto; }
+
+  /* App-like list cards */
+  .mobile-card {
+    @apply bg-card border rounded-xl p-3 active:scale-[0.99] active:bg-muted/40 transition-all;
+  }
+
+  /* Sticky bottom action bar (sits above the bottom nav on mobile) */
+  .sticky-action-bar {
+    @apply fixed inset-x-0 z-30 bg-card border-t p-3 flex items-center gap-2 md:static md:border-0 md:p-0 md:bg-transparent;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
+@layer utilities {
+  .safe-pt { padding-top: env(safe-area-inset-top); }
+  .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+  /* Hide native scrollbars but keep scrolling */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
