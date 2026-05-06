@@ -760,6 +760,22 @@ export default function InvoiceEditor({ type }: Props) {
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
+
+      {/* Mobile sticky save bar */}
+      {!readOnly && (
+        <div
+          className="md:hidden fixed inset-x-0 z-30 bg-card border-t px-3 py-2 flex items-center gap-3 shadow-lg"
+          style={{ bottom: "calc(56px + env(safe-area-inset-bottom))" }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide">Total</div>
+            <div className="text-base font-semibold num truncate">{formatINR(totals.total_amount)}</div>
+          </div>
+          <Button onClick={save} disabled={saving} className="gap-1.5 h-11 px-5">
+            <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
