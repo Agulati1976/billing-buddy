@@ -319,14 +319,16 @@ export default function Reports() {
         <div className="text-center text-muted-foreground py-10">Loading reports…</div>
       ) : (
       <Tabs defaultValue="overview">
-        <TabsList className="flex flex-wrap">
-          <TabsTrigger value="overview"><TrendingUp className="h-4 w-4 mr-1" />Overview</TabsTrigger>
-          <TabsTrigger value="daily"><CalendarIcon className="h-4 w-4 mr-1" />Daily Breakdown</TabsTrigger>
-          <TabsTrigger value="pnl"><FileText className="h-4 w-4 mr-1" />Profit & Loss</TabsTrigger>
-          <TabsTrigger value="gst"><Receipt className="h-4 w-4 mr-1" />GST</TabsTrigger>
-          <TabsTrigger value="products"><Package className="h-4 w-4 mr-1" />Top Products</TabsTrigger>
-          <TabsTrigger value="expenses"><Wallet className="h-4 w-4 mr-1" />Expenses</TabsTrigger>
-        </TabsList>
+        <div className="-mx-3 md:mx-0 overflow-x-auto no-scrollbar">
+          <TabsList className="inline-flex w-max md:w-full md:flex-wrap mx-3 md:mx-0">
+            <TabsTrigger value="overview"><TrendingUp className="h-4 w-4 mr-1" />Overview</TabsTrigger>
+            <TabsTrigger value="daily"><CalendarIcon className="h-4 w-4 mr-1" />Daily</TabsTrigger>
+            <TabsTrigger value="pnl"><FileText className="h-4 w-4 mr-1" />P&amp;L</TabsTrigger>
+            <TabsTrigger value="gst"><Receipt className="h-4 w-4 mr-1" />GST</TabsTrigger>
+            <TabsTrigger value="products"><Package className="h-4 w-4 mr-1" />Products</TabsTrigger>
+            <TabsTrigger value="expenses"><Wallet className="h-4 w-4 mr-1" />Expenses</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
