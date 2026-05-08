@@ -455,7 +455,36 @@ export default function InvoiceEditor({ type }: Props) {
       } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
-    doc.save(`${safeNum || "invoice"}.pdf`);
+  };
+
+  const downloadThermal = () => {
+    if (!current) return;
+    const validLines = totals.lines.filter((l) => l.item_name.trim());
+    if (validLines.length === 0) { toast.error("No items to export"); return; }
+    const receipt = generateThermalReceipt(
+      { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
+      {
+        invoice_number: number,
+        invoice_date: new Date(date).toLocaleString(),
+        party_name: party?.name ?? null,
+        party_phone: (party as any)?.phone ?? null,
+        cashier: user?.email ?? null,
+        lines: validLines.map((l) => ({
+          item_name: l.item_name, quantity: l.quantity, unit: l.unit,
+          price: l.price, total_amount: l.total_amount,
+        })),
+        subtotal: totals.subtotal,
+        discount_amount: totals.discount_amount,
+        tax_amount: totals.cgst_amount + totals.sgst_amount + totals.igst_amount,
+        round_off: totals.round_off,
+        total_amount: totals.total_amount,
+        paid_amount: totals.total_amount,
+        balance_amount: 0,
+        payment_method: null,
+      },
+    );
+    const safeNum = number.replace(/[\/\\]/g, "-");
+    receipt.save(`POS-${safeNum || "Receipt"}.pdf`);
   };
 
   if (!loaded) return <div className="text-sm text-muted-foreground">Loading…</div>;
