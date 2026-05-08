@@ -383,17 +383,19 @@ export default function Reports() {
 
         {/* P&L */}
         <TabsContent value="pnl">
-          <Card className="p-6">
+          <Card className="p-4 md:p-6">
             <div className="text-sm text-muted-foreground mb-4">Profit & Loss — {range.label}</div>
-            <Table>
-              <TableBody>
-                <TableRow><TableCell>Revenue (Sales)</TableCell><TableCell className="text-right tabular-nums">{formatINR(pnl.revenue)}</TableCell></TableRow>
-                <TableRow><TableCell>Cost of Goods (Purchases)</TableCell><TableCell className="text-right tabular-nums">- {formatINR(pnl.cogs)}</TableCell></TableRow>
-                <TableRow className="font-semibold border-t-2"><TableCell>Gross Profit</TableCell><TableCell className={`text-right tabular-nums ${pnl.gross >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.gross)}</TableCell></TableRow>
-                <TableRow><TableCell>Operating Expenses</TableCell><TableCell className="text-right tabular-nums">- {formatINR(pnl.opex)}</TableCell></TableRow>
-                <TableRow className="font-bold border-t-2 text-base"><TableCell>Net Profit</TableCell><TableCell className={`text-right tabular-nums ${pnl.net >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.net)}</TableCell></TableRow>
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableBody>
+                  <TableRow><TableCell>Revenue (Sales)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(pnl.revenue)}</TableCell></TableRow>
+                  <TableRow><TableCell>Cost of Goods (Purchases)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.cogs)}</TableCell></TableRow>
+                  <TableRow className="font-semibold border-t-2"><TableCell>Gross Profit</TableCell><TableCell className={`text-right tabular-nums whitespace-nowrap ${pnl.gross >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.gross)}</TableCell></TableRow>
+                  <TableRow><TableCell>Operating Expenses</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.opex)}</TableCell></TableRow>
+                  <TableRow className="font-bold border-t-2 text-base"><TableCell>Net Profit</TableCell><TableCell className={`text-right tabular-nums whitespace-nowrap ${pnl.net >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.net)}</TableCell></TableRow>
+                </TableBody>
+              </Table>
+            </div>
             <p className="text-xs text-muted-foreground mt-4">
               Note: Revenue and COGS are pre-tax (subtotal). Excludes payment timing.
             </p>
@@ -408,45 +410,48 @@ export default function Reports() {
             <Stat label="Net GST Liability" value={formatINR(gst.liability)} tone={gst.liability > 0 ? "danger" : "success"} />
           </div>
           <Card>
-            <div className="p-4 border-b font-medium">GST Summary — {range.label}</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead></TableHead>
-                  <TableHead className="text-right">Taxable Value</TableHead>
-                  <TableHead className="text-right">CGST</TableHead>
-                  <TableHead className="text-right">SGST</TableHead>
-                  <TableHead className="text-right">IGST</TableHead>
-                  <TableHead className="text-right">Total Tax</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium">Output (Sales)</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.taxable)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.cgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.sgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.igst)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">{formatINR(gst.out.cgst + gst.out.sgst + gst.out.igst)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Input (Purchases)</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.taxable)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.cgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.sgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.igst)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">{formatINR(gst.inp.cgst + gst.inp.sgst + gst.inp.igst)}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <div className="p-3 md:p-4 border-b font-medium text-sm md:text-base">GST Summary — {range.label}</div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead></TableHead>
+                    <TableHead className="text-right">Taxable</TableHead>
+                    <TableHead className="text-right">CGST</TableHead>
+                    <TableHead className="text-right">SGST</TableHead>
+                    <TableHead className="text-right">IGST</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium whitespace-nowrap">Output</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.taxable)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.cgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.sgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.igst)}</TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">{formatINR(gst.out.cgst + gst.out.sgst + gst.out.igst)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium whitespace-nowrap">Input</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.taxable)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.cgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.sgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.igst)}</TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">{formatINR(gst.inp.cgst + gst.inp.sgst + gst.inp.igst)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
         {/* Top Products */}
         <TabsContent value="products">
           <Card>
-            <div className="p-4 border-b font-medium">Top 10 Selling Products / Services — {range.label}</div>
-            <Table>
+            <div className="p-3 md:p-4 border-b font-medium text-sm md:text-base">Top 10 Products — {range.label}</div>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">#</TableHead>
