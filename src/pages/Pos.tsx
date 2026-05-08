@@ -704,7 +704,7 @@ export default function Pos() {
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" onClick={() => resumeCart(h)}>Resume</Button>
-                    <Button size="icon" variant="ghost" onClick={async () => { await supabase.from("pos_held_carts").delete().eq("id", h.id); refreshHeld(); }}>
+                    <Button size="icon" variant="ghost" onClick={async () => { await omDelete("pos_held_carts", { column: "id", value: h.id }); refreshHeld(); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
