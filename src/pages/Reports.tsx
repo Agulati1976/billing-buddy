@@ -472,40 +472,43 @@ export default function Reports() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
         {/* Expenses */}
         <TabsContent value="expenses">
           <Card>
-            <div className="p-4 border-b flex items-center justify-between">
-              <div className="font-medium">Expenses by Category — {range.label}</div>
-              <div className="text-sm text-muted-foreground">Total: <span className="font-semibold tabular-nums">{formatINR(expTotal)}</span></div>
+            <div className="p-3 md:p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <div className="font-medium text-sm md:text-base">Expenses by Category — {range.label}</div>
+              <div className="text-xs md:text-sm text-muted-foreground">Total: <span className="font-semibold tabular-nums">{formatINR(expTotal)}</span></div>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right w-32">Share</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expBreakdown.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No expenses in this range.</TableCell></TableRow>
-                ) : expBreakdown.map((e) => {
-                  const pct = expTotal > 0 ? (e.total / expTotal) * 100 : 0;
-                  return (
-                    <TableRow key={e.category}>
-                      <TableCell className="font-medium">{e.category}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatINR(e.total)}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right w-24">Share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {expBreakdown.length === 0 ? (
+                    <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No expenses in this range.</TableCell></TableRow>
+                  ) : expBreakdown.map((e) => {
+                    const pct = expTotal > 0 ? (e.total / expTotal) * 100 : 0;
+                    return (
+                      <TableRow key={e.category}>
+                        <TableCell className="font-medium">{e.category}</TableCell>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(e.total)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground whitespace-nowrap">{pct.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
