@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,9 +65,9 @@ export default function Items() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this item?")) return;
-    const { error } = await supabase.from("items").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Item deleted"); load(); }
+    const res = await omDelete("items", { column: "id", value: id });
+    if (res.error) toast.error((res.error as any).message ?? "Failed");
+    else { toast.success(res.queued ? "Deletion queued — will sync" : "Item deleted"); load(); }
   };
 
   return (

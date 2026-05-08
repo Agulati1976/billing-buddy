@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,10 +70,10 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
 
   const handleDelete = async () => {
     if (!toDelete) return;
-    const { error } = await supabase.from("parties").delete().eq("id", toDelete.id);
-    if (error) toast.error(error.message);
+    const res = await omDelete("parties", { column: "id", value: toDelete.id });
+    if (res.error) toast.error((res.error as any).message ?? "Failed");
     else {
-      toast.success(`${toDelete.name} deleted`);
+      toast.success(res.queued ? "Deletion queued — will sync" : `${toDelete.name} deleted`);
       load();
     }
     setToDelete(null);
