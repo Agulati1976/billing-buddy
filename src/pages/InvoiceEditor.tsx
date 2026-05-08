@@ -267,8 +267,8 @@ export default function InvoiceEditor({ type }: Props) {
           });
           if (!res.error) {
             const created: any = {
-              id: res.data.id, name: res.data.name,
-              state_code: res.data.state_code ?? null, gstin: res.data.gstin ?? null,
+              id: res.data.id, name: data.supplier_name.trim(),
+              state_code: null, gstin: data.supplier_gstin || null,
             };
             supplier = created;
             setParties((ps) => [...ps, created]);
