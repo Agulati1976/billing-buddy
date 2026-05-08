@@ -604,7 +604,10 @@ export default function Pos() {
             </Button>
           </div>
           <Button onClick={openPayment} size="lg" className="w-full">Pay (F9) · Rs.{totals.total_amount.toFixed(2)}</Button>
-          <Button variant="ghost" size="sm" onClick={downloadA4}><Download className="h-4 w-4 mr-1" /> Download A4 preview</Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" onClick={downloadThermal}><Download className="h-4 w-4 mr-1" /> POS PDF</Button>
+            <Button variant="ghost" size="sm" onClick={downloadA4}><Download className="h-4 w-4 mr-1" /> A4 PDF</Button>
+          </div>
         </Card>
       </div>
 
