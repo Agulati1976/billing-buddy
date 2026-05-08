@@ -1,8 +1,12 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initOfflineSync } from "@/lib/offlineSync";
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Start outbox drainer (runs in foreground; safe in iframe too).
+initOfflineSync();
 
 // Service worker registration with iframe / Lovable preview guard.
 // SW is intentionally disabled inside the editor preview to avoid stale caches.

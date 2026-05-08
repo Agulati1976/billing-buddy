@@ -10,6 +10,7 @@ import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { OfflineBadge } from "@/components/OfflineBadge";
+import { SyncStatusBadge } from "@/components/SyncStatusBadge";
 
 export function AppTopbar() {
   const { businesses, current, setCurrent } = useBusiness();
@@ -60,6 +61,7 @@ export function AppTopbar() {
 
       <div className="ml-auto flex items-center gap-2">
         <OfflineBadge />
+        <SyncStatusBadge />
         <Button size="sm" className="gap-1.5 hidden sm:inline-flex" onClick={() => navigate("/sales/new")}>
           <Plus className="h-4 w-4" /> New Sale
         </Button>
