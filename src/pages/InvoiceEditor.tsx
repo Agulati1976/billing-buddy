@@ -574,14 +574,23 @@ export default function InvoiceEditor({ type }: Props) {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
-                        <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
-                        <SelectContent>
-                          {items.map((it) => (
-                            <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-1">
+                        <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
+                          <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
+                          <SelectContent>
+                            {items.map((it) => (
+                              <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0"
+                          onClick={() => { setRowScanIdx(idx); setScannerOpen(true); }}
+                          title="Scan barcode for this row"
+                        >
+                          <ScanLine className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <Input
                         className="h-8"
                         value={l.item_name}
