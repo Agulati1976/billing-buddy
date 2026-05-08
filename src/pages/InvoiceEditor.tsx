@@ -51,6 +51,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [rowScanIdx, setRowScanIdx] = useState<number | null>(null);
   const [billScanOpen, setBillScanOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
@@ -199,8 +200,23 @@ export default function InvoiceEditor({ type }: Props) {
 
   const handleScanned = async (code: string) => {
     const trimmed = code.trim();
+    const targetIdx = rowScanIdx;
+    setRowScanIdx(null);
+    const assign = (it: Item) => {
+      if (targetIdx !== null) {
+        const isPurchase = type === "purchase" || type === "purchase_return";
+        updateLine(targetIdx, {
+          item_id: it.id, item_name: it.name, hsn_code: it.hsn_code, unit: it.unit,
+          price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
+          tax_rate: Number(it.tax_rate), batch_id: null,
+        });
+        toast.success(`Set: ${it.name}`);
+      } else {
+        addItemToLines(it);
+      }
+    };
     const it = items.find((x) => (x.barcode ?? "").trim() === trimmed);
-    if (it) { addItemToLines(it); return; }
+    if (it) { assign(it); return; }
     if (!current || !user) { toast.error(`No item with barcode ${code}`); return; }
     const hit = await lookupBarcode(trimmed);
     if (!hit) {
@@ -219,7 +235,7 @@ export default function InvoiceEditor({ type }: Props) {
         is_batch_tracked: !!created.is_batch_tracked,
       };
       setItems((prev) => [newItem, ...prev]);
-      addItemToLines(newItem);
+      assign(newItem);
       toast.success(`Added ${newItem.name} (from catalog)`);
     } catch (e: any) {
       toast.error(e.message || "Could not auto-create item from catalog");
@@ -558,14 +574,23 @@ export default function InvoiceEditor({ type }: Props) {
                     </div>
                   ) : (
                     <div className="space-y-1">
-                      <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
-                        <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
-                        <SelectContent>
-                          {items.map((it) => (
-                            <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-1">
+                        <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
+                          <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
+                          <SelectContent>
+                            {items.map((it) => (
+                              <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0"
+                          onClick={() => { setRowScanIdx(idx); setScannerOpen(true); }}
+                          title="Scan barcode for this row"
+                        >
+                          <ScanLine className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <Input
                         className="h-8"
                         value={l.item_name}
