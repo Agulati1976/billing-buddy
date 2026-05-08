@@ -351,31 +351,33 @@ export default function Reports() {
         {/* DAILY BREAKDOWN */}
         <TabsContent value="daily">
           <Card>
-            <div className="p-4 border-b font-medium">Daily breakdown — {range.label}</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Sales</TableHead>
-                  <TableHead className="text-right">Purchases</TableHead>
-                  <TableHead className="text-right">Expenses</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {daily.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No activity in this range.</TableCell></TableRow>
-                ) : daily.map((d) => (
-                  <TableRow key={d.date}>
-                    <TableCell className="font-medium">{format(new Date(d.date), "dd MMM yyyy")}</TableCell>
-                    <TableCell className="text-right tabular-nums text-success">{formatINR(d.sales)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatINR(d.purchases)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatINR(d.expenses)}</TableCell>
-                    <TableCell className={cn("text-right tabular-nums font-semibold", d.net >= 0 ? "text-success" : "text-danger")}>{formatINR(d.net)}</TableCell>
+            <div className="p-3 md:p-4 border-b font-medium text-sm md:text-base">Daily breakdown — {range.label}</div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Sales</TableHead>
+                    <TableHead className="text-right">Purchases</TableHead>
+                    <TableHead className="text-right">Expenses</TableHead>
+                    <TableHead className="text-right">Net</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {daily.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No activity in this range.</TableCell></TableRow>
+                  ) : daily.map((d) => (
+                    <TableRow key={d.date}>
+                      <TableCell className="font-medium whitespace-nowrap">{format(new Date(d.date), "dd MMM yyyy")}</TableCell>
+                      <TableCell className="text-right tabular-nums text-success whitespace-nowrap">{formatINR(d.sales)}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(d.purchases)}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(d.expenses)}</TableCell>
+                      <TableCell className={cn("text-right tabular-nums font-semibold whitespace-nowrap", d.net >= 0 ? "text-success" : "text-danger")}>{formatINR(d.net)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
