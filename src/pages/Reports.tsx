@@ -190,22 +190,22 @@ export default function Reports() {
 
   /* ------------------------- ui helpers ------------------------- */
   const Stat = ({ label, value, tone = "primary" }: { label: string; value: string; tone?: string }) => (
-    <Card className="p-4">
-      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-      <div className={`text-2xl font-semibold tabular-nums mt-1 ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>
+    <Card className="p-3 md:p-4">
+      <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
+      <div className={`text-lg md:text-2xl font-semibold tabular-nums mt-1 break-all ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>
         {value}
       </div>
     </Card>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4 md:space-y-6 pb-24 md:pb-0">
+      <div className="flex flex-col md:flex-row md:flex-wrap md:items-start md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-primary" /> Reports & Analytics
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 md:h-6 md:w-6 text-primary" /> Reports
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-muted-foreground">
             {range.label} · {format(range.from, "dd MMM yyyy")} — {format(range.to, "dd MMM yyyy")}
           </p>
         </div>
@@ -213,7 +213,7 @@ export default function Reports() {
         {/* Date filter */}
         <div className="flex flex-wrap items-center gap-2">
           <Select value={preset} onValueChange={(v) => setPreset(v as Preset)}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="flex-1 md:w-[180px] min-w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today (Daily)</SelectItem>
               <SelectItem value="yesterday">Yesterday</SelectItem>
@@ -319,14 +319,16 @@ export default function Reports() {
         <div className="text-center text-muted-foreground py-10">Loading reports…</div>
       ) : (
       <Tabs defaultValue="overview">
-        <TabsList className="flex flex-wrap">
-          <TabsTrigger value="overview"><TrendingUp className="h-4 w-4 mr-1" />Overview</TabsTrigger>
-          <TabsTrigger value="daily"><CalendarIcon className="h-4 w-4 mr-1" />Daily Breakdown</TabsTrigger>
-          <TabsTrigger value="pnl"><FileText className="h-4 w-4 mr-1" />Profit & Loss</TabsTrigger>
-          <TabsTrigger value="gst"><Receipt className="h-4 w-4 mr-1" />GST</TabsTrigger>
-          <TabsTrigger value="products"><Package className="h-4 w-4 mr-1" />Top Products</TabsTrigger>
-          <TabsTrigger value="expenses"><Wallet className="h-4 w-4 mr-1" />Expenses</TabsTrigger>
-        </TabsList>
+        <div className="-mx-3 md:mx-0 overflow-x-auto no-scrollbar">
+          <TabsList className="inline-flex w-max md:w-full md:flex-wrap mx-3 md:mx-0">
+            <TabsTrigger value="overview"><TrendingUp className="h-4 w-4 mr-1" />Overview</TabsTrigger>
+            <TabsTrigger value="daily"><CalendarIcon className="h-4 w-4 mr-1" />Daily</TabsTrigger>
+            <TabsTrigger value="pnl"><FileText className="h-4 w-4 mr-1" />P&amp;L</TabsTrigger>
+            <TabsTrigger value="gst"><Receipt className="h-4 w-4 mr-1" />GST</TabsTrigger>
+            <TabsTrigger value="products"><Package className="h-4 w-4 mr-1" />Products</TabsTrigger>
+            <TabsTrigger value="expenses"><Wallet className="h-4 w-4 mr-1" />Expenses</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
@@ -349,47 +351,51 @@ export default function Reports() {
         {/* DAILY BREAKDOWN */}
         <TabsContent value="daily">
           <Card>
-            <div className="p-4 border-b font-medium">Daily breakdown — {range.label}</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Sales</TableHead>
-                  <TableHead className="text-right">Purchases</TableHead>
-                  <TableHead className="text-right">Expenses</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {daily.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No activity in this range.</TableCell></TableRow>
-                ) : daily.map((d) => (
-                  <TableRow key={d.date}>
-                    <TableCell className="font-medium">{format(new Date(d.date), "dd MMM yyyy")}</TableCell>
-                    <TableCell className="text-right tabular-nums text-success">{formatINR(d.sales)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatINR(d.purchases)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatINR(d.expenses)}</TableCell>
-                    <TableCell className={cn("text-right tabular-nums font-semibold", d.net >= 0 ? "text-success" : "text-danger")}>{formatINR(d.net)}</TableCell>
+            <div className="p-3 md:p-4 border-b font-medium text-sm md:text-base">Daily breakdown — {range.label}</div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Sales</TableHead>
+                    <TableHead className="text-right">Purchases</TableHead>
+                    <TableHead className="text-right">Expenses</TableHead>
+                    <TableHead className="text-right">Net</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {daily.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No activity in this range.</TableCell></TableRow>
+                  ) : daily.map((d) => (
+                    <TableRow key={d.date}>
+                      <TableCell className="font-medium whitespace-nowrap">{format(new Date(d.date), "dd MMM yyyy")}</TableCell>
+                      <TableCell className="text-right tabular-nums text-success whitespace-nowrap">{formatINR(d.sales)}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(d.purchases)}</TableCell>
+                      <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(d.expenses)}</TableCell>
+                      <TableCell className={cn("text-right tabular-nums font-semibold whitespace-nowrap", d.net >= 0 ? "text-success" : "text-danger")}>{formatINR(d.net)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
         {/* P&L */}
         <TabsContent value="pnl">
-          <Card className="p-6">
+          <Card className="p-4 md:p-6">
             <div className="text-sm text-muted-foreground mb-4">Profit & Loss — {range.label}</div>
-            <Table>
-              <TableBody>
-                <TableRow><TableCell>Revenue (Sales)</TableCell><TableCell className="text-right tabular-nums">{formatINR(pnl.revenue)}</TableCell></TableRow>
-                <TableRow><TableCell>Cost of Goods (Purchases)</TableCell><TableCell className="text-right tabular-nums">- {formatINR(pnl.cogs)}</TableCell></TableRow>
-                <TableRow className="font-semibold border-t-2"><TableCell>Gross Profit</TableCell><TableCell className={`text-right tabular-nums ${pnl.gross >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.gross)}</TableCell></TableRow>
-                <TableRow><TableCell>Operating Expenses</TableCell><TableCell className="text-right tabular-nums">- {formatINR(pnl.opex)}</TableCell></TableRow>
-                <TableRow className="font-bold border-t-2 text-base"><TableCell>Net Profit</TableCell><TableCell className={`text-right tabular-nums ${pnl.net >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.net)}</TableCell></TableRow>
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableBody>
+                  <TableRow><TableCell>Revenue (Sales)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(pnl.revenue)}</TableCell></TableRow>
+                  <TableRow><TableCell>Cost of Goods (Purchases)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.cogs)}</TableCell></TableRow>
+                  <TableRow className="font-semibold border-t-2"><TableCell>Gross Profit</TableCell><TableCell className={`text-right tabular-nums whitespace-nowrap ${pnl.gross >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.gross)}</TableCell></TableRow>
+                  <TableRow><TableCell>Operating Expenses</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.opex)}</TableCell></TableRow>
+                  <TableRow className="font-bold border-t-2 text-base"><TableCell>Net Profit</TableCell><TableCell className={`text-right tabular-nums whitespace-nowrap ${pnl.net >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.net)}</TableCell></TableRow>
+                </TableBody>
+              </Table>
+            </div>
             <p className="text-xs text-muted-foreground mt-4">
               Note: Revenue and COGS are pre-tax (subtotal). Excludes payment timing.
             </p>
@@ -404,45 +410,48 @@ export default function Reports() {
             <Stat label="Net GST Liability" value={formatINR(gst.liability)} tone={gst.liability > 0 ? "danger" : "success"} />
           </div>
           <Card>
-            <div className="p-4 border-b font-medium">GST Summary — {range.label}</div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead></TableHead>
-                  <TableHead className="text-right">Taxable Value</TableHead>
-                  <TableHead className="text-right">CGST</TableHead>
-                  <TableHead className="text-right">SGST</TableHead>
-                  <TableHead className="text-right">IGST</TableHead>
-                  <TableHead className="text-right">Total Tax</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium">Output (Sales)</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.taxable)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.cgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.sgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.out.igst)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">{formatINR(gst.out.cgst + gst.out.sgst + gst.out.igst)}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="font-medium">Input (Purchases)</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.taxable)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.cgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.sgst)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatINR(gst.inp.igst)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold">{formatINR(gst.inp.cgst + gst.inp.sgst + gst.inp.igst)}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+            <div className="p-3 md:p-4 border-b font-medium text-sm md:text-base">GST Summary — {range.label}</div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead></TableHead>
+                    <TableHead className="text-right">Taxable</TableHead>
+                    <TableHead className="text-right">CGST</TableHead>
+                    <TableHead className="text-right">SGST</TableHead>
+                    <TableHead className="text-right">IGST</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium whitespace-nowrap">Output</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.taxable)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.cgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.sgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.out.igst)}</TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">{formatINR(gst.out.cgst + gst.out.sgst + gst.out.igst)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium whitespace-nowrap">Input</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.taxable)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.cgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.sgst)}</TableCell>
+                    <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(gst.inp.igst)}</TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">{formatINR(gst.inp.cgst + gst.inp.sgst + gst.inp.igst)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
         {/* Top Products */}
         <TabsContent value="products">
           <Card>
-            <div className="p-4 border-b font-medium">Top 10 Selling Products / Services — {range.label}</div>
-            <Table>
+            <div className="p-3 md:p-4 border-b font-medium text-sm md:text-base">Top 10 Products — {range.label}</div>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10">#</TableHead>
@@ -463,40 +472,43 @@ export default function Reports() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
 
         {/* Expenses */}
         <TabsContent value="expenses">
           <Card>
-            <div className="p-4 border-b flex items-center justify-between">
-              <div className="font-medium">Expenses by Category — {range.label}</div>
-              <div className="text-sm text-muted-foreground">Total: <span className="font-semibold tabular-nums">{formatINR(expTotal)}</span></div>
+            <div className="p-3 md:p-4 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <div className="font-medium text-sm md:text-base">Expenses by Category — {range.label}</div>
+              <div className="text-xs md:text-sm text-muted-foreground">Total: <span className="font-semibold tabular-nums">{formatINR(expTotal)}</span></div>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right w-32">Share</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expBreakdown.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No expenses in this range.</TableCell></TableRow>
-                ) : expBreakdown.map((e) => {
-                  const pct = expTotal > 0 ? (e.total / expTotal) * 100 : 0;
-                  return (
-                    <TableRow key={e.category}>
-                      <TableCell className="font-medium">{e.category}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatINR(e.total)}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{pct.toFixed(1)}%</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right w-24">Share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {expBreakdown.length === 0 ? (
+                    <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">No expenses in this range.</TableCell></TableRow>
+                  ) : expBreakdown.map((e) => {
+                    const pct = expTotal > 0 ? (e.total / expTotal) * 100 : 0;
+                    return (
+                      <TableRow key={e.category}>
+                        <TableCell className="font-medium">{e.category}</TableCell>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(e.total)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground whitespace-nowrap">{pct.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
