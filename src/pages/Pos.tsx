@@ -302,6 +302,34 @@ export default function Pos() {
     pdf.save(`POS-${Date.now()}.pdf`);
   };
 
+  const downloadThermal = () => {
+    if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    if (!current) return;
+    const receipt = generateThermalReceipt(
+      { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
+      {
+        invoice_number: "DRAFT",
+        invoice_date: new Date().toLocaleString(),
+        party_name: party?.name ?? null,
+        party_phone: party?.phone ?? null,
+        cashier: user?.email ?? null,
+        lines: totals.lines.map((l) => ({
+          item_name: l.item_name, quantity: l.quantity, unit: l.unit,
+          price: l.price, total_amount: l.total_amount,
+        })),
+        subtotal: totals.subtotal,
+        discount_amount: totals.discount_amount,
+        tax_amount: totals.cgst_amount + totals.sgst_amount + totals.igst_amount,
+        round_off: totals.round_off,
+        total_amount: totals.total_amount,
+        paid_amount: totals.total_amount,
+        balance_amount: 0,
+        payment_method: null,
+      },
+    );
+    receipt.save(`POS-Receipt-${Date.now()}.pdf`);
+  };
+
   const holdCart = async () => {
     if (!current || !user) return;
     if (cart.length === 0) { toast.error("Nothing to hold"); return; }
@@ -576,7 +604,10 @@ export default function Pos() {
             </Button>
           </div>
           <Button onClick={openPayment} size="lg" className="w-full">Pay (F9) · Rs.{totals.total_amount.toFixed(2)}</Button>
-          <Button variant="ghost" size="sm" onClick={downloadA4}><Download className="h-4 w-4 mr-1" /> Download A4 preview</Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" onClick={downloadThermal}><Download className="h-4 w-4 mr-1" /> POS PDF</Button>
+            <Button variant="ghost" size="sm" onClick={downloadA4}><Download className="h-4 w-4 mr-1" /> A4 PDF</Button>
+          </div>
         </Card>
       </div>
 
