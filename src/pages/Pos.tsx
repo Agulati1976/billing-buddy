@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert, omInsertMany, omUpdate, omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosAccess } from "@/hooks/usePosAccess";
@@ -180,16 +181,26 @@ export default function Pos() {
     if (totalPaid <= 0) { toast.error("Enter payment amount"); return; }
     const recordedPaid = Math.min(totalPaid, totals.total_amount);
     try {
-      // Suggest invoice number
-      const { data: last } = await supabase.from("invoices")
-        .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
-        .order("created_at", { ascending: false }).limit(1);
-      const number = nextInvoiceNumber("INV", last?.[0]?.invoice_number ?? null);
+      // Suggest invoice number (cached GET works offline; suffix when offline to avoid clashes)
+      let number: string;
+      try {
+        const { data: last } = await supabase.from("invoices")
+          .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
+          .order("created_at", { ascending: false }).limit(1);
+        number = nextInvoiceNumber("INV", last?.[0]?.invoice_number ?? null);
+      } catch {
+        number = `INV-${Date.now()}`;
+      }
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        number = `${number}-O${Date.now().toString().slice(-5)}`;
+      }
 
       const balance = Math.max(0, totals.total_amount - recordedPaid);
       const status = balance <= 0 ? "paid" : (recordedPaid > 0 ? "partial" : "unpaid");
 
-      const { data: inv, error } = await supabase.from("invoices").insert({
+      const invoiceId = crypto.randomUUID();
+      const invRes = await omInsert("invoices", {
+        id: invoiceId,
         business_id: current.id, party_id: partyId || null, type: "sale",
         invoice_number: number, invoice_date: new Date().toISOString().slice(0, 10),
         is_inter_state: isInter, is_gst: isGst,
@@ -200,21 +211,21 @@ export default function Pos() {
         paid_amount: 0, balance_amount: totals.total_amount, status,
         party_state_code: party?.state_code ?? null, created_by: user.id,
         pos_session_id: session?.id ?? null,
-      }).select().single();
-      if (error) throw error;
+      });
+      if (invRes.error) throw invRes.error;
+      const queuedAny = invRes.queued;
 
       const lineRows = totals.lines.map((l) => ({
-        invoice_id: inv.id, item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+        invoice_id: invoiceId, item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: l.quantity, unit: l.unit, price: l.price, discount_pct: l.discount_pct,
         tax_rate: l.tax_rate, taxable_amount: l.taxable_amount, tax_amount: l.tax_amount,
         total_amount: l.total_amount, batch_id: l.batch_id ?? null,
       }));
-      const { error: liErr } = await supabase.from("invoice_items").insert(lineRows);
-      if (liErr) throw liErr;
+      const liRes = await omInsertMany("invoice_items", lineRows);
+      if (liRes.error) throw liRes.error;
 
       // Record payments (only the actual recorded amount; allow split methods)
       if (recordedPaid > 0) {
-        // Allocate splits proportionally if they exceed the bill (change)
         let remaining = recordedPaid;
         const payRows: any[] = [];
         for (const s of splits) {
@@ -222,7 +233,7 @@ export default function Pos() {
           const amt = Math.min(Number(s.amount) || 0, remaining);
           if (amt > 0) {
             payRows.push({
-              business_id: current.id, party_id: partyId || null, invoice_id: inv.id,
+              business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
               direction: "in", method: s.method, amount: amt,
               payment_date: new Date().toISOString().slice(0, 10), created_by: user.id,
             });
@@ -230,12 +241,12 @@ export default function Pos() {
           }
         }
         if (payRows.length) {
-          const { error: pErr } = await supabase.from("payments").insert(payRows);
-          if (pErr) throw pErr;
+          const pRes = await omInsertMany("payments", payRows);
+          if (pRes.error) throw pRes.error;
         }
       }
 
-      toast.success(`Sale ${number} completed`);
+      toast.success(queuedAny || liRes.queued ? `Sale ${number} saved offline — will sync` : `Sale ${number} completed`);
 
       // Print thermal
       const receipt = generateThermalReceipt(
@@ -333,13 +344,13 @@ export default function Pos() {
   const holdCart = async () => {
     if (!current || !user) return;
     if (cart.length === 0) { toast.error("Nothing to hold"); return; }
-    const { error } = await supabase.from("pos_held_carts").insert({
+    const res = await omInsert("pos_held_carts", {
       business_id: current.id, created_by: user.id,
       label: holdLabel || `Cart ${new Date().toLocaleTimeString()}`,
       party_id: partyId || null, cart: { lines: cart, isGst, extraDiscount } as any,
     });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Cart held");
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Cart held offline" : "Cart held");
     setCart([]); setPartyId(""); setHoldLabel(""); setHoldOpen(false);
     refreshHeld();
   };
@@ -349,7 +360,7 @@ export default function Pos() {
     setPartyId(h.party_id ?? "");
     setIsGst(h.cart?.isGst ?? true);
     setExtraDiscount(h.cart?.extraDiscount ?? "0");
-    await supabase.from("pos_held_carts").delete().eq("id", h.id);
+    await omDelete("pos_held_carts", { column: "id", value: h.id });
     refreshHeld();
     setResumeOpen(false);
     toast.success("Cart resumed");
@@ -410,14 +421,14 @@ export default function Pos() {
   const quickAddCustomer = async () => {
     if (!current) return;
     if (!quickName.trim()) { toast.error("Name required"); return; }
-    const { data, error } = await supabase.from("parties").insert({
+    const res = await omInsert("parties", {
       business_id: current.id, name: quickName.trim(), phone: quickPhone.trim() || null, type: "customer",
-    }).select().single();
-    if (error) { toast.error(error.message); return; }
-    setParties((p) => [...p, data as Party]);
-    setPartyId((data as any).id);
+    });
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    setParties((p) => [...p, res.data as any]);
+    setPartyId(res.data.id);
     setQuickName(""); setQuickPhone(""); setQuickOpen(false);
-    toast.success("Customer added");
+    toast.success(res.queued ? "Customer added (offline)" : "Customer added");
   };
 
   // Keyboard shortcuts
@@ -693,7 +704,7 @@ export default function Pos() {
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" onClick={() => resumeCart(h)}>Resume</Button>
-                    <Button size="icon" variant="ghost" onClick={async () => { await supabase.from("pos_held_carts").delete().eq("id", h.id); refreshHeld(); }}>
+                    <Button size="icon" variant="ghost" onClick={async () => { await omDelete("pos_held_carts", { column: "id", value: h.id }); refreshHeld(); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>

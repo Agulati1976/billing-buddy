@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert, omUpdate } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -73,12 +74,16 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
       notes: form.notes || null,
       ...(type === "supplier" ? { supplies: form.supplies.trim() || null } : {}),
     };
-    const { error } = party
-      ? await supabase.from("parties").update(payload).eq("id", party.id)
-      : await supabase.from("parties").insert({ ...payload, created_by: user.id });
+    const res = party
+      ? await omUpdate("parties", { column: "id", value: party.id }, payload)
+      : await omInsert("parties", { ...payload, created_by: user.id });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(party ? "Party updated" : `${type === "customer" ? "Customer" : "Supplier"} added`);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(
+      res.queued
+        ? "Saved offline — will sync when online"
+        : (party ? "Party updated" : `${type === "customer" ? "Customer" : "Supplier"} added`)
+    );
     onSaved();
   };
 

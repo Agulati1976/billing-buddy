@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ScanLine, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert, omUpdate } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -194,12 +195,16 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       catalog_id: resolvedCatalogId,
       created_by: user.id,
     };
-    const { error } = item
-      ? await supabase.from("items").update(payload).eq("id", item.id)
-      : await supabase.from("items").insert(payload);
+    const res = item
+      ? await omUpdate("items", { column: "id", value: item.id }, payload)
+      : await omInsert("items", payload);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(item ? "Item updated" : "Item created");
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(
+      res.queued
+        ? (item ? "Item update saved offline — will sync" : "Item saved offline — will sync")
+        : (item ? "Item updated" : "Item created")
+    );
     onSaved();
     onOpenChange(false);
   };

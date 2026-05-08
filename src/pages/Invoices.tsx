@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -78,9 +79,9 @@ export default function Invoices({ type }: Props) {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this entry? This cannot be undone.")) return;
-    const { error } = await supabase.from("invoices").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Deleted");
+    const res = await omDelete("invoices", { column: "id", value: id });
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Deletion queued — will sync" : "Deleted");
     load();
   };
 

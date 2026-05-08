@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert, omInsertMany } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -255,7 +256,7 @@ export default function InvoiceEditor({ type }: Props) {
         const target = data.supplier_name.trim().toLowerCase();
         let supplier = parties.find((p) => p.name.trim().toLowerCase() === target);
         if (!supplier) {
-          const { data: created, error } = await supabase.from("parties").insert({
+          const res = await omInsert("parties", {
             business_id: current.id,
             type: "supplier",
             name: data.supplier_name.trim(),
@@ -263,10 +264,14 @@ export default function InvoiceEditor({ type }: Props) {
             phone: data.supplier_phone || null,
             billing_address: data.supplier_address || null,
             created_by: user.id,
-          }).select("id, name, state_code, gstin").single();
-          if (!error && created) {
-            supplier = created as any;
-            setParties((ps) => [...ps, created as any]);
+          });
+          if (!res.error) {
+            const created: any = {
+              id: res.data.id, name: data.supplier_name.trim(),
+              state_code: null, gstin: data.supplier_gstin || null,
+            };
+            supplier = created;
+            setParties((ps) => [...ps, created]);
           }
         }
         if (supplier) setPartyId(supplier.id);
@@ -280,7 +285,7 @@ export default function InvoiceEditor({ type }: Props) {
         if (!target) continue;
         let it = localItems.find((x) => x.name.trim().toLowerCase() === target.toLowerCase());
         if (!it) {
-          const { data: created, error } = await supabase.from("items").insert({
+          const res = await omInsert("items", {
             business_id: current.id,
             name: target,
             type: "product",
@@ -291,9 +296,15 @@ export default function InvoiceEditor({ type }: Props) {
             tax_rate: Number(ex.tax_rate) || 0,
             opening_stock: 0,
             created_by: user.id,
-          }).select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").single();
-          if (error || !created) continue;
-          it = created as any;
+          });
+          if (res.error) continue;
+          it = {
+            id: res.data.id, name: target,
+            barcode: null, hsn_code: ex.hsn_code || null,
+            sale_price: Number(ex.price) || 0, purchase_price: Number(ex.price) || 0,
+            tax_rate: Number(ex.tax_rate) || 0, unit: ex.unit || "pcs",
+            is_batch_tracked: false,
+          } as any;
           localItems.push(it!);
         }
         newLines.push({
@@ -352,7 +363,9 @@ export default function InvoiceEditor({ type }: Props) {
     const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: extraDiscountValue });
     const status = type === "quotation" ? "draft" : "unpaid";
 
-    const { data: inv, error } = await supabase.from("invoices").insert({
+    const invoiceId = crypto.randomUUID();
+    const invRes = await omInsert("invoices", {
+      id: invoiceId,
       business_id: current.id,
       party_id: partyId || null,
       type,
@@ -377,13 +390,13 @@ export default function InvoiceEditor({ type }: Props) {
       notes: notes.trim() || null,
       terms: terms.trim() || null,
       created_by: user.id,
-    }).select().single();
+    });
 
-    if (error || !inv) { setSaving(false); toast.error(error?.message ?? "Failed"); return; }
+    if (invRes.error) { setSaving(false); toast.error((invRes.error as any).message ?? "Failed"); return; }
 
-    const { error: liErr } = await supabase.from("invoice_items").insert(
+    const liRes = await omInsertMany("invoice_items",
       computed.lines.map((l) => ({
-        invoice_id: inv.id,
+        invoice_id: invoiceId,
         item_id: l.item_id,
         item_name: l.item_name,
         hsn_code: l.hsn_code,
@@ -401,10 +414,10 @@ export default function InvoiceEditor({ type }: Props) {
 
     // Loyalty: record earned + redeemed for sale
     if (type === "sale" && partyId && loyaltyCfg?.enabled && (earnedPoints > 0 || redeemPoints > 0)) {
-      await supabase.from("loyalty_transactions").insert({
+      await omInsert("loyalty_transactions", {
         business_id: current.id,
         party_id: partyId,
-        invoice_id: inv.id,
+        invoice_id: invoiceId,
         points_earned: earnedPoints,
         points_redeemed: Number(redeemPoints) || 0,
         redeem_value: redeemValue,
@@ -413,8 +426,8 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     setSaving(false);
-    if (liErr) { toast.error(liErr.message); return; }
-    toast.success(`${meta.label} saved`);
+    if (liRes.error) { toast.error((liRes.error as any).message ?? "Failed"); return; }
+    toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
     navigate(`/${type}s`);
   };
 

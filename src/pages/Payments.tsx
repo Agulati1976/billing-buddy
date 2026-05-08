@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,7 @@ export default function Payments() {
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
     if (!partyId) { toast.error("Select a party"); return; }
     setSaving(true);
-    const { error } = await supabase.from("payments").insert({
+    const res = await omInsert("payments", {
       business_id: current.id,
       direction, method: method as any, amount: amt,
       payment_date: date, party_id: partyId,
@@ -106,8 +107,8 @@ export default function Payments() {
       created_by: user.id,
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Payment recorded");
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
     setOpen(false);
     setAmount(""); setReference(""); setNotes(""); setInvoiceId(""); setPartyId("");
     load();

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -31,13 +32,13 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
     const q = Number(qty);
     if (!q || q <= 0) { toast.error("Enter a valid quantity"); return; }
     setSaving(true);
-    const { error } = await supabase.from("stock_movements").insert({
+    const res = await omInsert("stock_movements", {
       business_id: current.id, item_id: item.id, type, quantity: q,
       notes: notes.trim() || null, created_by: user.id,
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Stock adjusted");
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Stock adjusted");
     setQty(""); setNotes(""); setType("adjustment_in");
     onSaved();
     onOpenChange(false);

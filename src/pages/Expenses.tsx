@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -66,13 +67,13 @@ export default function Expenses() {
     const amt = Number(amount);
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
     setSaving(true);
-    const { error } = await supabase.from("expenses").insert({
+    const res = await omInsert("expenses", {
       business_id: current.id, category, amount: amt, expense_date: date,
       method: method as any, description: description.trim() || null, created_by: user.id,
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Expense recorded");
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Expense recorded");
     setOpen(false); setAmount(""); setDescription("");
     load();
   };
