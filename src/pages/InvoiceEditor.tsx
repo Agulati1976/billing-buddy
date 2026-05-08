@@ -468,6 +468,8 @@ export default function InvoiceEditor({ type }: Props) {
       } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
+    const label = type === "sales" ? "Invoice" : type === "purchase" ? "Purchase" : type === "sales_return" ? "SalesReturn" : "PurchaseReturn";
+    doc.save(`${label}-${safeNum || "Document"}.pdf`);
   };
 
   const downloadThermal = () => {
