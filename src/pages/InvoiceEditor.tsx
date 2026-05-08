@@ -468,7 +468,7 @@ export default function InvoiceEditor({ type }: Props) {
       } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
-    const label = type === "sales" ? "Invoice" : type === "purchase" ? "Purchase" : type === "sales_return" ? "SalesReturn" : "PurchaseReturn";
+    const label = type === "sale" ? "Invoice" : type === "purchase" ? "Purchase" : type === "sale_return" ? "SalesReturn" : type === "purchase_return" ? "PurchaseReturn" : type === "quotation" ? "Quotation" : type === "credit_note" ? "CreditNote" : "DebitNote";
     doc.save(`${label}-${safeNum || "Document"}.pdf`);
   };
 
