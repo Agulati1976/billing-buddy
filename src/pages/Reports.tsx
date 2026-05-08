@@ -190,22 +190,22 @@ export default function Reports() {
 
   /* ------------------------- ui helpers ------------------------- */
   const Stat = ({ label, value, tone = "primary" }: { label: string; value: string; tone?: string }) => (
-    <Card className="p-4">
-      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
-      <div className={`text-2xl font-semibold tabular-nums mt-1 ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>
+    <Card className="p-3 md:p-4">
+      <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
+      <div className={`text-lg md:text-2xl font-semibold tabular-nums mt-1 break-all ${tone === "danger" ? "text-danger" : tone === "success" ? "text-success" : ""}`}>
         {value}
       </div>
     </Card>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4 md:space-y-6 pb-24 md:pb-0">
+      <div className="flex flex-col md:flex-row md:flex-wrap md:items-start md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-primary" /> Reports & Analytics
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 md:h-6 md:w-6 text-primary" /> Reports
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-muted-foreground">
             {range.label} · {format(range.from, "dd MMM yyyy")} — {format(range.to, "dd MMM yyyy")}
           </p>
         </div>
@@ -213,7 +213,7 @@ export default function Reports() {
         {/* Date filter */}
         <div className="flex flex-wrap items-center gap-2">
           <Select value={preset} onValueChange={(v) => setPreset(v as Preset)}>
-            <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="flex-1 md:w-[180px] min-w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today (Daily)</SelectItem>
               <SelectItem value="yesterday">Yesterday</SelectItem>
