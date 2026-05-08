@@ -200,8 +200,23 @@ export default function InvoiceEditor({ type }: Props) {
 
   const handleScanned = async (code: string) => {
     const trimmed = code.trim();
+    const targetIdx = rowScanIdx;
+    setRowScanIdx(null);
+    const assign = (it: Item) => {
+      if (targetIdx !== null) {
+        const isPurchase = type === "purchase" || type === "purchase_return";
+        updateLine(targetIdx, {
+          item_id: it.id, item_name: it.name, hsn_code: it.hsn_code, unit: it.unit,
+          price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
+          tax_rate: Number(it.tax_rate), batch_id: null,
+        });
+        toast.success(`Set: ${it.name}`);
+      } else {
+        addItemToLines(it);
+      }
+    };
     const it = items.find((x) => (x.barcode ?? "").trim() === trimmed);
-    if (it) { addItemToLines(it); return; }
+    if (it) { assign(it); return; }
     if (!current || !user) { toast.error(`No item with barcode ${code}`); return; }
     const hit = await lookupBarcode(trimmed);
     if (!hit) {
@@ -220,7 +235,7 @@ export default function InvoiceEditor({ type }: Props) {
         is_batch_tracked: !!created.is_batch_tracked,
       };
       setItems((prev) => [newItem, ...prev]);
-      addItemToLines(newItem);
+      assign(newItem);
       toast.success(`Added ${newItem.name} (from catalog)`);
     } catch (e: any) {
       toast.error(e.message || "Could not auto-create item from catalog");
