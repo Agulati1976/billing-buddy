@@ -99,9 +99,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         mrp: String(item.mrp ?? 0),
       });
       setCatalogId(item.catalog_id ?? null);
+      setImageUrl(item.image_url ?? null);
     } else {
       setForm({ ...emptyForm, barcode: presetBarcode ?? "" });
       setCatalogId(null);
+      setImageUrl(null);
       if (presetBarcode) {
         // trigger lookup immediately
         void runLookup(presetBarcode);
