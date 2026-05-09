@@ -9,6 +9,8 @@ import {
   BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown,
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
+import { usePermissions } from "@/hooks/usePermissions";
+import { ROUTE_TO_MODULE } from "@/lib/modules";
 
 type NavItem = { to: string; label: string; icon: any; end?: boolean; soon?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
@@ -66,13 +68,26 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { canUsePos } = usePosAccess();
+  const { canSeeModule, isStaff } = usePermissions();
 
-  const visibleGroups = canUsePos
+  const baseGroups = canUsePos
     ? [
         { label: "Quick Actions", items: [{ to: "/pos", label: "Point of Sale", icon: ShoppingCart }] },
         ...groups,
       ]
     : groups;
+
+  const visibleGroups = isStaff
+    ? baseGroups
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((it) => {
+            const mod = ROUTE_TO_MODULE[it.to];
+            return mod ? canSeeModule(mod) : true;
+          }),
+        }))
+        .filter((g) => g.items.length > 0)
+    : baseGroups;
 
   return (
     <Sidebar collapsible="icon" className="border-r">

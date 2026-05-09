@@ -1022,6 +1022,33 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_module_access: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          modules: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          modules?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          modules?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       stock_movements: {
         Row: {
           business_id: string
