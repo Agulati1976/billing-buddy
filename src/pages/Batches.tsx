@@ -200,12 +200,18 @@ export default function Batches() {
           <div className="space-y-4">
             <div>
               <Label>Item *</Label>
-              <Select value={itemId} onValueChange={setItemId} disabled={!!editing}>
-                <SelectTrigger><SelectValue placeholder="Pick batch-tracked item" /></SelectTrigger>
-                <SelectContent>
-                  {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={itemId} onValueChange={setItemId} disabled={!!editing}>
+                  <SelectTrigger><SelectValue placeholder="Pick batch-tracked item" /></SelectTrigger>
+                  <SelectContent>
+                    {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" onClick={() => setScannerOpen(true)} disabled={!!editing} title="Scan item barcode">
+                  <ScanLine className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Tip: scan the item's barcode to pick it instantly.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Batch No. *</Label><Input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} /></div>
