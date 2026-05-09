@@ -51,6 +51,7 @@ export const ROUTE_TO_MODULE: Record<string, ModuleKey> = {
   "/categories": "categories",
   "/warehouses": "warehouses",
   "/batches": "batches",
+  "/accounts": "accounts",
   "/payments": "payments",
   "/expenses": "expenses",
   "/loyalty": "loyalty",
