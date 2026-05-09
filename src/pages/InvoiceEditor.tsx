@@ -182,6 +182,31 @@ export default function InvoiceEditor({ type }: Props) {
     });
   }, [id, isNew, current?.id]);
 
+  // Prefill from a source invoice (e.g. creating a sale return from an existing sale)
+  useEffect(() => {
+    if (!isNew || !fromInvoiceId || !current) return;
+    Promise.all([
+      supabase.from("invoices").select("*").eq("id", fromInvoiceId).single(),
+      supabase.from("invoice_items").select("*").eq("invoice_id", fromInvoiceId),
+    ]).then(([inv, ln]) => {
+      if (inv.error || !inv.data) return;
+      const i = inv.data as any;
+      setPartyId(i.party_id ?? "");
+      setNotes(`Return against ${i.invoice_number}`);
+      setIsGst(i.is_gst !== false);
+      const ls = (ln.data as any[]) ?? [];
+      if (ls.length) {
+        setLines(ls.map((l) => ({
+          item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+          quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
+          discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
+          tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
+        })));
+      }
+      toast.info(`Prefilled from ${i.invoice_number} — adjust quantities to return`);
+    });
+  }, [fromInvoiceId, isNew, current?.id]);
+
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInterState = useMemo(() => {
     if (!party?.state_code || !current?.state_code) return false;
