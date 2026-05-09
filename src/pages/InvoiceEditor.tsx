@@ -611,42 +611,42 @@ export default function InvoiceEditor({ type }: Props) {
             <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{readOnly ? "View mode" : "Fill the details below"}</p>
           </div>
         </div>
-        <div className="flex gap-1.5 sm:gap-2">
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap">
           {!readOnly && type === "sale_return" && isNew && (
             <Button variant="outline" size="sm" onClick={() => setSourceOpen(true)} className="gap-1.5 px-2 sm:px-3">
-              <Undo2 className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">{sourceLoaded ? `From ${sourceLoaded.number}` : "Pick sale to return"}</span>
+              <Undo2 className="h-4 w-4 text-primary" /> <span>{sourceLoaded ? `From ${sourceLoaded.number}` : "Pick sale"}</span>
             </Button>
           )}
           {!readOnly && (type === "purchase" || type === "purchase_return") && (
             <Button variant="outline" size="sm" onClick={() => setBillScanOpen(true)} className="gap-1.5 px-2 sm:px-3">
-              <Sparkles className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">Scan Bill</span>
+              <Sparkles className="h-4 w-4 text-primary" /> <span>Scan Bill</span>
             </Button>
           )}
           {!readOnly && (
             <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="gap-1.5 px-2 sm:px-3">
-              <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline">Scan</span>
+              <ScanLine className="h-4 w-4" /> <span>Scan</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={downloadPdf} className="gap-1.5 px-2 sm:px-3">
-            <Download className="h-4 w-4" /> <span className="hidden sm:inline">A4 PDF</span>
+          <Button variant="outline" size="sm" onClick={downloadPdf} className="gap-1.5 px-2 sm:px-3" title="Download A4 PDF">
+            <Download className="h-4 w-4" /> <span>A4 PDF</span>
           </Button>
           {(type === "sale" || type === "sale_return") && (
-            <Button variant="outline" size="sm" onClick={downloadThermal} className="gap-1.5 px-2 sm:px-3">
-              <Download className="h-4 w-4" /> <span className="hidden sm:inline">POS PDF</span>
+            <Button variant="outline" size="sm" onClick={downloadThermal} className="gap-1.5 px-2 sm:px-3" title="Download POS Receipt PDF">
+              <Download className="h-4 w-4" /> <span>POS PDF</span>
             </Button>
           )}
           {readOnly && type === "sale" && (
-            <Button variant="outline" size="sm" onClick={() => navigate(`/sale_returns/new?from=${id}`)} className="gap-1.5 px-2 sm:px-3">
-              <Undo2 className="h-4 w-4" /> <span className="hidden sm:inline">Create Return</span>
+            <Button variant="outline" size="sm" onClick={() => navigate(`/sale_returns/new?from=${id}`)} className="gap-1.5 px-2 sm:px-3" title="Create Return">
+              <Undo2 className="h-4 w-4" /> <span>Return</span>
             </Button>
           )}
           {readOnly && (
-            <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 px-2 sm:px-3">
-              <Printer className="h-4 w-4" /> <span className="hidden sm:inline">Print</span>
+            <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 px-2 sm:px-3" title="Print">
+              <Printer className="h-4 w-4" /> <span>Print</span>
             </Button>
           )}
           {!readOnly && (
-            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 hidden sm:inline-flex">
+            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
               <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
             </Button>
           )}
