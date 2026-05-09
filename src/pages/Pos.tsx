@@ -64,6 +64,7 @@ export default function Pos() {
   const [returnsOpen, setReturnsOpen] = useState(false);
   const [returnsItems, setReturnsItems] = useState<any[]>([]);
   const [returnsSearch, setReturnsSearch] = useState("");
+  const [upiSettings, setUpiSettings] = useState<{ upi_id?: string | null; upi_payee_name?: string | null; show_upi_qr?: boolean | null } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const voice = useVoiceInput({ onResult: (text) => setSearch(text) });
 
@@ -73,9 +74,11 @@ export default function Pos() {
     Promise.all([
       supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
-    ]).then(([it, p]) => {
+      supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
+    ]).then(([it, p, s]) => {
       setItems((it.data as any) ?? []);
       setParties((p.data as any) ?? []);
+      setUpiSettings((s.data as any) ?? null);
     });
   }, [current?.id]);
 
@@ -249,7 +252,7 @@ export default function Pos() {
       toast.success(queuedAny || liRes.queued ? `Sale ${number} saved offline — will sync` : `Sale ${number} completed`);
 
       // Print thermal
-      const receipt = generateThermalReceipt(
+      const receipt = await generateThermalReceipt(
         { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
         {
           invoice_number: number, invoice_date: new Date().toLocaleString(),
@@ -263,7 +266,8 @@ export default function Pos() {
           tax_amount: totals.tax_amount, round_off: totals.round_off,
           total_amount: totals.total_amount, paid_amount: recordedPaid,
           balance_amount: balance, payment_method: splits.map((s) => s.method).join("+"),
-        }
+        },
+        upiSettings ?? undefined,
       );
       receipt.autoPrint();
       window.open(receipt.output("bloburl"), "_blank");
@@ -313,10 +317,10 @@ export default function Pos() {
     pdf.save(`POS-${Date.now()}.pdf`);
   };
 
-  const downloadThermal = () => {
+  const downloadThermal = async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
     if (!current) return;
-    const receipt = generateThermalReceipt(
+    const receipt = await generateThermalReceipt(
       { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
       {
         invoice_number: "DRAFT",
@@ -337,6 +341,7 @@ export default function Pos() {
         balance_amount: 0,
         payment_method: null,
       },
+      upiSettings ?? undefined,
     );
     receipt.save(`POS-Receipt-${Date.now()}.pdf`);
   };

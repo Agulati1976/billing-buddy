@@ -369,40 +369,7 @@ export async function generateInvoicePdf(
     by += 4 + tLines.length * 4 + 4;
   }
 
-  // UPI QR (sale invoices only, when configured)
-  const showQr = (design?.show_upi_qr ?? true) && !!design?.upi_id && invoice.type === "sale" && invoice.total_amount > 0;
   const pageH = doc.internal.pageSize.getHeight();
-  if (showQr) {
-    try {
-      const upiUri = buildUpiUri({
-        pa: design!.upi_id!,
-        pn: design!.upi_payee_name || business.name,
-        am: invoice.balance_amount && invoice.balance_amount > 0 ? invoice.balance_amount : invoice.total_amount,
-        tn: `Inv ${invoice.invoice_number}`,
-        tr: invoice.invoice_number,
-      });
-      const dataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 256, errorCorrectionLevel: "M" });
-      const qrSize = 30;
-      const qrY = Math.min(by + 4, pageH - qrSize - 22);
-      doc.addImage(dataUrl, "PNG", MARGIN, qrY, qrSize, qrSize);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(30);
-      doc.text("Pay via UPI", MARGIN + qrSize + 3, qrY + 5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(80);
-      doc.text(`UPI ID: ${design!.upi_id}`, MARGIN + qrSize + 3, qrY + 10);
-      doc.text(`Amount: ${formatINR(invoice.balance_amount && invoice.balance_amount > 0 ? invoice.balance_amount : invoice.total_amount)}`,
-        MARGIN + qrSize + 3, qrY + 15);
-      doc.setFontSize(7);
-      doc.setTextColor(120);
-      doc.text("Scan with any UPI app (GPay, PhonePe, Paytm, BHIM)", MARGIN + qrSize + 3, qrY + 20, { maxWidth: 90 });
-      by = qrY + qrSize + 4;
-    } catch (e) {
-      // ignore QR failure — invoice still renders
-    }
-  }
 
   let sigY = by + 14;
   if (showSig) {

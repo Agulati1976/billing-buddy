@@ -472,11 +472,13 @@ export default function InvoiceEditor({ type }: Props) {
     doc.save(`${label}-${safeNum || "Document"}.pdf`);
   };
 
-  const downloadThermal = () => {
+  const downloadThermal = async () => {
     if (!current) return;
     const validLines = totals.lines.filter((l) => l.item_name.trim());
     if (validLines.length === 0) { toast.error("No items to export"); return; }
-    const receipt = generateThermalReceipt(
+    const { data: design } = await supabase
+      .from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle();
+    const receipt = await generateThermalReceipt(
       { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
       {
         invoice_number: number,
@@ -497,6 +499,7 @@ export default function InvoiceEditor({ type }: Props) {
         balance_amount: 0,
         payment_method: null,
       },
+      design ? { upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name, show_upi_qr: (design as any).show_upi_qr } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
     receipt.save(`POS-${safeNum || "Receipt"}.pdf`);
