@@ -4,7 +4,7 @@ export type ModuleKey =
   | "sales" | "sale_returns" | "quotations" | "purchases"
   | "customers" | "suppliers"
   | "items" | "stock" | "categories" | "warehouses" | "batches"
-  | "payments" | "expenses" | "loyalty"
+  | "accounts" | "payments" | "expenses" | "loyalty"
   | "reports" | "ai_insights";
 
 export interface ModuleDef { key: ModuleKey; label: string; group: string; }
@@ -23,6 +23,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: "categories",   label: "Categories",       group: "Inventory" },
   { key: "warehouses",   label: "Warehouses",       group: "Inventory" },
   { key: "batches",      label: "Batches & Expiry", group: "Inventory" },
+  { key: "accounts",     label: "Accounts",         group: "Money" },
   { key: "payments",     label: "Payments",         group: "Money" },
   { key: "expenses",     label: "Expenses",         group: "Money" },
   { key: "loyalty",      label: "Loyalty Rewards",  group: "Money" },
@@ -50,6 +51,7 @@ export const ROUTE_TO_MODULE: Record<string, ModuleKey> = {
   "/categories": "categories",
   "/warehouses": "warehouses",
   "/batches": "batches",
+  "/accounts": "accounts",
   "/payments": "payments",
   "/expenses": "expenses",
   "/loyalty": "loyalty",
