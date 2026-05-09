@@ -265,6 +265,52 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
           </div>
 
           <div className="col-span-2">
+            <Label>Item image</Label>
+            <div className="mt-1 flex items-center gap-3">
+              <div className="relative h-20 w-20 rounded-lg border bg-muted/30 overflow-hidden flex items-center justify-center">
+                {imageUrl ? (
+                  <>
+                    <img src={imageUrl} alt="Item" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl(null)}
+                      className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-background/90 border flex items-center justify-center"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </>
+                ) : (
+                  <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void onPickImage(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</> : (imageUrl ? "Change image" : "Upload image")}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP, up to 5 MB.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="col-span-2">
             <Label>Barcode</Label>
             <div className="flex gap-2">
               <Input
