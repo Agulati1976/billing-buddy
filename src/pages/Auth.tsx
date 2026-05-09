@@ -73,7 +73,7 @@ export default function Auth() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Hero */}
       <div
-        className="relative pt-[max(env(safe-area-inset-top),2rem)] pb-12 px-6 text-primary-foreground overflow-hidden"
+        className="relative pt-[max(env(safe-area-inset-top),2.5rem)] pb-20 px-6 text-primary-foreground overflow-hidden"
         style={{
           background:
             "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 60%, hsl(var(--primary) / 0.7) 100%)",
@@ -91,8 +91,8 @@ export default function Auth() {
       </div>
 
       {/* Card */}
-      <div className="flex-1 -mt-6 px-4 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
-        <div className="mx-auto w-full max-w-md bg-card rounded-2xl shadow-xl border p-5 sm:p-6">
+      <div className="flex-1 -mt-12 px-4 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+        <div className="mx-auto w-full max-w-md bg-card rounded-2xl shadow-xl border p-6 sm:p-7">
           <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "signup")}>
             <TabsList className="grid grid-cols-2 w-full mb-5 h-11 rounded-xl">
               <TabsTrigger value="login" className="rounded-lg">Login</TabsTrigger>
