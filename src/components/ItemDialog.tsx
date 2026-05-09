@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ScanLine, Sparkles } from "lucide-react";
+import { ScanLine, Sparkles, ImagePlus, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert, omUpdate } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
