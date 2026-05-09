@@ -219,9 +219,23 @@ export default function InvoiceEditor({ type }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromInvoiceId, isNew, current?.id]);
 
-  // Load sale list for the picker (sale_return + new only)
+  // Load sale list for the picker (sale_return + new only) and auto-open if no source given
   useEffect(() => {
     if (!isNew || type !== "sale_return" || !current) return;
+    supabase.from("invoices")
+      .select("id, invoice_number, invoice_date, total_amount, parties(name)")
+      .eq("business_id", current.id).eq("type", "sale")
+      .order("invoice_date", { ascending: false }).limit(200)
+      .then(({ data }) => {
+        const list = ((data as any[]) ?? []).map((r) => ({
+          id: r.id, invoice_number: r.invoice_number, invoice_date: r.invoice_date,
+          total_amount: Number(r.total_amount), party: r.parties?.name ?? null,
+        }));
+        setSourceList(list);
+        if (!fromInvoiceId && list.length > 0 && !sourceLoaded) setSourceOpen(true);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, isNew, type]);
     supabase.from("invoices")
       .select("id, invoice_number, invoice_date, total_amount, parties(name)")
       .eq("business_id", current.id).eq("type", "sale")
