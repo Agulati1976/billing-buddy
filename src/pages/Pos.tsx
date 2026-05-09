@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScanLine, Plus, Minus, Trash2, Pause, Play, Printer, Download, ShoppingCart, X, UserPlus, KeyboardIcon, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { computeInvoice, nextInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
+import { computeInvoice, nextInvoiceNumber, shopInvoiceBase, pickShopInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
@@ -187,10 +187,21 @@ export default function Pos() {
       // Suggest invoice number (cached GET works offline; suffix when offline to avoid clashes)
       let number: string;
       try {
-        const { data: last } = await supabase.from("invoices")
-          .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
-          .order("created_at", { ascending: false }).limit(1);
-        number = nextInvoiceNumber("INV", last?.[0]?.invoice_number ?? null);
+        const pin = (current as any).pincode as string | null;
+        const rank = (current as any).pincode_rank as number | null;
+        if (pin && rank) {
+          const todayISO = new Date().toISOString().slice(0, 10);
+          const base = shopInvoiceBase(pin, rank, todayISO);
+          const { data } = await supabase.from("invoices")
+            .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
+            .like("invoice_number", `${base}%`);
+          number = pickShopInvoiceNumber(base, (data ?? []).map((r: any) => r.invoice_number));
+        } else {
+          const { data: last } = await supabase.from("invoices")
+            .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
+            .order("created_at", { ascending: false }).limit(1);
+          number = nextInvoiceNumber("INV", last?.[0]?.invoice_number ?? null);
+        }
       } catch {
         number = `INV-${Date.now()}`;
       }

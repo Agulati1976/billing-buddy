@@ -165,6 +165,8 @@ export type Database = {
           name: string
           owner_id: string
           phone: string | null
+          pincode: string | null
+          pincode_rank: number | null
           state: string | null
           state_code: string | null
           updated_at: string
@@ -179,6 +181,8 @@ export type Database = {
           name: string
           owner_id: string
           phone?: string | null
+          pincode?: string | null
+          pincode_rank?: number | null
           state?: string | null
           state_code?: string | null
           updated_at?: string
@@ -193,6 +197,8 @@ export type Database = {
           name?: string
           owner_id?: string
           phone?: string | null
+          pincode?: string | null
+          pincode_rank?: number | null
           state?: string | null
           state_code?: string | null
           updated_at?: string

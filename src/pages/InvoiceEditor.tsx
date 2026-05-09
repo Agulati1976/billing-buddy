@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
   computeInvoice, INVOICE_TYPE_META, nextInvoiceNumber,
+  shopInvoiceBase, pickShopInvoiceNumber,
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -120,6 +121,22 @@ export default function InvoiceEditor({ type }: Props) {
   // Suggest invoice number for new
   useEffect(() => {
     if (!current || !isNew) return;
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const pin = (current as any).pincode as string | null;
+    const rank = (current as any).pincode_rank as number | null;
+    if (pin && rank) {
+      const base = shopInvoiceBase(pin, rank, todayISO);
+      supabase.from("invoices")
+        .select("invoice_number")
+        .eq("business_id", current.id)
+        .eq("type", type)
+        .like("invoice_number", `${base}%`)
+        .then(({ data }) => {
+          const existing = (data ?? []).map((r: any) => r.invoice_number as string);
+          setNumber(pickShopInvoiceNumber(base, existing));
+        });
+      return;
+    }
     supabase
       .from("invoices")
       .select("invoice_number")
