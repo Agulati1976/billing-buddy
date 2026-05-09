@@ -123,6 +123,13 @@ export default function Items() {
             const low = i.type === "product" && i.current_stock <= i.low_stock_alert && i.low_stock_alert > 0;
             return (
               <div key={i.id} className="mobile-card flex items-center gap-3">
+                <div className="h-12 w-12 rounded-md border bg-muted/30 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                  {i.image_url ? (
+                    <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground uppercase">{i.name.slice(0, 2)}</span>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm truncate">{i.name}</div>
                   <div className="text-[11px] text-muted-foreground capitalize">
