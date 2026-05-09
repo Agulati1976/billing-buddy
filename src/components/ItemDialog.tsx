@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ScanLine, Sparkles } from "lucide-react";
+import { ScanLine, Sparkles, ImagePlus, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert, omUpdate } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -71,6 +71,9 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [catalogId, setCatalogId] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lookupTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -96,9 +99,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         mrp: String(item.mrp ?? 0),
       });
       setCatalogId(item.catalog_id ?? null);
+      setImageUrl(item.image_url ?? null);
     } else {
       setForm({ ...emptyForm, barcode: presetBarcode ?? "" });
       setCatalogId(null);
+      setImageUrl(null);
       if (presetBarcode) {
         // trigger lookup immediately
         void runLookup(presetBarcode);
@@ -130,6 +135,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         description: f.description || (hit.description ?? ""),
       }));
       setCatalogId(hit.id);
+      if (hit.image_url) setImageUrl((cur) => cur || hit.image_url!);
     } else {
       setCatalogHit(null);
     }
@@ -145,6 +151,22 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
   const onScanned = (code: string) => {
     setForm((f) => ({ ...f, barcode: code }));
     void runLookup(code);
+  };
+
+  const onPickImage = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB"); return; }
+    setUploadingImage(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("item-images").upload(path, file, {
+      cacheControl: "3600", upsert: false, contentType: file.type,
+    });
+    if (error) { setUploadingImage(false); toast.error(error.message); return; }
+    const { data } = supabase.storage.from("item-images").getPublicUrl(path);
+    setImageUrl(data.publicUrl);
+    setUploadingImage(false);
   };
 
   const submit = async () => {
@@ -194,6 +216,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       color: form.color.trim() || null,
       mrp: Number(form.mrp) || null,
       catalog_id: resolvedCatalogId,
+      image_url: imageUrl,
       created_by: user.id,
     };
     // When editing a product (not batch-tracked), record an adjustment so trigger updates current_stock
@@ -239,6 +262,52 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                 <SelectItem value="service">Service (no stock)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="col-span-2">
+            <Label>Item image</Label>
+            <div className="mt-1 flex items-center gap-3">
+              <div className="relative h-20 w-20 rounded-lg border bg-muted/30 overflow-hidden flex items-center justify-center">
+                {imageUrl ? (
+                  <>
+                    <img src={imageUrl} alt="Item" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl(null)}
+                      className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-background/90 border flex items-center justify-center"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </>
+                ) : (
+                  <ImagePlus className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void onPickImage(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading…</> : (imageUrl ? "Change image" : "Upload image")}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP, up to 5 MB.</p>
+              </div>
+            </div>
           </div>
 
           <div className="col-span-2">
