@@ -12,7 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { PartyDialog } from "@/components/PartyDialog";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
@@ -27,7 +29,7 @@ import { PurchaseInvoiceScanner, type ExtractedInvoice } from "@/components/Purc
 import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
-interface Party { id: string; name: string; state_code: string | null; gstin: string | null; }
+interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; }
 interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; }
 interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
 
@@ -59,6 +61,36 @@ export default function InvoiceEditor({ type }: Props) {
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
 
+  // Party quick add / full add
+  const [partyDialogOpen, setPartyDialogOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickName, setQuickName] = useState("");
+  const [quickPhone, setQuickPhone] = useState("");
+  const partyKind: "customer" | "supplier" = (type === "purchase" || type === "purchase_return") ? "supplier" : "customer";
+
+  const reloadParties = async () => {
+    if (!current) return;
+    const { data } = await supabase.from("parties")
+      .select("id, name, state_code, gstin, phone")
+      .eq("business_id", current.id).eq("type", partyKind).order("name");
+    setParties((data as any) ?? []);
+    return data as any[] | null;
+  };
+
+  const quickAddParty = async () => {
+    if (!current) return;
+    if (!quickName.trim()) { toast.error("Name required"); return; }
+    const res = await omInsert("parties", {
+      business_id: current.id, name: quickName.trim(),
+      phone: quickPhone.trim() || null, type: partyKind,
+    });
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    setParties((p) => [...p, res.data as any]);
+    setPartyId((res.data as any).id);
+    setQuickName(""); setQuickPhone(""); setQuickOpen(false);
+    toast.success(res.queued ? "Added (offline)" : `${partyKind === "customer" ? "Customer" : "Supplier"} added`);
+  };
+
   // Loyalty
   const [loyaltyCfg, setLoyaltyCfg] = useState<{ enabled: boolean; amount_per_point: number; point_value: number; min_redeem_points: number } | null>(null);
   const [partyPoints, setPartyPoints] = useState(0);
@@ -73,7 +105,7 @@ export default function InvoiceEditor({ type }: Props) {
     if (!current) return;
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
-      supabase.from("parties").select("id, name, state_code, gstin").eq("business_id", current.id).eq("type", partyType).order("name"),
+      supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name"),
       supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").eq("business_id", current.id).order("name"),
       supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
     ]).then(([p, it, b]) => {
@@ -568,17 +600,35 @@ export default function InvoiceEditor({ type }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label>{type === "purchase" || type === "purchase_return" ? "Supplier" : "Customer"} {type === "quotation" ? "" : "*"}</Label>
-          <Select value={partyId} onValueChange={setPartyId} disabled={readOnly}>
-            <SelectTrigger><SelectValue placeholder="Select party" /></SelectTrigger>
-            <SelectContent>
-              {parties.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name} {p.state_code ? `· ${p.state_code}` : ""} {p.gstin ? `· ${p.gstin}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>{partyKind === "supplier" ? "Supplier" : "Customer"} {type === "quotation" ? "" : "*"}</Label>
+          <div className="flex gap-2">
+            <Select value={partyId} onValueChange={setPartyId} disabled={readOnly}>
+              <SelectTrigger className="flex-1"><SelectValue placeholder={`Select ${partyKind}`} /></SelectTrigger>
+              <SelectContent>
+                {parties.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{p.phone ? ` · ${p.phone}` : ""}{p.state_code ? ` · ${p.state_code}` : ""}{p.gstin ? ` · ${p.gstin}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!readOnly && (
+              <>
+                <Button type="button" variant="outline" size="icon" title={`Quick add ${partyKind}`} onClick={() => setQuickOpen(true)}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="outline" size="icon" title={`New ${partyKind} (full details)`} onClick={() => setPartyDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          {!readOnly && (
+            <p className="text-xs text-muted-foreground">
+              <UserPlus className="inline h-3 w-3 mr-1" /> Quick add (name + phone) ·{" "}
+              <Plus className="inline h-3 w-3 mx-1" /> New {partyKind} with full details
+            </p>
+          )}
           {party && (
             <p className="text-xs text-muted-foreground">
               {isInterState ? (
@@ -839,6 +889,39 @@ export default function InvoiceEditor({ type }: Props) {
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
 
+      <PartyDialog
+        open={partyDialogOpen}
+        onOpenChange={setPartyDialogOpen}
+        type={partyKind}
+        party={null}
+        onSaved={async () => {
+          setPartyDialogOpen(false);
+          const before = parties.map((p) => p.id);
+          const list = await reloadParties();
+          const created = (list ?? []).find((p) => !before.includes(p.id));
+          if (created) setPartyId(created.id);
+        }}
+      />
+
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Quick add {partyKind}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="qn">Name *</Label>
+              <Input id="qn" autoFocus value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="Customer name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="qp">Mobile number</Label>
+              <Input id="qp" value={quickPhone} onChange={(e) => setQuickPhone(e.target.value)} placeholder="Optional" inputMode="tel" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickOpen(false)}>Cancel</Button>
+            <Button onClick={quickAddParty} disabled={!quickName.trim()}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Mobile sticky save bar */}
       {!readOnly && (
         <div
