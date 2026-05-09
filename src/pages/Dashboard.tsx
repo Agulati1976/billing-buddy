@@ -142,6 +142,12 @@ export default function Dashboard() {
         <StatCard label="To Pay" value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
       </div>
 
+      {/* Mobile launcher-style module grid */}
+      <div className="md:hidden">
+        <h2 className="text-sm font-semibold mb-3 text-muted-foreground">Quick Access</h2>
+        <ModuleGrid />
+      </div>
+
       <DashboardChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
