@@ -91,7 +91,7 @@ export default function Auth() {
       </div>
 
       {/* Card */}
-      <div className="flex-1 -mt-12 px-4 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+      <div className="flex-1 -mt-6 px-4 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
         <div className="mx-auto w-full max-w-md bg-card rounded-2xl shadow-xl border p-6 sm:p-7">
           <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "signup")}>
             <TabsList className="grid grid-cols-2 w-full mb-5 h-11 rounded-xl">
