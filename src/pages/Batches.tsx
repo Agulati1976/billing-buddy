@@ -10,12 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Boxes, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Boxes, AlertTriangle, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { format, differenceInDays, parseISO } from "date-fns";
 
-interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; }
+interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; barcode: string | null; }
 interface Batch {
   id: string; item_id: string; batch_number: string;
   mfg_date: string | null; expiry_date: string | null;
