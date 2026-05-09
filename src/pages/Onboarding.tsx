@@ -84,16 +84,25 @@ export default function Onboarding() {
             <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="st">State</Label>
-            <Select value={stateCode} onValueChange={setStateCode}>
-              <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
-              <SelectContent>
-                {INDIAN_STATES.map((s) => (
-                  <SelectItem key={s.code} value={s.code}>{s.code} — {s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="st">State</Label>
+              <Select value={stateCode} onValueChange={setStateCode}>
+                <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                <SelectContent>
+                  {INDIAN_STATES.map((s) => (
+                    <SelectItem key={s.code} value={s.code}>{s.code} — {s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pin">Pincode *</Label>
+              <Input id="pin" inputMode="numeric" maxLength={6} value={pincode}
+                onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="110001" required />
+              <p className="text-xs text-muted-foreground">Used in your invoice numbers (e.g. <span className="font-mono">110001/001/090526</span>).</p>
+            </div>
           </div>
 
           <div className="space-y-2">
