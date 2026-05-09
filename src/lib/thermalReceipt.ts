@@ -165,6 +165,26 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
   doc.line(M, y, W - M, y); y += 4;
   doc.setLineDashPattern([], 0);
 
+  if (qrDataUrl) {
+    const qrSize = 28;
+    const qrX = (W - qrSize) / 2;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("Pay via UPI", W / 2, y, { align: "center" });
+    y += 3;
+    doc.addImage(qrDataUrl, "PNG", qrX, y, qrSize, qrSize);
+    y += qrSize + 2.5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(`UPI: ${upi!.upi_id}`, W / 2, y, { align: "center" });
+    y += 3;
+    doc.text("Scan with any UPI app", W / 2, y, { align: "center" });
+    y += 3.5;
+    doc.setLineDashPattern([0.5, 0.5], 0);
+    doc.line(M, y, W - M, y); y += 4;
+    doc.setLineDashPattern([], 0);
+  }
+
   doc.setFontSize(8);
   doc.text("Thank you! Visit again.", W / 2, y, { align: "center" });
   if (r.footer) {
