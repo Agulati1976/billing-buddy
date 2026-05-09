@@ -13,6 +13,8 @@ export interface Business {
   state_code: string | null;
   logo_url: string | null;
   owner_id: string;
+  pincode: string | null;
+  pincode_rank: number | null;
 }
 
 interface BusinessCtx {
