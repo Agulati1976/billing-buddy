@@ -26,6 +26,7 @@ import { Mic, MicOff } from "lucide-react";
 interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
   tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
+  image_url?: string | null;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
 interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; }
@@ -72,7 +73,7 @@ export default function Pos() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
     ]).then(([it, p, s]) => {
@@ -287,7 +288,7 @@ export default function Pos() {
       setCart([]); setPartyId(""); setExtraDiscount("0");
       setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
       // Refresh items stock
-      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock").eq("business_id", current.id).order("name");
+      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url").eq("business_id", current.id).order("name");
       setItems((it as any) ?? []);
     } catch (e: any) {
       toast.error(e.message || "Failed to save sale");
@@ -555,8 +556,15 @@ export default function Pos() {
               <button
                 key={it.id}
                 onClick={() => addToCart(it)}
-                className="text-left p-3 border rounded-md hover:border-primary hover:bg-accent transition"
+                className="text-left p-2 border rounded-md hover:border-primary hover:bg-accent transition flex flex-col"
               >
+                <div className="aspect-square w-full rounded bg-muted/40 overflow-hidden mb-2 flex items-center justify-center">
+                  {it.image_url ? (
+                    <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground uppercase">{it.name.slice(0, 2)}</span>
+                  )}
+                </div>
                 <div className="text-sm font-medium line-clamp-2">{it.name}</div>
                 <div className="text-xs text-muted-foreground mt-1">Stock: {it.current_stock} {it.unit}</div>
                 <div className="text-sm font-semibold mt-1">Rs.{Number(it.sale_price).toFixed(2)}</div>
