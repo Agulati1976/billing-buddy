@@ -64,6 +64,7 @@ export default function Pos() {
   const [returnsOpen, setReturnsOpen] = useState(false);
   const [returnsItems, setReturnsItems] = useState<any[]>([]);
   const [returnsSearch, setReturnsSearch] = useState("");
+  const [upiSettings, setUpiSettings] = useState<{ upi_id?: string | null; upi_payee_name?: string | null; show_upi_qr?: boolean | null } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const voice = useVoiceInput({ onResult: (text) => setSearch(text) });
 
