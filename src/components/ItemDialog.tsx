@@ -172,7 +172,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       if (created) resolvedCatalogId = created.id;
     }
 
-    const payload = {
+    const newOpening = form.type === "product" ? (Number(form.opening_stock) || 0) : 0;
+    const payload: any = {
       business_id: current.id,
       name: form.name.trim(),
       type: form.type,
@@ -183,7 +184,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       sale_price: Number(form.sale_price) || 0,
       purchase_price: Number(form.purchase_price) || 0,
       tax_rate: Number(form.tax_rate) || 0,
-      opening_stock: form.type === "product" ? (Number(form.opening_stock) || 0) : 0,
+      opening_stock: newOpening,
       low_stock_alert: form.type === "product" ? (Number(form.low_stock_alert) || 0) : 0,
       description: form.description.trim() || null,
       category_id: form.category_id || null,
@@ -195,6 +196,13 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       catalog_id: resolvedCatalogId,
       created_by: user.id,
     };
+    // When editing a product (not batch-tracked), apply the opening-stock delta to current_stock
+    if (item && form.type === "product" && !form.is_batch_tracked) {
+      const delta = newOpening - (Number(item.opening_stock) || 0);
+      if (delta !== 0) {
+        payload.current_stock = (Number(item.current_stock) || 0) + delta;
+      }
+    }
     const res = item
       ? await omUpdate("items", { column: "id", value: item.id }, payload)
       : await omInsert("items", payload);
@@ -312,11 +320,13 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
             <>
               <div>
                 <Label>Opening Stock</Label>
-                <Input type="number" step="0.01" disabled={!!item || form.is_batch_tracked} value={form.opening_stock}
+                <Input type="number" step="0.01" disabled={form.is_batch_tracked} value={form.opening_stock}
                   onChange={(e) => setForm({ ...form, opening_stock: e.target.value })} />
-                {form.is_batch_tracked && (
+                {form.is_batch_tracked ? (
                   <p className="text-xs text-muted-foreground mt-1">Stock comes from batches.</p>
-                )}
+                ) : item ? (
+                  <p className="text-xs text-muted-foreground mt-1">Editing this adjusts current stock by the difference.</p>
+                ) : null}
               </div>
               <div>
                 <Label>Low Stock Alert</Label>
