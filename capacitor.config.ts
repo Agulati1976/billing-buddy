@@ -11,6 +11,23 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: true,
   },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 1500,
+      launchAutoHide: false, // we hide manually after app mounts
+      backgroundColor: '#1d4fb8',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: true,
+      spinnerColor: '#ffffff',
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
+    StatusBar: {
+      backgroundColor: '#1d4fb8',
+      style: 'LIGHT',
+    },
+  },
 };
 
 export default config;
