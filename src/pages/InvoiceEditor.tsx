@@ -606,6 +606,11 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-1.5 sm:gap-2">
+          {!readOnly && type === "sale_return" && isNew && (
+            <Button variant="outline" size="sm" onClick={() => setSourceOpen(true)} className="gap-1.5 px-2 sm:px-3">
+              <Undo2 className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">{sourceLoaded ? `From ${sourceLoaded.number}` : "Pick sale to return"}</span>
+            </Button>
+          )}
           {!readOnly && (type === "purchase" || type === "purchase_return") && (
             <Button variant="outline" size="sm" onClick={() => setBillScanOpen(true)} className="gap-1.5 px-2 sm:px-3">
               <Sparkles className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">Scan Bill</span>
