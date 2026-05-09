@@ -600,17 +600,35 @@ export default function InvoiceEditor({ type }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label>{type === "purchase" || type === "purchase_return" ? "Supplier" : "Customer"} {type === "quotation" ? "" : "*"}</Label>
-          <Select value={partyId} onValueChange={setPartyId} disabled={readOnly}>
-            <SelectTrigger><SelectValue placeholder="Select party" /></SelectTrigger>
-            <SelectContent>
-              {parties.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name} {p.state_code ? `· ${p.state_code}` : ""} {p.gstin ? `· ${p.gstin}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>{partyKind === "supplier" ? "Supplier" : "Customer"} {type === "quotation" ? "" : "*"}</Label>
+          <div className="flex gap-2">
+            <Select value={partyId} onValueChange={setPartyId} disabled={readOnly}>
+              <SelectTrigger className="flex-1"><SelectValue placeholder={`Select ${partyKind}`} /></SelectTrigger>
+              <SelectContent>
+                {parties.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}{p.phone ? ` · ${p.phone}` : ""}{p.state_code ? ` · ${p.state_code}` : ""}{p.gstin ? ` · ${p.gstin}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!readOnly && (
+              <>
+                <Button type="button" variant="outline" size="icon" title={`Quick add ${partyKind}`} onClick={() => setQuickOpen(true)}>
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="outline" size="icon" title={`New ${partyKind} (full details)`} onClick={() => setPartyDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+          {!readOnly && (
+            <p className="text-xs text-muted-foreground">
+              <UserPlus className="inline h-3 w-3 mr-1" /> Quick add (name + phone) ·{" "}
+              <Plus className="inline h-3 w-3 mx-1" /> New {partyKind} with full details
+            </p>
+          )}
           {party && (
             <p className="text-xs text-muted-foreground">
               {isInterState ? (
