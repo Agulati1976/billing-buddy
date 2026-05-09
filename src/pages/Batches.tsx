@@ -10,12 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Boxes, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Boxes, AlertTriangle, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { format, differenceInDays, parseISO } from "date-fns";
 
-interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; }
+interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; barcode: string | null; }
 interface Batch {
   id: string; item_id: string; batch_number: string;
   mfg_date: string | null; expiry_date: string | null;
@@ -38,6 +39,7 @@ export default function Batches() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
@@ -51,7 +53,7 @@ export default function Batches() {
         .select("id, item_id, batch_number, mfg_date, expiry_date, quantity, notes, items(name, unit)")
         .eq("business_id", current.id).order("expiry_date", { ascending: true, nullsFirst: false }),
       supabase.from("items")
-        .select("id, name, unit, is_batch_tracked")
+        .select("id, name, unit, is_batch_tracked, barcode")
         .eq("business_id", current.id).eq("is_batch_tracked", true).order("name"),
     ]);
     setRows((b.data as any) ?? []);
@@ -67,6 +69,17 @@ export default function Batches() {
     setEditing(b); setItemId(b.item_id); setBatchNumber(b.batch_number);
     setMfgDate(b.mfg_date ?? ""); setExpiryDate(b.expiry_date ?? "");
     setQuantity(String(b.quantity)); setNotes(b.notes ?? ""); setOpen(true);
+  };
+
+  const onScannedItem = (code: string) => {
+    const c = code.trim();
+    const match = items.find((it) => (it.barcode ?? "").trim() === c);
+    if (match) {
+      setItemId(match.id);
+      toast.success(`Item: ${match.name}`);
+    } else {
+      toast.error("No batch-tracked item with this barcode. Add the barcode in the item first.");
+    }
   };
 
   const submit = async () => {
@@ -187,12 +200,18 @@ export default function Batches() {
           <div className="space-y-4">
             <div>
               <Label>Item *</Label>
-              <Select value={itemId} onValueChange={setItemId} disabled={!!editing}>
-                <SelectTrigger><SelectValue placeholder="Pick batch-tracked item" /></SelectTrigger>
-                <SelectContent>
-                  {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={itemId} onValueChange={setItemId} disabled={!!editing}>
+                  <SelectTrigger><SelectValue placeholder="Pick batch-tracked item" /></SelectTrigger>
+                  <SelectContent>
+                    {items.map((it) => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" onClick={() => setScannerOpen(true)} disabled={!!editing} title="Scan item barcode">
+                  <ScanLine className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Tip: scan the item's barcode to pick it instantly.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Batch No. *</Label><Input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} /></div>
@@ -210,6 +229,8 @@ export default function Batches() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScannedItem} />
     </div>
   );
 }
