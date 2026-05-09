@@ -182,30 +182,60 @@ export default function InvoiceEditor({ type }: Props) {
     });
   }, [id, isNew, current?.id]);
 
-  // Prefill from a source invoice (e.g. creating a sale return from an existing sale)
+  // Source-invoice picker (sale return creation)
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [sourceList, setSourceList] = useState<{ id: string; invoice_number: string; invoice_date: string; total_amount: number; party: string | null }[]>([]);
+  const [sourceQ, setSourceQ] = useState("");
+  const [sourceLoaded, setSourceLoaded] = useState<{ id: string; number: string } | null>(null);
+
+  const applySourceInvoice = async (invoiceId: string) => {
+    if (!current) return;
+    const [inv, ln] = await Promise.all([
+      supabase.from("invoices").select("*").eq("id", invoiceId).single(),
+      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId),
+    ]);
+    if (inv.error || !inv.data) { toast.error(inv.error?.message ?? "Source invoice not found"); return; }
+    const i = inv.data as any;
+    setPartyId(i.party_id ?? "");
+    setNotes(`Return against ${i.invoice_number}`);
+    setIsGst(i.is_gst !== false);
+    const ls = (ln.data as any[]) ?? [];
+    if (!ls.length) { toast.error("Source invoice has no items"); return; }
+    setLines(ls.map((l) => ({
+      item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+      quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
+      discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
+      tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
+    })));
+    setSourceLoaded({ id: i.id, number: i.invoice_number });
+    setSourceOpen(false);
+    toast.success(`Loaded ${ls.length} item(s) from ${i.invoice_number}. Adjust quantities to return.`);
+  };
+
+  // Auto-prefill from ?from= query param
   useEffect(() => {
     if (!isNew || !fromInvoiceId || !current) return;
-    Promise.all([
-      supabase.from("invoices").select("*").eq("id", fromInvoiceId).single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", fromInvoiceId),
-    ]).then(([inv, ln]) => {
-      if (inv.error || !inv.data) return;
-      const i = inv.data as any;
-      setPartyId(i.party_id ?? "");
-      setNotes(`Return against ${i.invoice_number}`);
-      setIsGst(i.is_gst !== false);
-      const ls = (ln.data as any[]) ?? [];
-      if (ls.length) {
-        setLines(ls.map((l) => ({
-          item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
-          quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
-          discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
-          tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
-        })));
-      }
-      toast.info(`Prefilled from ${i.invoice_number} — adjust quantities to return`);
-    });
+    void applySourceInvoice(fromInvoiceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromInvoiceId, isNew, current?.id]);
+
+  // Load sale list for the picker (sale_return + new only) and auto-open if no source given
+  useEffect(() => {
+    if (!isNew || type !== "sale_return" || !current) return;
+    supabase.from("invoices")
+      .select("id, invoice_number, invoice_date, total_amount, parties(name)")
+      .eq("business_id", current.id).eq("type", "sale")
+      .order("invoice_date", { ascending: false }).limit(200)
+      .then(({ data }) => {
+        const list = ((data as any[]) ?? []).map((r) => ({
+          id: r.id, invoice_number: r.invoice_number, invoice_date: r.invoice_date,
+          total_amount: Number(r.total_amount), party: r.parties?.name ?? null,
+        }));
+        setSourceList(list);
+        if (!fromInvoiceId && list.length > 0 && !sourceLoaded) setSourceOpen(true);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, isNew, type]);
 
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInterState = useMemo(() => {
@@ -579,6 +609,11 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </div>
         <div className="flex gap-1.5 sm:gap-2">
+          {!readOnly && type === "sale_return" && isNew && (
+            <Button variant="outline" size="sm" onClick={() => setSourceOpen(true)} className="gap-1.5 px-2 sm:px-3">
+              <Undo2 className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">{sourceLoaded ? `From ${sourceLoaded.number}` : "Pick sale to return"}</span>
+            </Button>
+          )}
           {!readOnly && (type === "purchase" || type === "purchase_return") && (
             <Button variant="outline" size="sm" onClick={() => setBillScanOpen(true)} className="gap-1.5 px-2 sm:px-3">
               <Sparkles className="h-4 w-4 text-primary" /> <span className="hidden sm:inline">Scan Bill</span>
@@ -952,6 +987,36 @@ export default function InvoiceEditor({ type }: Props) {
             <Button variant="outline" onClick={() => setQuickOpen(false)}>Cancel</Button>
             <Button onClick={quickAddParty} disabled={!quickName.trim()}>Add</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sale-return: pick source sale invoice */}
+      <Dialog open={sourceOpen} onOpenChange={setSourceOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader><DialogTitle>Pick the sale invoice to return</DialogTitle></DialogHeader>
+          <Input placeholder="Search by invoice number or customer…" value={sourceQ} onChange={(e) => setSourceQ(e.target.value)} />
+          <div className="overflow-y-auto border rounded-md divide-y">
+            {sourceList.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">No sale invoices found.</div>
+            ) : (
+              sourceList
+                .filter((r) => {
+                  const q = sourceQ.trim().toLowerCase();
+                  if (!q) return true;
+                  return r.invoice_number.toLowerCase().includes(q) || (r.party ?? "").toLowerCase().includes(q);
+                })
+                .map((r) => (
+                  <button key={r.id} onClick={() => applySourceInvoice(r.id)}
+                    className="w-full flex items-center justify-between gap-3 p-3 text-left hover:bg-muted/60">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{r.invoice_number}</div>
+                      <div className="text-xs text-muted-foreground truncate">{r.party ?? "—"} · {r.invoice_date}</div>
+                    </div>
+                    <div className="num font-semibold shrink-0">{formatINR(r.total_amount)}</div>
+                  </button>
+                ))
+            )}
+          </div>
         </DialogContent>
       </Dialog>
       {/* Mobile sticky save bar */}
