@@ -23,6 +23,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: "categories",   label: "Categories",       group: "Inventory" },
   { key: "warehouses",   label: "Warehouses",       group: "Inventory" },
   { key: "batches",      label: "Batches & Expiry", group: "Inventory" },
+  { key: "accounts",     label: "Accounts",         group: "Money" },
   { key: "payments",     label: "Payments",         group: "Money" },
   { key: "expenses",     label: "Expenses",         group: "Money" },
   { key: "loyalty",      label: "Loyalty Rewards",  group: "Money" },
