@@ -341,10 +341,15 @@ export default function Reports() {
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Sales" value={formatINR(totals.sales)} tone="success" />
+            <Stat label="Total Sales" value={formatINR(totals.sales)} tone="success" />
+            <Stat label="Sale Returns" value={formatINR(totals.saleReturns)} tone={totals.saleReturns > 0 ? "danger" : undefined} />
+            <Stat label="Net Sales" value={formatINR(totals.netSales)} tone="success" />
+            <Stat label="Net Profit" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Stat label="Purchases" value={formatINR(totals.purchases)} />
             <Stat label="Expenses" value={formatINR(totals.expenses)} />
-            <Stat label="Net" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
+            <Stat label="Returns Count" value={String(totals.returnsCount)} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Stat label="Sales Invoices" value={String(totals.salesCount)} />
