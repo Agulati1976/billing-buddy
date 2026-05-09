@@ -15,6 +15,7 @@ import Items from "./pages/Items";
 import Categories from "./pages/Categories";
 import Warehouses from "./pages/Warehouses";
 import Batches from "./pages/Batches";
+import StockManagement from "./pages/StockManagement";
 import Invoices from "./pages/Invoices";
 import InvoiceEditor from "./pages/InvoiceEditor";
 import Payments from "./pages/Payments";
