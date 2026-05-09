@@ -1,5 +1,13 @@
 // Thermal 80mm POS receipt (jsPDF)
 import jsPDF from "jspdf";
+import QRCode from "qrcode";
+import { buildUpiUri } from "@/lib/invoicePdf";
+
+export interface ThermalUpi {
+  upi_id?: string | null;
+  upi_payee_name?: string | null;
+  show_upi_qr?: boolean | null;
+}
 
 const formatRs = (n: number): string => {
   const v = Number(n) || 0;
