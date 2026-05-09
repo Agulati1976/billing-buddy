@@ -76,6 +76,7 @@ const App = () => (
                 <Route path="/quotations" element={<Invoices type="quotation" />} />
                 <Route path="/quotations/:id" element={<InvoiceEditor type="quotation" />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/accounts" element={<Accounts />} />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/ai-insights" element={<AiInsights />} />
