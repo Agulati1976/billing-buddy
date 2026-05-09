@@ -191,6 +191,12 @@ export default function Invoices({ type }: Props) {
                             <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {type === "sale" && (
+                              <Button size="icon" variant="ghost" title="Create sale return"
+                                onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
+                                <Undo2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
                               <Trash2 className="h-4 w-4 text-danger" />
                             </Button>
