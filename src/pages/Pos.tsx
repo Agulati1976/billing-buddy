@@ -556,8 +556,15 @@ export default function Pos() {
               <button
                 key={it.id}
                 onClick={() => addToCart(it)}
-                className="text-left p-3 border rounded-md hover:border-primary hover:bg-accent transition"
+                className="text-left p-2 border rounded-md hover:border-primary hover:bg-accent transition flex flex-col"
               >
+                <div className="aspect-square w-full rounded bg-muted/40 overflow-hidden mb-2 flex items-center justify-center">
+                  {it.image_url ? (
+                    <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground uppercase">{it.name.slice(0, 2)}</span>
+                  )}
+                </div>
                 <div className="text-sm font-medium line-clamp-2">{it.name}</div>
                 <div className="text-xs text-muted-foreground mt-1">Stock: {it.current_stock} {it.unit}</div>
                 <div className="text-sm font-semibold mt-1">Rs.{Number(it.sale_price).toFixed(2)}</div>
