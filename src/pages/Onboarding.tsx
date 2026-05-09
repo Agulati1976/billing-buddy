@@ -24,18 +24,24 @@ export default function Onboarding() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [stateCode, setStateCode] = useState("");
+  const [pincode, setPincode] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (pincode && !/^\d{6}$/.test(pincode)) {
+      toast.error("Pincode must be 6 digits");
+      return;
+    }
     setBusy(true);
     const stateName = INDIAN_STATES.find((s) => s.code === stateCode)?.name ?? null;
     const { error } = await supabase.from("businesses").insert({
       name, gstin: gstin || null, phone: phone || null, email: email || null,
       address: address || null, state: stateName, state_code: stateCode || null,
+      pincode: pincode || null,
       owner_id: user.id,
-    });
+    } as any);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Business created!");
