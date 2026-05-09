@@ -74,9 +74,11 @@ export default function Pos() {
     Promise.all([
       supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
-    ]).then(([it, p]) => {
+      supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
+    ]).then(([it, p, s]) => {
       setItems((it.data as any) ?? []);
       setParties((p.data as any) ?? []);
+      setUpiSettings((s.data as any) ?? null);
     });
   }, [current?.id]);
 
