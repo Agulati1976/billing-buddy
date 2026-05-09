@@ -135,6 +135,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         description: f.description || (hit.description ?? ""),
       }));
       setCatalogId(hit.id);
+      if (hit.image_url) setImageUrl((cur) => cur || hit.image_url!);
     } else {
       setCatalogHit(null);
     }
