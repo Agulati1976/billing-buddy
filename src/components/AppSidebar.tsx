@@ -37,6 +37,7 @@ const groups: NavGroup[] = [
     label: "Inventory",
     items: [
       { to: "/items", label: "Items", icon: Package },
+      { to: "/stock", label: "Stock Management", icon: ArrowUpDown },
       { to: "/categories", label: "Categories", icon: Tags },
       { to: "/warehouses", label: "Warehouses", icon: Warehouse },
       { to: "/batches", label: "Batches & Expiry", icon: Boxes },
