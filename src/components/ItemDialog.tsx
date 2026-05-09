@@ -320,11 +320,13 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
             <>
               <div>
                 <Label>Opening Stock</Label>
-                <Input type="number" step="0.01" disabled={!!item || form.is_batch_tracked} value={form.opening_stock}
+                <Input type="number" step="0.01" disabled={form.is_batch_tracked} value={form.opening_stock}
                   onChange={(e) => setForm({ ...form, opening_stock: e.target.value })} />
-                {form.is_batch_tracked && (
+                {form.is_batch_tracked ? (
                   <p className="text-xs text-muted-foreground mt-1">Stock comes from batches.</p>
-                )}
+                ) : item ? (
+                  <p className="text-xs text-muted-foreground mt-1">Editing this adjusts current stock by the difference.</p>
+                ) : null}
               </div>
               <div>
                 <Label>Low Stock Alert</Label>
