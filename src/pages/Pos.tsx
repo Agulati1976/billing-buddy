@@ -317,10 +317,10 @@ export default function Pos() {
     pdf.save(`POS-${Date.now()}.pdf`);
   };
 
-  const downloadThermal = () => {
+  const downloadThermal = async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
     if (!current) return;
-    const receipt = generateThermalReceipt(
+    const receipt = await generateThermalReceipt(
       { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
       {
         invoice_number: "DRAFT",
@@ -341,6 +341,7 @@ export default function Pos() {
         balance_amount: 0,
         payment_method: null,
       },
+      upiSettings ?? undefined,
     );
     receipt.save(`POS-Receipt-${Date.now()}.pdf`);
   };
