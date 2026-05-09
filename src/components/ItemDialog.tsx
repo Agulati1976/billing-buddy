@@ -71,6 +71,9 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [catalogId, setCatalogId] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lookupTimer = useRef<number | null>(null);
 
   useEffect(() => {
