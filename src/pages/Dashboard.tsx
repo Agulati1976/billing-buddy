@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useBusiness } from "@/hooks/useBusiness";
 import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet, FileText } from "lucide-react";
@@ -6,6 +6,8 @@ import { formatINR } from "@/lib/states";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { DashboardChart } from "@/components/DashboardChart";
+import { DateRangeFilter, rangeFor, type DatePreset } from "@/components/DateRangeFilter";
+import { startOfMonth, format } from "date-fns";
 
 const StatCard = ({
   label, value, icon: Icon, tone = "primary",
@@ -33,7 +35,7 @@ const StatCard = ({
 
 interface Stats {
   todaySales: number;
-  monthSales: number;
+  rangeSales: number;
   toReceive: number;
   toPay: number;
   topCustomers: { name: string; total: number }[];
@@ -46,19 +48,34 @@ export default function Dashboard() {
   const { current } = useBusiness();
   const [stats, setStats] = useState<Stats | null>(null);
 
+  // Date filter
+  const [preset, setPreset] = useState<DatePreset>("this_month");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+  const range = useMemo(
+    () => rangeFor(preset, { from: customFrom, to: customTo }),
+    [preset, customFrom, customTo]
+  );
+
   useEffect(() => {
     if (!current) return;
     (async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const monthStart = new Date(); monthStart.setDate(1);
-      const ms = monthStart.toISOString().slice(0, 10);
+      const since = range.from ? format(range.from, "yyyy-MM-dd") : null;
+      const until = range.to ? format(range.to, "yyyy-MM-dd") : null;
 
       const in30 = new Date(); in30.setDate(in30.getDate() + 30);
       const in30Str = in30.toISOString().slice(0, 10);
 
-      const [todayR, monthR, recvR, payR, recentR, lowR, expR] = await Promise.all([
+      let rangeQuery = supabase.from("invoices")
+        .select("total_amount, party_id, parties(name)")
+        .eq("business_id", current.id).eq("type", "sale");
+      if (since) rangeQuery = rangeQuery.gte("invoice_date", since);
+      if (until) rangeQuery = rangeQuery.lte("invoice_date", until);
+
+      const [todayR, rangeR, recvR, payR, recentR, lowR, expR] = await Promise.all([
         supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").eq("invoice_date", today),
-        supabase.from("invoices").select("total_amount, party_id, parties(name)").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", ms),
+        rangeQuery,
         supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").gt("balance_amount", 0),
         supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").gt("balance_amount", 0),
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").order("created_at", { ascending: false }).limit(5),
@@ -67,12 +84,12 @@ export default function Dashboard() {
       ]);
 
       const todaySales = (todayR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
-      const monthSales = (monthR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
+      const rangeSales = (rangeR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
       const toReceive = (recvR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
       const toPay = (payR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
 
       const customerMap = new Map<string, number>();
-      (monthR.data ?? []).forEach((r: any) => {
+      (rangeR.data ?? []).forEach((r: any) => {
         const name = r.parties?.name;
         if (!name) return;
         customerMap.set(name, (customerMap.get(name) ?? 0) + Number(r.total_amount));
@@ -97,22 +114,29 @@ export default function Dashboard() {
         quantity: Number(b.quantity), item: b.items?.name ?? "—",
       }));
 
-      setStats({ todaySales, monthSales, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
+      setStats({ todaySales, rangeSales, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id]);
+  }, [current?.id, range.from, range.to]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
-      <div>
-        <h1 className="text-xl sm:text-2xl font-semibold">Dashboard</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Welcome back to <span className="font-medium text-foreground">{current?.name}</span>
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Welcome back to <span className="font-medium text-foreground">{current?.name}</span>
+          </p>
+        </div>
+        <DateRangeFilter
+          preset={preset} onPresetChange={setPreset}
+          customFrom={customFrom} customTo={customTo}
+          onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo}
+        />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Today's Sales" value={formatINR(stats?.todaySales ?? 0)} icon={TrendingUp} tone="primary" />
-        <StatCard label="This Month" value={formatINR(stats?.monthSales ?? 0)} icon={ArrowUpRight} tone="success" />
+        <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" />
         <StatCard label="To Receive" value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
         <StatCard label="To Pay" value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
       </div>
@@ -147,7 +171,7 @@ export default function Dashboard() {
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Users className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold">Top Customers (this month)</h2>
+            <h2 className="font-semibold">Top Customers · {range.label}</h2>
           </div>
           {stats && stats.topCustomers.length > 0 ? (
             <ul className="space-y-2">
@@ -159,7 +183,7 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No sales this month yet.</p>
+            <p className="text-sm text-muted-foreground">No sales in this range yet.</p>
           )}
         </Card>
 
