@@ -140,3 +140,24 @@ export function nextInvoiceNumber(prefix: string, lastNumber: string | null): st
   const n = m ? parseInt(m[1], 10) + 1 : 1;
   return `${prefix}/${year}/${String(n).padStart(4, "0")}`;
 }
+
+// New shop-style invoice number: PINCODE/RANK(3)/DDMMYY
+export function shopInvoiceBase(pincode: string, rank: number, dateISO: string): string {
+  const d = dateISO ? new Date(dateISO) : new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${pincode}/${String(rank).padStart(3, "0")}/${dd}${mm}${yy}`;
+}
+
+// Pick next available number, adding -N suffix only if base is already taken that day
+export function pickShopInvoiceNumber(base: string, existingForDay: string[]): string {
+  if (!existingForDay.includes(base)) return base;
+  let max = 1;
+  for (const n of existingForDay) {
+    const m = n.match(/-(\d+)$/);
+    if (m) max = Math.max(max, parseInt(m[1], 10));
+  }
+  return `${base}-${max + 1}`;
+}
+
