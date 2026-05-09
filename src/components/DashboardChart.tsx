@@ -1,31 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { BarChart3, LineChart as LineIcon, AreaChart as AreaIcon } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { formatINR } from "@/lib/states";
+import { DateRangeFilter, rangeFor, type DatePreset } from "@/components/DateRangeFilter";
+import { startOfDay, subDays } from "date-fns";
 
 type ChartKind = "bar" | "line" | "area";
-type RangeKey = "7d" | "30d" | "90d" | "12m";
-
-const RANGES: Record<RangeKey, { label: string; days?: number; months?: number }> = {
-  "7d":  { label: "Last 7 days",  days: 7 },
-  "30d": { label: "Last 30 days", days: 30 },
-  "90d": { label: "Last 90 days", days: 90 },
-  "12m": { label: "Last 12 months", months: 12 },
-};
 
 interface Point {
-  bucket: string;     // YYYY-MM-DD or YYYY-MM
-  label: string;      // shown on X axis
+  bucket: string;
+  label: string;
   Sales: number;
   Purchases: number;
   Expenses: number;
@@ -44,7 +36,10 @@ const SERIES_KEYS = ["Sales", "Purchases", "Expenses", "Profit"] as const;
 export function DashboardChart() {
   const { current } = useBusiness();
   const [kind, setKind] = useState<ChartKind>("bar");
-  const [range, setRange] = useState<RangeKey>("30d");
+  const [preset, setPreset] = useState<DatePreset>("last_30");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfDay(subDays(new Date(), 29)));
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+  const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
   const [active, setActive] = useState<Set<string>>(new Set(["Sales", "Purchases", "Expenses"]));
   const [data, setData] = useState<Point[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,35 +48,36 @@ export function DashboardChart() {
     if (!current) return;
     (async () => {
       setLoading(true);
-      const cfg = RANGES[range];
-      const useMonthly = !!cfg.months;
-      const since = new Date();
-      if (useMonthly) {
-        since.setMonth(since.getMonth() - (cfg.months! - 1));
-        since.setDate(1);
-      } else {
-        since.setDate(since.getDate() - (cfg.days! - 1));
-      }
-      const sinceStr = since.toISOString().slice(0, 10);
+
+      // Resolve effective range (fallback for "all time" → last 12 months)
+      const to = range.to ?? new Date();
+      const from = range.from ?? startOfDay(subDays(to, 364));
+      const spanDays = Math.max(1, Math.round((+to - +from) / 86400000) + 1);
+      const useMonthly = spanDays > 120;
+
+      const sinceStr = from.toISOString().slice(0, 10);
+      const untilStr = to.toISOString().slice(0, 10);
 
       const [invR, expR] = await Promise.all([
         supabase.from("invoices")
           .select("invoice_date, type, total_amount")
           .eq("business_id", current.id)
           .in("type", ["sale", "purchase"])
-          .gte("invoice_date", sinceStr),
+          .gte("invoice_date", sinceStr)
+          .lte("invoice_date", untilStr),
         supabase.from("expenses")
           .select("expense_date, amount")
           .eq("business_id", current.id)
-          .gte("expense_date", sinceStr),
+          .gte("expense_date", sinceStr)
+          .lte("expense_date", untilStr),
       ]);
 
-      // Build all buckets
       const buckets: Point[] = [];
       const bucketIdx = new Map<string, number>();
       if (useMonthly) {
-        const cursor = new Date(since);
-        for (let i = 0; i < cfg.months!; i++) {
+        const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+        const endCursor = new Date(to.getFullYear(), to.getMonth(), 1);
+        while (cursor <= endCursor) {
           const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
           const label = cursor.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
           bucketIdx.set(key, buckets.length);
@@ -89,8 +85,8 @@ export function DashboardChart() {
           cursor.setMonth(cursor.getMonth() + 1);
         }
       } else {
-        const cursor = new Date(since);
-        for (let i = 0; i < cfg.days!; i++) {
+        const cursor = new Date(from);
+        for (let i = 0; i < spanDays; i++) {
           const key = cursor.toISOString().slice(0, 10);
           const label = cursor.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
           bucketIdx.set(key, buckets.length);
@@ -120,7 +116,7 @@ export function DashboardChart() {
       setData(buckets);
       setLoading(false);
     })();
-  }, [current?.id, range]);
+  }, [current?.id, range.from, range.to]);
 
   const totals = useMemo(() => {
     return data.reduce(
@@ -138,7 +134,7 @@ export function DashboardChart() {
     setActive((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k); else next.add(k);
-      if (next.size === 0) next.add(k); // keep at least one
+      if (next.size === 0) next.add(k);
       return next;
     });
   };
@@ -204,14 +200,14 @@ export function DashboardChart() {
           <p className="text-xs text-muted-foreground">Sales, purchases, expenses & profit over time</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={range} onValueChange={(v: RangeKey) => setRange(v)}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(RANGES).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <DateRangeFilter
+            preset={preset}
+            onPresetChange={setPreset}
+            customFrom={customFrom}
+            customTo={customTo}
+            onCustomFromChange={setCustomFrom}
+            onCustomToChange={setCustomTo}
+          />
           <ToggleGroup type="single" value={kind} onValueChange={(v) => v && setKind(v as ChartKind)} size="sm">
             <ToggleGroupItem value="bar" aria-label="Bar chart"><BarChart3 className="h-4 w-4" /></ToggleGroupItem>
             <ToggleGroupItem value="line" aria-label="Line chart"><LineIcon className="h-4 w-4" /></ToggleGroupItem>
@@ -220,7 +216,6 @@ export function DashboardChart() {
         </div>
       </div>
 
-      {/* Series toggles with totals */}
       <div className="flex flex-wrap gap-2 mb-3">
         {SERIES_KEYS.map((k) => {
           const isOn = active.has(k);
