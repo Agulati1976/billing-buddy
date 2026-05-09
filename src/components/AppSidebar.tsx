@@ -9,6 +9,8 @@ import {
   BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown,
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
+import { usePermissions } from "@/hooks/usePermissions";
+import { ROUTE_TO_MODULE } from "@/lib/modules";
 
 type NavItem = { to: string; label: string; icon: any; end?: boolean; soon?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
