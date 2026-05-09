@@ -153,6 +153,22 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
     void runLookup(code);
   };
 
+  const onPickImage = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5 MB"); return; }
+    setUploadingImage(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("item-images").upload(path, file, {
+      cacheControl: "3600", upsert: false, contentType: file.type,
+    });
+    if (error) { setUploadingImage(false); toast.error(error.message); return; }
+    const { data } = supabase.storage.from("item-images").getPublicUrl(path);
+    setImageUrl(data.publicUrl);
+    setUploadingImage(false);
+  };
+
   const submit = async () => {
     if (!current || !user) return;
     if (!form.name.trim()) { toast.error("Name is required"); return; }
