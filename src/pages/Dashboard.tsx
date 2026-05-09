@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { DashboardChart } from "@/components/DashboardChart";
 import { DateRangeFilter, rangeFor, type DatePreset } from "@/components/DateRangeFilter";
+import { ModuleGrid } from "@/components/ModuleGrid";
 import { startOfMonth, format } from "date-fns";
 
 const StatCard = ({
