@@ -145,3 +145,23 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+
+/* ===== Mobile app-like polish ===== */
+@media (max-width: 640px) {
+  /* Compact tables so they read like a list on small screens */
+  table th, table td {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    font-size: 0.8125rem;
+  }
+  /* Bigger tap targets for icon buttons */
+  button[class*="h-9"], button[class*="h-10"] { min-height: 40px; }
+  /* Inputs feel native */
+  input, select, textarea { font-size: 16px; }
+  /* Avoid horizontal page scroll caused by long content */
+  body { overflow-x: hidden; }
+  /* Modal/sheet a touch more breathing room */
+  [role="dialog"] { padding-bottom: env(safe-area-inset-bottom); }
+}
