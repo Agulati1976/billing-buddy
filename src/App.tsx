@@ -15,6 +15,7 @@ import Items from "./pages/Items";
 import Categories from "./pages/Categories";
 import Warehouses from "./pages/Warehouses";
 import Batches from "./pages/Batches";
+import StockManagement from "./pages/StockManagement";
 import Invoices from "./pages/Invoices";
 import InvoiceEditor from "./pages/InvoiceEditor";
 import Payments from "./pages/Payments";
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/warehouses" element={<Warehouses />} />
                 <Route path="/batches" element={<Batches />} />
+                <Route path="/stock" element={<StockManagement />} />
                 <Route path="/sales" element={<Invoices type="sale" />} />
                 <Route path="/sales/:id" element={<InvoiceEditor type="sale" />} />
                 <Route path="/purchases" element={<Invoices type="purchase" />} />
