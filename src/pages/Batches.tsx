@@ -71,6 +71,17 @@ export default function Batches() {
     setQuantity(String(b.quantity)); setNotes(b.notes ?? ""); setOpen(true);
   };
 
+  const onScannedItem = (code: string) => {
+    const c = code.trim();
+    const match = items.find((it) => (it.barcode ?? "").trim() === c);
+    if (match) {
+      setItemId(match.id);
+      toast.success(`Item: ${match.name}`);
+    } else {
+      toast.error("No batch-tracked item with this barcode. Add the barcode in the item first.");
+    }
+  };
+
   const submit = async () => {
     if (!current || !user) return;
     if (!itemId) { toast.error("Pick an item"); return; }
