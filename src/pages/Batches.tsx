@@ -39,6 +39,7 @@ export default function Batches() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
