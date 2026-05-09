@@ -53,7 +53,7 @@ export default function Batches() {
         .select("id, item_id, batch_number, mfg_date, expiry_date, quantity, notes, items(name, unit)")
         .eq("business_id", current.id).order("expiry_date", { ascending: true, nullsFirst: false }),
       supabase.from("items")
-        .select("id, name, unit, is_batch_tracked")
+        .select("id, name, unit, is_batch_tracked, barcode")
         .eq("business_id", current.id).eq("is_batch_tracked", true).order("name"),
     ]);
     setRows((b.data as any) ?? []);
