@@ -1,16 +1,18 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, FileText, ShoppingCart, Package, Menu } from "lucide-react";
-import { useSidebar } from "@/components/ui/sidebar";
+import { LayoutDashboard, FileText, ShoppingCart, Package, LayoutGrid } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { usePosAccess } from "@/hooks/usePosAccess";
 import { cn } from "@/lib/utils";
+import { ModuleGrid } from "./ModuleGrid";
 
 const itemBase =
   "flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors active:bg-muted/60";
 const itemActive = "text-primary";
 
 export function MobileBottomNav() {
-  const { setOpenMobile } = useSidebar();
   const { canUsePos } = usePosAccess();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <nav
@@ -45,10 +47,20 @@ export function MobileBottomNav() {
           <Package className="h-5 w-5" />
           <span>Items</span>
         </NavLink>
-        <button type="button" onClick={() => setOpenMobile(true)} className={itemBase}>
-          <Menu className="h-5 w-5" />
-          <span>More</span>
-        </button>
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetTrigger asChild>
+            <button type="button" className={itemBase}>
+              <LayoutGrid className="h-5 w-5" />
+              <span>Menu</span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[85vh] overflow-y-auto rounded-t-2xl">
+            <SheetHeader className="text-left mb-4">
+              <SheetTitle>All Modules</SheetTitle>
+            </SheetHeader>
+            <ModuleGrid includeHome onItemClick={() => setMenuOpen(false)} />
+          </SheetContent>
+        </Sheet>
       </div>
     </nav>
   );

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { DashboardChart } from "@/components/DashboardChart";
 import { DateRangeFilter, rangeFor, type DatePreset } from "@/components/DateRangeFilter";
+import { ModuleGrid } from "@/components/ModuleGrid";
 import { startOfMonth, format } from "date-fns";
 
 const StatCard = ({
@@ -139,6 +140,12 @@ export default function Dashboard() {
         <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" />
         <StatCard label="To Receive" value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
         <StatCard label="To Pay" value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
+      </div>
+
+      {/* Mobile launcher-style module grid */}
+      <div className="md:hidden">
+        <h2 className="text-sm font-semibold mb-3 text-muted-foreground">Quick Access</h2>
+        <ModuleGrid />
       </div>
 
       <DashboardChart />
