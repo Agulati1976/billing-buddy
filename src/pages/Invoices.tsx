@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, FileText, Trash2, Eye } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Eye, Undo2 } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
@@ -191,6 +191,12 @@ export default function Invoices({ type }: Props) {
                             <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {type === "sale" && (
+                              <Button size="icon" variant="ghost" title="Create sale return"
+                                onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
+                                <Undo2 className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
                               <Trash2 className="h-4 w-4 text-danger" />
                             </Button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert, omInsertMany } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine, UserPlus } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine, UserPlus, Undo2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { PartyDialog } from "@/components/PartyDialog";
 import { toast } from "sonner";
@@ -35,6 +35,8 @@ interface Batch { id: string; item_id: string; batch_number: string; expiry_date
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromInvoiceId = searchParams.get("from");
   const isNew = !id || id === "new";
   const { current } = useBusiness();
   const { user } = useAuth();
@@ -179,6 +181,31 @@ export default function InvoiceEditor({ type }: Props) {
       setLoaded(true);
     });
   }, [id, isNew, current?.id]);
+
+  // Prefill from a source invoice (e.g. creating a sale return from an existing sale)
+  useEffect(() => {
+    if (!isNew || !fromInvoiceId || !current) return;
+    Promise.all([
+      supabase.from("invoices").select("*").eq("id", fromInvoiceId).single(),
+      supabase.from("invoice_items").select("*").eq("invoice_id", fromInvoiceId),
+    ]).then(([inv, ln]) => {
+      if (inv.error || !inv.data) return;
+      const i = inv.data as any;
+      setPartyId(i.party_id ?? "");
+      setNotes(`Return against ${i.invoice_number}`);
+      setIsGst(i.is_gst !== false);
+      const ls = (ln.data as any[]) ?? [];
+      if (ls.length) {
+        setLines(ls.map((l) => ({
+          item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+          quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
+          discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
+          tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
+        })));
+      }
+      toast.info(`Prefilled from ${i.invoice_number} — adjust quantities to return`);
+    });
+  }, [fromInvoiceId, isNew, current?.id]);
 
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInterState = useMemo(() => {
@@ -568,6 +595,11 @@ export default function InvoiceEditor({ type }: Props) {
           {(type === "sale" || type === "sale_return") && (
             <Button variant="outline" size="sm" onClick={downloadThermal} className="gap-1.5 px-2 sm:px-3">
               <Download className="h-4 w-4" /> <span className="hidden sm:inline">POS PDF</span>
+            </Button>
+          )}
+          {readOnly && type === "sale" && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/sale_returns/new?from=${id}`)} className="gap-1.5 px-2 sm:px-3">
+              <Undo2 className="h-4 w-4" /> <span className="hidden sm:inline">Create Return</span>
             </Button>
           )}
           {readOnly && (

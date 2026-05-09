@@ -56,6 +56,7 @@ export default function Reports() {
   const { current } = useBusiness();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Inv[]>([]);
+  const [saleReturns, setSaleReturns] = useState<Inv[]>([]);
   const [purchases, setPurchases] = useState<Inv[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [expenses, setExpenses] = useState<Exp[]>([]);
@@ -76,12 +77,13 @@ export default function Reports() {
       setLoading(true);
       const since = fmtDate(range.from);
       const until = fmtDate(range.to);
-      const [s, p, e] = await Promise.all([
+      const [s, p, e, sr] = await Promise.all([
         supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", since).lte("invoice_date", until),
         supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").gte("invoice_date", since).lte("invoice_date", until),
         supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since).lte("expense_date", until),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale_return").gte("invoice_date", since).lte("invoice_date", until),
       ]);
-      if (s.error || p.error || e.error) toast.error("Failed to load reports");
+      if (s.error || p.error || e.error || sr.error) toast.error("Failed to load reports");
       const allInvIds = [...(s.data ?? []), ...(p.data ?? [])].map((i: any) => i.id);
       let it: Item[] = [];
       if (allInvIds.length) {
@@ -93,6 +95,7 @@ export default function Reports() {
       setSales((s.data ?? []) as Inv[]);
       setPurchases((p.data ?? []) as Inv[]);
       setExpenses((e.data ?? []) as Exp[]);
+      setSaleReturns((sr.data ?? []) as Inv[]);
       setItems(it);
       setLoading(false);
     })();
@@ -103,17 +106,22 @@ export default function Reports() {
   // Totals for the selected range
   const totals = useMemo(() => {
     const salesTotal = sales.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const returnsTotal = saleReturns.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const netSales = salesTotal - returnsTotal;
     const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
     return {
       sales: salesTotal,
+      saleReturns: returnsTotal,
+      netSales,
       purchases: purchasesTotal,
       expenses: expensesTotal,
-      net: salesTotal - purchasesTotal - expensesTotal,
+      net: netSales - purchasesTotal - expensesTotal,
       salesCount: sales.length,
+      returnsCount: saleReturns.length,
       purchasesCount: purchases.length,
     };
-  }, [sales, purchases, expenses]);
+  }, [sales, saleReturns, purchases, expenses]);
 
   // P&L for the selected range
   const pnl = useMemo(() => {
@@ -333,10 +341,15 @@ export default function Reports() {
         {/* OVERVIEW */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Sales" value={formatINR(totals.sales)} tone="success" />
+            <Stat label="Total Sales" value={formatINR(totals.sales)} tone="success" />
+            <Stat label="Sale Returns" value={formatINR(totals.saleReturns)} tone={totals.saleReturns > 0 ? "danger" : undefined} />
+            <Stat label="Net Sales" value={formatINR(totals.netSales)} tone="success" />
+            <Stat label="Net Profit" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Stat label="Purchases" value={formatINR(totals.purchases)} />
             <Stat label="Expenses" value={formatINR(totals.expenses)} />
-            <Stat label="Net" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
+            <Stat label="Returns Count" value={String(totals.returnsCount)} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Stat label="Sales Invoices" value={String(totals.salesCount)} />

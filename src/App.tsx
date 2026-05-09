@@ -68,6 +68,8 @@ const App = () => (
                 <Route path="/stock" element={<StockManagement />} />
                 <Route path="/sales" element={<Invoices type="sale" />} />
                 <Route path="/sales/:id" element={<InvoiceEditor type="sale" />} />
+                <Route path="/sale_returns" element={<Invoices type="sale_return" />} />
+                <Route path="/sale_returns/:id" element={<InvoiceEditor type="sale_return" />} />
                 <Route path="/purchases" element={<Invoices type="purchase" />} />
                 <Route path="/purchases/:id" element={<InvoiceEditor type="purchase" />} />
                 <Route path="/quotations" element={<Invoices type="quotation" />} />
