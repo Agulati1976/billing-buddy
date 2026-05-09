@@ -438,7 +438,7 @@ export default function InvoiceEditor({ type }: Props) {
   const save = async () => {
     if (!current || !user) return;
     if (!number.trim()) { toast.error("Invoice number is required"); return; }
-    if (!partyId && type !== "quotation") { toast.error("Select a party"); return; }
+    if (!partyId && type !== "quotation" && type !== "sale_return") { toast.error("Select a party"); return; }
     const validLines = lines.filter((l) => l.item_name.trim() && Number(l.quantity) > 0);
     if (validLines.length === 0) { toast.error("Add at least one line item"); return; }
     for (const l of validLines) {
