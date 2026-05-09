@@ -196,20 +196,16 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       catalog_id: resolvedCatalogId,
       created_by: user.id,
     };
-    // When editing a product (not batch-tracked), also bump current_stock by the delta
+    // When editing a product (not batch-tracked), record an adjustment so trigger updates current_stock
     let stockDelta = 0;
     if (item && form.type === "product" && !form.is_batch_tracked) {
       stockDelta = newOpening - (Number(item.opening_stock) || 0);
-      if (stockDelta !== 0) {
-        payload.current_stock = (Number(item.current_stock) || 0) + stockDelta;
-      }
     }
     const res = item
       ? await omUpdate("items", { column: "id", value: item.id }, payload)
       : await omInsert("items", payload);
     setSaving(false);
     if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    // Log an audit stock movement for the opening-stock adjustment (don't block save on failure)
     if (item && stockDelta !== 0) {
       await omInsert("stock_movements", {
         business_id: current.id,
