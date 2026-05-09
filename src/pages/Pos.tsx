@@ -187,10 +187,21 @@ export default function Pos() {
       // Suggest invoice number (cached GET works offline; suffix when offline to avoid clashes)
       let number: string;
       try {
-        const { data: last } = await supabase.from("invoices")
-          .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
-          .order("created_at", { ascending: false }).limit(1);
-        number = nextInvoiceNumber("INV", last?.[0]?.invoice_number ?? null);
+        const pin = (current as any).pincode as string | null;
+        const rank = (current as any).pincode_rank as number | null;
+        if (pin && rank) {
+          const todayISO = new Date().toISOString().slice(0, 10);
+          const base = shopInvoiceBase(pin, rank, todayISO);
+          const { data } = await supabase.from("invoices")
+            .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
+            .like("invoice_number", `${base}%`);
+          number = pickShopInvoiceNumber(base, (data ?? []).map((r: any) => r.invoice_number));
+        } else {
+          const { data: last } = await supabase.from("invoices")
+            .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
+            .order("created_at", { ascending: false }).limit(1);
+          number = nextInvoiceNumber("INV", last?.[0]?.invoice_number ?? null);
+        }
       } catch {
         number = `INV-${Date.now()}`;
       }
