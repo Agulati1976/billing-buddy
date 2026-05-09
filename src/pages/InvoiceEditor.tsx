@@ -986,6 +986,36 @@ export default function InvoiceEditor({ type }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sale-return: pick source sale invoice */}
+      <Dialog open={sourceOpen} onOpenChange={setSourceOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader><DialogTitle>Pick the sale invoice to return</DialogTitle></DialogHeader>
+          <Input placeholder="Search by invoice number or customer…" value={sourceQ} onChange={(e) => setSourceQ(e.target.value)} />
+          <div className="overflow-y-auto border rounded-md divide-y">
+            {sourceList.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">No sale invoices found.</div>
+            ) : (
+              sourceList
+                .filter((r) => {
+                  const q = sourceQ.trim().toLowerCase();
+                  if (!q) return true;
+                  return r.invoice_number.toLowerCase().includes(q) || (r.party ?? "").toLowerCase().includes(q);
+                })
+                .map((r) => (
+                  <button key={r.id} onClick={() => applySourceInvoice(r.id)}
+                    className="w-full flex items-center justify-between gap-3 p-3 text-left hover:bg-muted/60">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{r.invoice_number}</div>
+                      <div className="text-xs text-muted-foreground truncate">{r.party ?? "—"} · {r.invoice_date}</div>
+                    </div>
+                    <div className="num font-semibold shrink-0">{formatINR(r.total_amount)}</div>
+                  </button>
+                ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Mobile sticky save bar */}
       {!readOnly && (
         <div
