@@ -182,30 +182,57 @@ export default function InvoiceEditor({ type }: Props) {
     });
   }, [id, isNew, current?.id]);
 
-  // Prefill from a source invoice (e.g. creating a sale return from an existing sale)
+  // Source-invoice picker (sale return creation)
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [sourceList, setSourceList] = useState<{ id: string; invoice_number: string; invoice_date: string; total_amount: number; party: string | null }[]>([]);
+  const [sourceQ, setSourceQ] = useState("");
+  const [sourceLoaded, setSourceLoaded] = useState<{ id: string; number: string } | null>(null);
+
+  const applySourceInvoice = async (invoiceId: string) => {
+    if (!current) return;
+    const [inv, ln] = await Promise.all([
+      supabase.from("invoices").select("*").eq("id", invoiceId).single(),
+      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId),
+    ]);
+    if (inv.error || !inv.data) { toast.error(inv.error?.message ?? "Source invoice not found"); return; }
+    const i = inv.data as any;
+    setPartyId(i.party_id ?? "");
+    setNotes(`Return against ${i.invoice_number}`);
+    setIsGst(i.is_gst !== false);
+    const ls = (ln.data as any[]) ?? [];
+    if (!ls.length) { toast.error("Source invoice has no items"); return; }
+    setLines(ls.map((l) => ({
+      item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+      quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
+      discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
+      tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
+    })));
+    setSourceLoaded({ id: i.id, number: i.invoice_number });
+    setSourceOpen(false);
+    toast.success(`Loaded ${ls.length} item(s) from ${i.invoice_number}. Adjust quantities to return.`);
+  };
+
+  // Auto-prefill from ?from= query param
   useEffect(() => {
     if (!isNew || !fromInvoiceId || !current) return;
-    Promise.all([
-      supabase.from("invoices").select("*").eq("id", fromInvoiceId).single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", fromInvoiceId),
-    ]).then(([inv, ln]) => {
-      if (inv.error || !inv.data) return;
-      const i = inv.data as any;
-      setPartyId(i.party_id ?? "");
-      setNotes(`Return against ${i.invoice_number}`);
-      setIsGst(i.is_gst !== false);
-      const ls = (ln.data as any[]) ?? [];
-      if (ls.length) {
-        setLines(ls.map((l) => ({
-          item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
-          quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
-          discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
-          tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
-        })));
-      }
-      toast.info(`Prefilled from ${i.invoice_number} — adjust quantities to return`);
-    });
+    void applySourceInvoice(fromInvoiceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromInvoiceId, isNew, current?.id]);
+
+  // Load sale list for the picker (sale_return + new only)
+  useEffect(() => {
+    if (!isNew || type !== "sale_return" || !current) return;
+    supabase.from("invoices")
+      .select("id, invoice_number, invoice_date, total_amount, parties(name)")
+      .eq("business_id", current.id).eq("type", "sale")
+      .order("invoice_date", { ascending: false }).limit(200)
+      .then(({ data }) => {
+        setSourceList(((data as any[]) ?? []).map((r) => ({
+          id: r.id, invoice_number: r.invoice_number, invoice_date: r.invoice_date,
+          total_amount: Number(r.total_amount), party: r.parties?.name ?? null,
+        })));
+      });
+  }, [current?.id, isNew, type]);
 
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInterState = useMemo(() => {
