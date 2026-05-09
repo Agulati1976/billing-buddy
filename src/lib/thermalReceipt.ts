@@ -47,7 +47,7 @@ export interface ThermalReceipt {
   footer?: string | null;
 }
 
-export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt): jsPDF {
+export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt, upi?: ThermalUpi): Promise<jsPDF> {
   const W = 80;          // 80mm paper width
   const M = 3;           // margin
   const innerW = W - M * 2;
@@ -58,8 +58,26 @@ export function generateThermalReceipt(biz: ThermalBusiness, r: ThermalReceipt):
   const COL_QTY = COL_RATE - 18;    // right edge for Qty
   const NAME_W = COL_QTY - M - 14;  // wrap width for item name (gap before qty)
 
+  const showQr = !!(upi && (upi.show_upi_qr ?? true) && upi.upi_id && r.balance_amount >= 0 && r.total_amount > 0);
+  let qrDataUrl: string | null = null;
+  if (showQr) {
+    try {
+      const upiUri = buildUpiUri({
+        pa: upi!.upi_id!,
+        pn: upi!.upi_payee_name || biz.name,
+        am: r.balance_amount > 0 ? r.balance_amount : r.total_amount,
+        tn: `Inv ${r.invoice_number}`,
+        tr: r.invoice_number,
+      });
+      qrDataUrl = await QRCode.toDataURL(upiUri, { margin: 1, width: 256, errorCorrectionLevel: "M" });
+    } catch {
+      qrDataUrl = null;
+    }
+  }
+
   // Estimate height (extra padding so nothing clips)
-  const estHeight = 100 + r.lines.length * 10 + (r.party_name ? 6 : 0) + (r.footer ? 12 : 0);
+  const qrBlock = qrDataUrl ? 38 : 0;
+  const estHeight = 100 + r.lines.length * 10 + (r.party_name ? 6 : 0) + (r.footer ? 12 : 0) + qrBlock;
   const doc = new jsPDF({ unit: "mm", format: [W, estHeight] });
 
   let y = M + 3;
