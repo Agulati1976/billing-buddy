@@ -35,6 +35,8 @@ interface Batch { id: string; item_id: string; batch_number: string; expiry_date
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const fromInvoiceId = searchParams.get("from");
   const isNew = !id || id === "new";
   const { current } = useBusiness();
   const { user } = useAuth();
