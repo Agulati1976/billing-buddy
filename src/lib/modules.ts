@@ -4,7 +4,7 @@ export type ModuleKey =
   | "sales" | "sale_returns" | "quotations" | "purchases"
   | "customers" | "suppliers"
   | "items" | "stock" | "categories" | "warehouses" | "batches"
-  | "payments" | "expenses" | "loyalty"
+  | "accounts" | "payments" | "expenses" | "loyalty"
   | "reports" | "ai_insights";
 
 export interface ModuleDef { key: ModuleKey; label: string; group: string; }
