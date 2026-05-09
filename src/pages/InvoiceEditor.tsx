@@ -889,6 +889,39 @@ export default function InvoiceEditor({ type }: Props) {
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
 
+      <PartyDialog
+        open={partyDialogOpen}
+        onOpenChange={setPartyDialogOpen}
+        type={partyKind}
+        party={null}
+        onSaved={async () => {
+          setPartyDialogOpen(false);
+          const before = parties.map((p) => p.id);
+          const list = await reloadParties();
+          const created = (list ?? []).find((p) => !before.includes(p.id));
+          if (created) setPartyId(created.id);
+        }}
+      />
+
+      <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Quick add {partyKind}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="qn">Name *</Label>
+              <Input id="qn" autoFocus value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="Customer name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="qp">Mobile number</Label>
+              <Input id="qp" value={quickPhone} onChange={(e) => setQuickPhone(e.target.value)} placeholder="Optional" inputMode="tel" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickOpen(false)}>Cancel</Button>
+            <Button onClick={quickAddParty} disabled={!quickName.trim()}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Mobile sticky save bar */}
       {!readOnly && (
         <div
