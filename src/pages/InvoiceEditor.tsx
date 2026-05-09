@@ -597,6 +597,11 @@ export default function InvoiceEditor({ type }: Props) {
               <Download className="h-4 w-4" /> <span className="hidden sm:inline">POS PDF</span>
             </Button>
           )}
+          {readOnly && type === "sale" && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/sale_returns/new?from=${id}`)} className="gap-1.5 px-2 sm:px-3">
+              <Undo2 className="h-4 w-4" /> <span className="hidden sm:inline">Create Return</span>
+            </Button>
+          )}
           {readOnly && (
             <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 px-2 sm:px-3">
               <Printer className="h-4 w-4" /> <span className="hidden sm:inline">Print</span>
