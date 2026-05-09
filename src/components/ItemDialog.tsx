@@ -196,18 +196,26 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       catalog_id: resolvedCatalogId,
       created_by: user.id,
     };
-    // When editing a product (not batch-tracked), apply the opening-stock delta to current_stock
+    // When editing a product (not batch-tracked), record an adjustment so trigger updates current_stock
+    let stockDelta = 0;
     if (item && form.type === "product" && !form.is_batch_tracked) {
-      const delta = newOpening - (Number(item.opening_stock) || 0);
-      if (delta !== 0) {
-        payload.current_stock = (Number(item.current_stock) || 0) + delta;
-      }
+      stockDelta = newOpening - (Number(item.opening_stock) || 0);
     }
     const res = item
       ? await omUpdate("items", { column: "id", value: item.id }, payload)
       : await omInsert("items", payload);
     setSaving(false);
     if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (item && stockDelta !== 0) {
+      await omInsert("stock_movements", {
+        business_id: current.id,
+        item_id: item.id,
+        type: stockDelta > 0 ? "adjustment_in" : "adjustment_out",
+        quantity: Math.abs(stockDelta),
+        notes: `Opening stock adjusted (${item.opening_stock} → ${newOpening})`,
+        created_by: user.id,
+      }).catch(() => {});
+    }
     toast.success(
       res.queued
         ? (item ? "Item update saved offline — will sync" : "Item saved offline — will sync")
