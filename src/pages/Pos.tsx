@@ -252,7 +252,7 @@ export default function Pos() {
       toast.success(queuedAny || liRes.queued ? `Sale ${number} saved offline — will sync` : `Sale ${number} completed`);
 
       // Print thermal
-      const receipt = generateThermalReceipt(
+      const receipt = await generateThermalReceipt(
         { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
         {
           invoice_number: number, invoice_date: new Date().toLocaleString(),
@@ -266,7 +266,8 @@ export default function Pos() {
           tax_amount: totals.tax_amount, round_off: totals.round_off,
           total_amount: totals.total_amount, paid_amount: recordedPaid,
           balance_amount: balance, payment_method: splits.map((s) => s.method).join("+"),
-        }
+        },
+        upiSettings ?? undefined,
       );
       receipt.autoPrint();
       window.open(receipt.output("bloburl"), "_blank");
