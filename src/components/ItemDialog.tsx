@@ -200,6 +200,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       color: form.color.trim() || null,
       mrp: Number(form.mrp) || null,
       catalog_id: resolvedCatalogId,
+      image_url: imageUrl,
       created_by: user.id,
     };
     // When editing a product (not batch-tracked), record an adjustment so trigger updates current_stock
