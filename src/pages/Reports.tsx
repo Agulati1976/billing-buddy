@@ -106,17 +106,22 @@ export default function Reports() {
   // Totals for the selected range
   const totals = useMemo(() => {
     const salesTotal = sales.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const returnsTotal = saleReturns.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const netSales = salesTotal - returnsTotal;
     const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
     return {
       sales: salesTotal,
+      saleReturns: returnsTotal,
+      netSales,
       purchases: purchasesTotal,
       expenses: expensesTotal,
-      net: salesTotal - purchasesTotal - expensesTotal,
+      net: netSales - purchasesTotal - expensesTotal,
       salesCount: sales.length,
+      returnsCount: saleReturns.length,
       purchasesCount: purchases.length,
     };
-  }, [sales, purchases, expenses]);
+  }, [sales, saleReturns, purchases, expenses]);
 
   // P&L for the selected range
   const pnl = useMemo(() => {
