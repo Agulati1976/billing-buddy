@@ -73,7 +73,7 @@ export default function Auth() {
     <div className="min-h-screen flex flex-col bg-background">
       {/* Hero */}
       <div
-        className="relative pt-[max(env(safe-area-inset-top),2rem)] pb-12 px-6 text-primary-foreground overflow-hidden"
+        className="relative pt-[max(env(safe-area-inset-top),2.5rem)] pb-20 px-6 text-primary-foreground overflow-hidden"
         style={{
           background:
             "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 60%, hsl(var(--primary) / 0.7) 100%)",
