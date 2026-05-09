@@ -43,6 +43,7 @@ const TILES: Tile[] = [
   { to: "/categories",  label: "Categories",    icon: Tags,            module: "categories",   tone: "pink" },
   { to: "/warehouses",  label: "Warehouses",    icon: Warehouse,       module: "warehouses",   tone: "teal" },
   { to: "/batches",     label: "Batches",       icon: Boxes,           module: "batches",      tone: "warning" },
+  { to: "/accounts",    label: "Accounts",      icon: Wallet,          module: "accounts",     tone: "primary" },
   { to: "/payments",    label: "Payments",      icon: Wallet,          module: "payments",     tone: "success" },
   { to: "/expenses",    label: "Expenses",      icon: ReceiptIcon,     module: "expenses",     tone: "danger" },
   { to: "/loyalty",     label: "Loyalty",       icon: Gift,            module: "loyalty",      tone: "pink" },
