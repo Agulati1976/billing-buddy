@@ -2,11 +2,15 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initOfflineSync } from "@/lib/offlineSync";
+import { initNative } from "@/lib/native";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Start outbox drainer (runs in foreground; safe in iframe too).
 initOfflineSync();
+
+// Native splash hide + status bar theming (no-op on web).
+initNative();
 
 // Service worker registration with iframe / Lovable preview guard.
 // SW is intentionally disabled inside the editor preview to avoid stale caches.
