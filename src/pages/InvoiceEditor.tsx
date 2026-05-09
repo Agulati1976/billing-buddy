@@ -61,6 +61,36 @@ export default function InvoiceEditor({ type }: Props) {
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
 
+  // Party quick add / full add
+  const [partyDialogOpen, setPartyDialogOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickName, setQuickName] = useState("");
+  const [quickPhone, setQuickPhone] = useState("");
+  const partyKind: "customer" | "supplier" = (type === "purchase" || type === "purchase_return") ? "supplier" : "customer";
+
+  const reloadParties = async () => {
+    if (!current) return;
+    const { data } = await supabase.from("parties")
+      .select("id, name, state_code, gstin, phone")
+      .eq("business_id", current.id).eq("type", partyKind).order("name");
+    setParties((data as any) ?? []);
+    return data as any[] | null;
+  };
+
+  const quickAddParty = async () => {
+    if (!current) return;
+    if (!quickName.trim()) { toast.error("Name required"); return; }
+    const res = await omInsert("parties", {
+      business_id: current.id, name: quickName.trim(),
+      phone: quickPhone.trim() || null, type: partyKind,
+    });
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    setParties((p) => [...p, res.data as any]);
+    setPartyId((res.data as any).id);
+    setQuickName(""); setQuickPhone(""); setQuickOpen(false);
+    toast.success(res.queued ? "Added (offline)" : `${partyKind === "customer" ? "Customer" : "Supplier"} added`);
+  };
+
   // Loyalty
   const [loyaltyCfg, setLoyaltyCfg] = useState<{ enabled: boolean; amount_per_point: number; point_value: number; min_redeem_points: number } | null>(null);
   const [partyPoints, setPartyPoints] = useState(0);
