@@ -450,7 +450,10 @@ export default function InvoiceEditor({ type }: Props) {
 
     setSaving(true);
     const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: extraDiscountValue });
-    const status = type === "quotation" ? "draft" : "unpaid";
+    const status = type === "quotation" ? "draft"
+      : (type === "sale_return" || type === "purchase_return") ? "paid"
+      : "unpaid";
+    const isReturn = type === "sale_return" || type === "purchase_return";
 
     const invoiceId = crypto.randomUUID();
     const invRes = await omInsert("invoices", {
