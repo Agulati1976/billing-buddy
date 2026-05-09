@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScanLine, Plus, Minus, Trash2, Pause, Play, Printer, Download, ShoppingCart, X, UserPlus, KeyboardIcon, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { computeInvoice, nextInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
+import { computeInvoice, nextInvoiceNumber, shopInvoiceBase, pickShopInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
