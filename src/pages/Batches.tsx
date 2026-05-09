@@ -229,6 +229,8 @@ export default function Batches() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScannedItem} />
     </div>
   );
 }
