@@ -6,7 +6,7 @@ import {
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
   Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
-  BarChart3, Sparkles, ShoppingCart, Gift,
+  BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown,
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
 
