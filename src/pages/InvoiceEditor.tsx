@@ -236,17 +236,6 @@ export default function InvoiceEditor({ type }: Props) {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, isNew, type]);
-    supabase.from("invoices")
-      .select("id, invoice_number, invoice_date, total_amount, parties(name)")
-      .eq("business_id", current.id).eq("type", "sale")
-      .order("invoice_date", { ascending: false }).limit(200)
-      .then(({ data }) => {
-        setSourceList(((data as any[]) ?? []).map((r) => ({
-          id: r.id, invoice_number: r.invoice_number, invoice_date: r.invoice_date,
-          total_amount: Number(r.total_amount), party: r.parties?.name ?? null,
-        })));
-      });
-  }, [current?.id, isNew, type]);
 
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInterState = useMemo(() => {
