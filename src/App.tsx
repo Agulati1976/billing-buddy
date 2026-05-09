@@ -19,6 +19,7 @@ import StockManagement from "./pages/StockManagement";
 import Invoices from "./pages/Invoices";
 import InvoiceEditor from "./pages/InvoiceEditor";
 import Payments from "./pages/Payments";
+import Accounts from "./pages/Accounts";
 import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
 import Team from "./pages/Team";
