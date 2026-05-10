@@ -50,10 +50,23 @@ export function AppTopbar() {
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
   const isHome = location.pathname === "/";
   const title = getTitle(location.pathname);
+  const FREE_LIMIT = 2;
+  const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
+  const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
+  const atLimit = ownedCount >= FREE_LIMIT && !isPremium;
 
   const handleLogout = async () => {
     await signOut();
     navigate("/auth", { replace: true });
+  };
+
+  const handleAddBusiness = () => {
+    if (atLimit) {
+      import("sonner").then(({ toast }) =>
+        toast.error(`Free plan allows up to ${FREE_LIMIT} businesses. Upgrade to premium to add more.`)
+      );
+    }
+    navigate("/onboarding");
   };
 
   return (
@@ -113,8 +126,8 @@ export function AppTopbar() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/onboarding")} className="text-primary">
-                <Plus className="h-4 w-4 mr-1" /> Add new business
+              <DropdownMenuItem onClick={handleAddBusiness} className="text-primary">
+                <Plus className="h-4 w-4 mr-1" /> Add new business {atLimit && "(Premium)"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

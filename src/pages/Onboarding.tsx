@@ -11,12 +11,16 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { INDIAN_STATES } from "@/lib/states";
-import { Building2 } from "lucide-react";
+import { Building2, Sparkles } from "lucide-react";
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { refresh } = useBusiness();
+  const { refresh, businesses } = useBusiness();
+  const FREE_LIMIT = 2;
+  const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
+  const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
+  const blocked = ownedCount >= FREE_LIMIT && !isPremium;
 
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
@@ -30,6 +34,10 @@ export default function Onboarding() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (blocked) {
+      toast.error("Free plan allows up to 2 businesses. Upgrade to premium to add more.");
+      return;
+    }
     if (pincode && !/^\d{6}$/.test(pincode)) {
       toast.error("Pincode must be 6 digits");
       return;
@@ -61,6 +69,19 @@ export default function Onboarding() {
             <p className="text-sm text-muted-foreground">You can change these details anytime.</p>
           </div>
         </div>
+
+        {blocked && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary-soft/40 p-4 flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm">Upgrade to Premium</div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Free plan supports up to {FREE_LIMIT} businesses. You already have {ownedCount}. Upgrade to add unlimited stores.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => toast.info("Premium plans coming soon!")}>Upgrade</Button>
+          </div>
+        )}
 
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
@@ -110,8 +131,8 @@ export default function Onboarding() {
             <Textarea id="ad" value={address} onChange={(e) => setAddress(e.target.value)} rows={3} />
           </div>
 
-          <Button type="submit" className="w-full" disabled={busy || !name}>
-            {busy ? "Creating…" : "Create business & continue"}
+          <Button type="submit" className="w-full" disabled={busy || !name || blocked}>
+            {busy ? "Creating…" : blocked ? "Upgrade required to add more" : "Create business & continue"}
           </Button>
         </form>
       </Card>
