@@ -264,41 +264,71 @@ export default function Accounts() {
             <p className="text-sm text-muted-foreground">No entries</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-2">
               {visible.map((r) => (
-                <TableRow key={`${r.source}-${r.id}`}>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">{format(new Date(r.date), "dd MMM yyyy")}</TableCell>
-                  <TableCell>
-                    <span className={`text-xs px-2 py-0.5 rounded ${r.direction === "in" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
-                      {r.direction === "in" ? "IN" : "OUT"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-[320px]">
-                    <div className="font-medium truncate">
-                      {r.party_name ?? r.category ?? (r.source === "expense" ? "Expense" : "Manual entry")}
+                <Card key={`${r.source}-${r.id}`} className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate text-sm">
+                        {r.party_name ?? r.category ?? (r.source === "expense" ? "Expense" : "Manual entry")}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {format(new Date(r.date), "dd MMM yyyy")} · <span className="capitalize">{r.method}</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {[r.invoice_number, r.reference, r.notes].filter(Boolean).join(" · ") || (r.source === "expense" ? "Expense" : "—")}
+                    <div className={`text-sm font-semibold num shrink-0 ${r.direction === "in" ? "text-success" : "text-danger"}`}>
+                      {r.direction === "in" ? "+" : "−"}{formatINR(r.amount)}
                     </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{r.method}</TableCell>
-                  <TableCell className={`text-right num font-medium ${r.direction === "in" ? "text-success" : "text-danger"}`}>
-                    {r.direction === "in" ? "+" : "−"}{formatINR(r.amount)}
-                  </TableCell>
-                </TableRow>
+                  </div>
+                  {(r.invoice_number || r.reference || r.notes) && (
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {[r.invoice_number, r.reference, r.notes].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((r) => (
+                    <TableRow key={`${r.source}-${r.id}`}>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">{format(new Date(r.date), "dd MMM yyyy")}</TableCell>
+                      <TableCell>
+                        <span className={`text-xs px-2 py-0.5 rounded ${r.direction === "in" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
+                          {r.direction === "in" ? "IN" : "OUT"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-[320px]">
+                        <div className="font-medium truncate">
+                          {r.party_name ?? r.category ?? (r.source === "expense" ? "Expense" : "Manual entry")}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {[r.invoice_number, r.reference, r.notes].filter(Boolean).join(" · ") || (r.source === "expense" ? "Expense" : "—")}
+                        </div>
+                      </TableCell>
+                      <TableCell className="capitalize">{r.method}</TableCell>
+                      <TableCell className={`text-right num font-medium ${r.direction === "in" ? "text-success" : "text-danger"}`}>
+                        {r.direction === "in" ? "+" : "−"}{formatINR(r.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 
