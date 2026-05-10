@@ -240,54 +240,88 @@ export default function CustomerDetail() {
           <h2 className="font-semibold">Invoice history</h2>
           <Badge variant="secondary" className="ml-1">{invoices.length}</Badge>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Number</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoices.length === 0 ? (
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {invoices.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">No invoices yet.</div>
+          ) : invoices.map((inv) => {
+            const overdue = inv.balance_amount > 0 && inv.due_date && inv.due_date < todayISO();
+            const route = inv.type === "purchase" ? "/purchases" : inv.type === "quotation" ? "/quotations" : "/sales";
+            return (
+              <Link to={`${route}/${inv.id}`} key={inv.id} className="block">
+                <Card className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-primary truncate">{inv.invoice_number}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {inv.invoice_date} · <span className="capitalize">{inv.type.replace("_", " ")}</span>
+                      </div>
+                    </div>
+                    <Badge variant={inv.status === "paid" ? "default" : overdue ? "destructive" : "secondary"} className="shrink-0 text-[10px]">
+                      {overdue ? "overdue" : inv.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-end justify-between text-xs">
+                    <span className="text-muted-foreground">Total: <span className="num">{formatINR(Number(inv.total_amount))}</span></span>
+                    <span className="font-semibold num">Bal: {formatINR(Number(inv.balance_amount))}</span>
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                  No invoices yet.
-                </TableCell>
+                <TableHead>Number</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
               </TableRow>
-            ) : (
-              invoices.map((inv) => {
-                const overdue = inv.balance_amount > 0 && inv.due_date && inv.due_date < todayISO();
-                const route =
-                  inv.type === "purchase" ? "/purchases" :
-                  inv.type === "quotation" ? "/quotations" : "/sales";
-                return (
-                  <TableRow key={inv.id} className="hover:bg-muted/40">
-                    <TableCell>
-                      <Link to={`${route}/${inv.id}`} className="font-medium text-primary hover:underline">
-                        {inv.invoice_number}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-sm">{inv.invoice_date}</TableCell>
-                    <TableCell className="text-sm capitalize">{inv.type.replace("_", " ")}</TableCell>
-                    <TableCell>
-                      <Badge variant={inv.status === "paid" ? "default" : overdue ? "destructive" : "secondary"}>
-                        {overdue ? "overdue" : inv.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right num">{formatINR(Number(inv.total_amount))}</TableCell>
-                    <TableCell className="text-right num font-medium">
-                      {formatINR(Number(inv.balance_amount))}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {invoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                    No invoices yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                invoices.map((inv) => {
+                  const overdue = inv.balance_amount > 0 && inv.due_date && inv.due_date < todayISO();
+                  const route =
+                    inv.type === "purchase" ? "/purchases" :
+                    inv.type === "quotation" ? "/quotations" : "/sales";
+                  return (
+                    <TableRow key={inv.id} className="hover:bg-muted/40">
+                      <TableCell>
+                        <Link to={`${route}/${inv.id}`} className="font-medium text-primary hover:underline">
+                          {inv.invoice_number}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-sm">{inv.invoice_date}</TableCell>
+                      <TableCell className="text-sm capitalize">{inv.type.replace("_", " ")}</TableCell>
+                      <TableCell>
+                        <Badge variant={inv.status === "paid" ? "default" : overdue ? "destructive" : "secondary"}>
+                          {overdue ? "overdue" : inv.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right num">{formatINR(Number(inv.total_amount))}</TableCell>
+                      <TableCell className="text-right num font-medium">
+                        {formatINR(Number(inv.balance_amount))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       {/* Payments */}
@@ -297,7 +331,27 @@ export default function CustomerDetail() {
           <h2 className="font-semibold">Payment history</h2>
           <Badge variant="secondary" className="ml-1">{payments.length}</Badge>
         </div>
-        <Table>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {payments.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">No payments recorded.</div>
+          ) : payments.map((p) => (
+            <Card key={p.id} className="p-3 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">{p.payment_date}</div>
+                <div className="text-[11px] text-muted-foreground capitalize truncate">
+                  {p.direction.replace("_", " ")} · {p.method}{p.reference ? ` · ${p.reference}` : ""}
+                </div>
+              </div>
+              <div className="text-sm font-semibold num shrink-0">{formatINR(Number(p.amount))}</div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
