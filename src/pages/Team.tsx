@@ -161,7 +161,7 @@ export default function Team() {
 
   if (!canManageTeam) {
     return (
-      <Card className="p-6 max-w-xl">
+      <Card className="p-4 sm:p-6 max-w-xl">
         <div className="flex items-center gap-2 mb-2">
           <ShieldCheck className="h-5 w-5 text-warning" />
           <h2 className="font-semibold">Owner only</h2>
@@ -370,7 +370,7 @@ export default function Team() {
         </div>
       </Card>
 
-      <Card className="p-6 space-y-3">
+      <Card className="p-4 sm:p-6 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" /> POS Access
@@ -409,7 +409,7 @@ export default function Team() {
         )}
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h2 className="font-semibold mb-3">Role permissions</h2>
         <div className="space-y-2 text-sm">
           {(["owner", "admin", "staff"] as Role[]).map((r) => (
