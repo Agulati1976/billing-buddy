@@ -126,8 +126,8 @@ export function AppTopbar() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/onboarding")} className="text-primary">
-                <Plus className="h-4 w-4 mr-1" /> Add new business
+              <DropdownMenuItem onClick={handleAddBusiness} className="text-primary">
+                <Plus className="h-4 w-4 mr-1" /> Add new business {atLimit && "(Premium)"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
