@@ -84,29 +84,33 @@ export default function Payments() {
   };
   useEffect(() => { load(); }, [current?.id]);
 
-  // Load invoices for selected party
+  // Load invoices: party-linked OR walk-in (when partyId is "WALKIN")
   useEffect(() => {
-    if (!current || !partyId) { setInvoices([]); return; }
+    if (!current) { setInvoices([]); return; }
     const wantType = direction === "in" ? "sale" : "purchase";
-    supabase.from("invoices")
-      .select("id, invoice_number, balance_amount, type")
+    let q = supabase.from("invoices")
+      .select("id, invoice_number, balance_amount, type, pos_session_id")
       .eq("business_id", current.id)
-      .eq("party_id", partyId)
       .eq("type", wantType)
-      .gt("balance_amount", 0)
-      .then(({ data }) => setInvoices((data as any) ?? []));
+      .gt("balance_amount", 0);
+    if (partyId === "WALKIN") q = q.is("party_id", null);
+    else if (partyId) q = q.eq("party_id", partyId);
+    else { setInvoices([]); return; }
+    q.order("invoice_date", { ascending: false }).then(({ data }) => setInvoices((data as any) ?? []));
   }, [partyId, direction, current?.id]);
 
   const submit = async () => {
     if (!current || !user) return;
     const amt = Number(amount);
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    const isWalkin = partyId === "WALKIN";
     if (!partyId) { toast.error("Select a party"); return; }
+    if (isWalkin && !invoiceId) { toast.error("Select a walk-in invoice"); return; }
     setSaving(true);
     const res = await omInsert("payments", {
       business_id: current.id,
       direction, method: method as any, amount: amt,
-      payment_date: date, party_id: partyId,
+      payment_date: date, party_id: isWalkin ? null : partyId,
       invoice_id: invoiceId || null,
       reference: reference.trim() || null,
       notes: notes.trim() || null,
