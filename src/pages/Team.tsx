@@ -259,63 +259,115 @@ export default function Team() {
 
       <Card>
         <div className="p-4 border-b font-medium">Members ({members.length})</div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Member</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead className="w-40">Role</TableHead>
-              <TableHead className="w-32">Modules</TableHead>
-              <TableHead className="text-right w-24">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">Loading…</TableCell></TableRow>
-            ) : members.map((m) => {
-              const mods = moduleAccess[m.user_id] ?? [];
-              return (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">
-                    {m.full_name ?? "—"}
-                    {m.user_id === user?.id && <Badge variant="secondary" className="ml-2">You</Badge>}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{m.email ?? "—"}</TableCell>
-                  <TableCell>
-                    {m.role === "owner" ? (
-                      <Badge>Owner</Badge>
-                    ) : (
-                      <Select value={m.role} onValueChange={(v) => changeRole(m, v as Role)}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {m.role === "staff" ? (
-                      <Button size="sm" variant="outline" onClick={() => openModuleEditor(m)}>
-                        <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
-                        {mods.length} on
-                      </Button>
-                    ) : (
-                      <Badge variant="secondary">All</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {m.role !== "owner" && m.user_id !== user?.id && (
-                      <Button size="icon" variant="ghost" onClick={() => remove(m)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {loading ? (
+            <div className="text-center py-6 text-sm text-muted-foreground">Loading…</div>
+          ) : members.map((m) => {
+            const mods = moduleAccess[m.user_id] ?? [];
+            return (
+              <Card key={m.id} className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">
+                      {m.full_name ?? "—"}
+                      {m.user_id === user?.id && <Badge variant="secondary" className="ml-1.5 text-[10px]">You</Badge>}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{m.email ?? "—"}</div>
+                  </div>
+                  {m.role !== "owner" && m.user_id !== user?.id && (
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(m)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {m.role === "owner" ? (
+                    <Badge>Owner</Badge>
+                  ) : (
+                    <Select value={m.role} onValueChange={(v) => changeRole(m, v as Role)}>
+                      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {m.role === "staff" ? (
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => openModuleEditor(m)}>
+                      <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+                      {mods.length} modules
+                    </Button>
+                  ) : m.role !== "owner" && (
+                    <Badge variant="secondary">All modules</Badge>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="w-40">Role</TableHead>
+                <TableHead className="w-32">Modules</TableHead>
+                <TableHead className="text-right w-24">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">Loading…</TableCell></TableRow>
+              ) : members.map((m) => {
+                const mods = moduleAccess[m.user_id] ?? [];
+                return (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">
+                      {m.full_name ?? "—"}
+                      {m.user_id === user?.id && <Badge variant="secondary" className="ml-2">You</Badge>}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{m.email ?? "—"}</TableCell>
+                    <TableCell>
+                      {m.role === "owner" ? (
+                        <Badge>Owner</Badge>
+                      ) : (
+                        <Select value={m.role} onValueChange={(v) => changeRole(m, v as Role)}>
+                          <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {m.role === "staff" ? (
+                        <Button size="sm" variant="outline" onClick={() => openModuleEditor(m)}>
+                          <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+                          {mods.length} on
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary">All</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {m.role !== "owner" && m.user_id !== user?.id && (
+                        <Button size="icon" variant="ghost" onClick={() => remove(m)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <Card className="p-6 space-y-3">
