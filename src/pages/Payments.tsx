@@ -29,7 +29,7 @@ interface PaymentRow {
   party_id: string | null;
   invoice_id: string | null;
   parties: { name: string } | null;
-  invoices: { invoice_number: string } | null;
+  invoices: { invoice_number: string; pos_session_id: string | null; type: string } | null;
 }
 
 interface Party { id: string; name: string; type: "customer" | "supplier"; }
