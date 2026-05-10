@@ -235,16 +235,64 @@ export default function StockManagement() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-4">
-          <div className="flex flex-wrap gap-2 items-center">
+        <TabsContent value="history" className="space-y-3 sm:space-y-4 mt-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <SearchBar value={historyQ} onChange={setHistoryQ} placeholder="Search item or notes..." />
-            <div className="flex gap-1">
+            <div className="flex gap-1 overflow-x-auto">
               <Button size="sm" variant={typeFilter === "all" ? "default" : "outline"} onClick={() => setTypeFilter("all")}>All</Button>
               <Button size="sm" variant={typeFilter === "opening" ? "default" : "outline"} onClick={() => setTypeFilter("opening")}>Opening</Button>
               <Button size="sm" variant={typeFilter === "adjustments" ? "default" : "outline"} onClick={() => setTypeFilter("adjustments")}>Adjustments</Button>
             </div>
           </div>
-          <Card>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {loading ? (
+              <Card className="p-6 text-center text-sm text-muted-foreground">Loading…</Card>
+            ) : filteredHistory.length === 0 ? (
+              <Card className="p-8 text-center text-sm text-muted-foreground">No stock changes yet.</Card>
+            ) : filteredHistory.map((m) => {
+              const it = itemMap.get(m.item_id);
+              const sign = SIGN[m.type];
+              const delta = sign * Number(m.quantity);
+              return (
+                <Card key={m.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{it?.name ?? "—"}</div>
+                      <div className="text-[11px] text-muted-foreground">{new Date(m.created_at).toLocaleString()}</div>
+                    </div>
+                    <Badge variant={sign > 0 ? "secondary" : "outline"} className="shrink-0 text-[10px]">{TYPE_LABEL[m.type]}</Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center mb-2">
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase">Before</div>
+                      <div className="text-sm tabular-nums">{m.before}</div>
+                    </div>
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase">Change</div>
+                      <div className={"text-sm font-semibold tabular-nums " + (delta >= 0 ? "text-emerald-600" : "text-destructive")}>
+                        {delta >= 0 ? "+" : ""}{delta}
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase">After</div>
+                      <div className="text-sm font-semibold tabular-nums">{m.after}</div>
+                    </div>
+                  </div>
+                  {(m.notes || m.created_by) && (
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      {m.created_by && <div>By: {profiles[m.created_by] ?? "—"}</div>}
+                      {m.notes && <div className="truncate">Note: {m.notes}</div>}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <Card className="hidden sm:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
