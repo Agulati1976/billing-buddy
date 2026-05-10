@@ -131,8 +131,8 @@ export default function Onboarding() {
             <Textarea id="ad" value={address} onChange={(e) => setAddress(e.target.value)} rows={3} />
           </div>
 
-          <Button type="submit" className="w-full" disabled={busy || !name}>
-            {busy ? "Creating…" : "Create business & continue"}
+          <Button type="submit" className="w-full" disabled={busy || !name || blocked}>
+            {busy ? "Creating…" : blocked ? "Upgrade required to add more" : "Create business & continue"}
           </Button>
         </form>
       </Card>
