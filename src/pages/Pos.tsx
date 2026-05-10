@@ -327,7 +327,7 @@ export default function Pos() {
         show_upi_qr: (design as any).show_upi_qr,
       } : undefined,
     );
-    pdf.save(`POS-${Date.now()}.pdf`);
+    await savePdf(pdf, `POS-${Date.now()}.pdf`);
   };
 
   const downloadThermal = async () => {
