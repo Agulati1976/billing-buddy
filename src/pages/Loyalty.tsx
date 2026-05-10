@@ -126,35 +126,67 @@ export default function Loyalty() {
       <Card>
         <div className="p-4 border-b flex items-center justify-between gap-3 flex-wrap">
           <div className="font-medium">Customer Points Balance</div>
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="h-4 w-4 absolute left-2 top-2.5 text-muted-foreground" />
-            <Input className="pl-8 h-9 w-[240px]" placeholder="Search customer…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="pl-8 h-9 w-full sm:w-[240px]" placeholder="Search customer…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead className="text-right">Earned</TableHead>
-              <TableHead className="text-right">Redeemed</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-              <TableHead className="text-right">Worth</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No loyalty activity yet.</TableCell></TableRow>
-            ) : filtered.map((m) => (
-              <TableRow key={m.party_id}>
-                <TableCell className="font-medium">{m.name}</TableCell>
-                <TableCell className="text-right tabular-nums">{m.earned}</TableCell>
-                <TableCell className="text-right tabular-nums">{m.redeemed}</TableCell>
-                <TableCell className="text-right tabular-nums"><Badge variant="secondary">{m.balance}</Badge></TableCell>
-                <TableCell className="text-right tabular-nums text-success">{formatINR(m.balance * settings.point_value)}</TableCell>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {filtered.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-8">No loyalty activity yet.</div>
+          ) : filtered.map((m) => (
+            <Card key={m.party_id} className="p-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="font-medium truncate flex-1">{m.name}</div>
+                <Badge variant="secondary" className="shrink-0">{m.balance} pts</Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-muted/50 p-1.5">
+                  <div className="text-[10px] text-muted-foreground uppercase">Earned</div>
+                  <div className="text-sm tabular-nums">{m.earned}</div>
+                </div>
+                <div className="rounded-md bg-muted/50 p-1.5">
+                  <div className="text-[10px] text-muted-foreground uppercase">Redeemed</div>
+                  <div className="text-sm tabular-nums">{m.redeemed}</div>
+                </div>
+                <div className="rounded-md bg-muted/50 p-1.5">
+                  <div className="text-[10px] text-muted-foreground uppercase">Worth</div>
+                  <div className="text-sm tabular-nums text-success">{formatINR(m.balance * settings.point_value)}</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead className="text-right">Earned</TableHead>
+                <TableHead className="text-right">Redeemed</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className="text-right">Worth</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No loyalty activity yet.</TableCell></TableRow>
+              ) : filtered.map((m) => (
+                <TableRow key={m.party_id}>
+                  <TableCell className="font-medium">{m.name}</TableCell>
+                  <TableCell className="text-right tabular-nums">{m.earned}</TableCell>
+                  <TableCell className="text-right tabular-nums">{m.redeemed}</TableCell>
+                  <TableCell className="text-right tabular-nums"><Badge variant="secondary">{m.balance}</Badge></TableCell>
+                  <TableCell className="text-right tabular-nums text-success">{formatINR(m.balance * settings.point_value)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );
