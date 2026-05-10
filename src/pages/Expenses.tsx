@@ -127,28 +127,52 @@ export default function Expenses() {
             <p className="text-sm text-muted-foreground">{rows.length === 0 ? "No expenses yet" : "No matches"}</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-2">
               {filtered.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-muted-foreground">{format(new Date(r.expense_date), "dd MMM yyyy")}</TableCell>
-                  <TableCell><span className="px-2 py-0.5 rounded bg-muted text-xs">{r.category}</span></TableCell>
-                  <TableCell className="max-w-xs truncate">{r.description ?? "—"}</TableCell>
-                  <TableCell className="capitalize">{r.method}</TableCell>
-                  <TableCell className="text-right num font-medium">{formatINR(Number(r.amount))}</TableCell>
-                </TableRow>
+                <Card key={r.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium">{r.category}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {format(new Date(r.expense_date), "dd MMM yyyy")} · <span className="capitalize">{r.method}</span>
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold num text-danger shrink-0">{formatINR(Number(r.amount))}</div>
+                  </div>
+                  {r.description && <div className="text-[11px] text-muted-foreground truncate">{r.description}</div>}
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-muted-foreground">{format(new Date(r.expense_date), "dd MMM yyyy")}</TableCell>
+                      <TableCell><span className="px-2 py-0.5 rounded bg-muted text-xs">{r.category}</span></TableCell>
+                      <TableCell className="max-w-xs truncate">{r.description ?? "—"}</TableCell>
+                      <TableCell className="capitalize">{r.method}</TableCell>
+                      <TableCell className="text-right num font-medium">{formatINR(Number(r.amount))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 
