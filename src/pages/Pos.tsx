@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { computeInvoice, nextInvoiceNumber, shopInvoiceBase, pickShopInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { savePdf } from "@/lib/pdfDownload";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { SearchBar } from "@/components/SearchBar";
