@@ -128,6 +128,7 @@ export default function InvoiceDesign() {
       {
         name: current.name, gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
+        logo_url: (current as any).logo_url,
       },
       {
         name: "Sample Customer", gstin: "07AABCU9603R1ZX",
