@@ -69,7 +69,7 @@ export default function Payments() {
     if (!current) return;
     const [pays, prt] = await Promise.all([
       supabase.from("payments")
-        .select("id, direction, method, amount, payment_date, reference, notes, party_id, invoice_id, parties(name), invoices(invoice_number)")
+        .select("id, direction, method, amount, payment_date, reference, notes, party_id, invoice_id, parties(name), invoices(invoice_number, pos_session_id, type)")
         .eq("business_id", current.id).order("payment_date", { ascending: false }),
       supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name"),
     ]);
