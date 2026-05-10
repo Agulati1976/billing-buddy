@@ -34,6 +34,7 @@ export interface PdfBusiness {
   address?: string | null;
   state?: string | null;
   state_code?: string | null;
+  logo_url?: string | null;
 }
 
 export interface PdfParty {
