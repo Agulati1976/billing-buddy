@@ -612,7 +612,7 @@ export default function InvoiceEditor({ type }: Props) {
       design ? { upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name, show_upi_qr: (design as any).show_upi_qr } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
-    receipt.save(`POS-${safeNum || "Receipt"}.pdf`);
+    await savePdf(receipt, `POS-${safeNum || "Receipt"}.pdf`);
   };
 
   if (!loaded) return <div className="text-sm text-muted-foreground">Loading…</div>;
