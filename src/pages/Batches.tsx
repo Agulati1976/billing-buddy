@@ -162,36 +162,67 @@ export default function Batches() {
       )}
 
       <Card>
-        <div className="p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search batches…" className="max-w-sm" /></div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Item</TableHead>
-              <TableHead>Batch No.</TableHead>
-              <TableHead>Mfg Date</TableHead>
-              <TableHead>Expiry</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right w-[120px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No batches yet" : "No matches"}</TableCell></TableRow>
-            ) : filtered.map((b) => (
-              <TableRow key={b.id}>
-                <TableCell className="font-medium">{b.items?.name ?? "—"}</TableCell>
-                <TableCell>{b.batch_number}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{b.mfg_date ? format(parseISO(b.mfg_date), "dd MMM yyyy") : "—"}</TableCell>
-                <TableCell>{expiryBadge(b.expiry_date)}</TableCell>
-                <TableCell className="text-right num">{Number(b.quantity)} {b.items?.unit ?? ""}</TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => remove(b.id)}><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
+        <div className="p-3 sm:p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search batches…" className="max-w-sm" /></div>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {filtered.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-8">{rows.length === 0 ? "No batches yet" : "No matches"}</div>
+          ) : filtered.map((b) => (
+            <Card key={b.id} className="p-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium truncate">{b.items?.name ?? "—"}</div>
+                  <div className="text-[11px] text-muted-foreground">Batch: {b.batch_number}</div>
+                </div>
+                <div className="text-sm font-semibold num shrink-0">{Number(b.quantity)} {b.items?.unit ?? ""}</div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs">{expiryBadge(b.expiry_date)}</div>
+                <div className="flex gap-0.5">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              {b.mfg_date && (
+                <div className="text-[11px] text-muted-foreground mt-1">Mfg: {format(parseISO(b.mfg_date), "dd MMM yyyy")}</div>
+              )}
+            </Card>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead>Batch No.</TableHead>
+                <TableHead>Mfg Date</TableHead>
+                <TableHead>Expiry</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right w-[120px]">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No batches yet" : "No matches"}</TableCell></TableRow>
+              ) : filtered.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell className="font-medium">{b.items?.name ?? "—"}</TableCell>
+                  <TableCell>{b.batch_number}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{b.mfg_date ? format(parseISO(b.mfg_date), "dd MMM yyyy") : "—"}</TableCell>
+                  <TableCell>{expiryBadge(b.expiry_date)}</TableCell>
+                  <TableCell className="text-right num">{Number(b.quantity)} {b.items?.unit ?? ""}</TableCell>
+                  <TableCell className="text-right">
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
