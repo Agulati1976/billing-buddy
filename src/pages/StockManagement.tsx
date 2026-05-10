@@ -109,21 +109,74 @@ export default function StockManagement() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Stock Management</h1>
-        <p className="text-muted-foreground">Adjust stock and review every change with full history.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold">Stock Management</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">Adjust stock and review every change with full history.</p>
       </div>
 
       <Tabs defaultValue="items">
-        <TabsList>
+        <TabsList className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex">
           <TabsTrigger value="items">Items</TabsTrigger>
-          <TabsTrigger value="history">Adjustment History</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="items" className="space-y-4">
+        <TabsContent value="items" className="space-y-3 sm:space-y-4 mt-3">
           <SearchBar value={q} onChange={setQ} placeholder="Search by name, SKU or barcode..." />
-          <Card>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {loading ? (
+              <Card className="p-6 text-center text-sm text-muted-foreground">Loading…</Card>
+            ) : filteredItems.length === 0 ? (
+              <Card className="p-8 text-center text-sm text-muted-foreground">
+                <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                No products found
+              </Card>
+            ) : filteredItems.map((it) => {
+              const low = it.low_stock_alert > 0 && Number(it.current_stock) <= Number(it.low_stock_alert);
+              return (
+                <Card key={it.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{it.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {it.sku ? `SKU: ${it.sku}` : "—"}{it.is_batch_tracked ? " · batch" : ""}
+                      </div>
+                    </div>
+                    {low && <Badge variant="destructive" className="shrink-0 text-[10px]"><AlertTriangle className="h-3 w-3 mr-0.5" />Low</Badge>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase">Opening</div>
+                      <div className="text-sm font-semibold tabular-nums">{Number(it.opening_stock)}</div>
+                    </div>
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase">Current</div>
+                      <div className={"text-sm font-semibold tabular-nums " + (low ? "text-destructive" : "")}>{Number(it.current_stock)}</div>
+                    </div>
+                    <div className="rounded-md bg-muted/50 p-2">
+                      <div className="text-[10px] text-muted-foreground uppercase">Alert</div>
+                      <div className="text-sm font-semibold tabular-nums">{it.low_stock_alert || "—"}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1" disabled={it.is_batch_tracked}
+                      onClick={() => { setAdjustItem(it); setAdjustOpen(true); }}>
+                      <ArrowUpDown className="h-3.5 w-3.5 mr-1" />Adjust
+                    </Button>
+                    <Button size="sm" variant="ghost" className="flex-1"
+                      onClick={() => { setEditing(it); setEditOpen(true); }}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />Edit
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <Card className="hidden sm:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
