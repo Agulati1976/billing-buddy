@@ -213,7 +213,7 @@ export default function Payments() {
                           {r.direction === "in" ? "IN" : "OUT"}
                         </span>
                       </TableCell>
-                      <TableCell>{r.parties?.name ?? "—"}</TableCell>
+                      <TableCell>{partyLabel(r)}</TableCell>
                       <TableCell className="text-muted-foreground">{r.invoices?.invoice_number ?? "—"}</TableCell>
                       <TableCell className="capitalize">{r.method}</TableCell>
                       <TableCell className="text-right num font-medium">{formatINR(Number(r.amount))}</TableCell>
