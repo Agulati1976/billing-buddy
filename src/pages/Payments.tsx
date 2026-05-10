@@ -59,10 +59,16 @@ export default function Payments() {
   const [customTo, setCustomTo] = useState<Date>(new Date());
   const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
   const dateFiltered = useDateFilter(rows, (r) => r.payment_date, range);
+  const partyLabel = (r: PaymentRow) => {
+    if (r.parties?.name) return r.parties.name;
+    if (r.invoices?.pos_session_id) return "Walk-in (POS)";
+    if (r.invoice_id) return "Walk-in customer";
+    return r.direction === "in" ? "Cash sale" : "Cash expense";
+  };
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return dateFiltered;
-    return dateFiltered.filter((r) => [r.parties?.name, r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+    return dateFiltered.filter((r) => [partyLabel(r), r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [dateFiltered, search]);
 
   const load = async () => {
