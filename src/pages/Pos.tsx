@@ -282,7 +282,7 @@ export default function Pos() {
         upiSettings ?? undefined,
       );
       receipt.autoPrint();
-      window.open(receipt.output("bloburl"), "_blank");
+      await savePdf(receipt, `POS-Receipt-${Date.now()}.pdf`);
 
       // Reset
       setCart([]); setPartyId(""); setExtraDiscount("0");
