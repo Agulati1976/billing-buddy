@@ -63,42 +63,64 @@ export default function Categories() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <Tags className="h-6 w-6 text-primary" /> Categories
+          <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
+            <Tags className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /> Categories
           </h1>
-          <p className="text-sm text-muted-foreground">Group your products into categories</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Group your products into categories</p>
         </div>
-        <Button onClick={openNew} className="gap-1.5"><Plus className="h-4 w-4" /> New Category</Button>
+        <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> New</Button>
       </div>
 
       <Card>
-        <div className="p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search categories…" className="max-w-sm" /></div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right w-[120px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No categories yet" : "No matches"}</TableCell></TableRow>
-            ) : filtered.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-medium">{c.name}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{c.description ?? "—"}</TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
+        <div className="p-3 sm:p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search categories…" className="max-w-sm" /></div>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {filtered.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-8">{rows.length === 0 ? "No categories yet" : "No matches"}</div>
+          ) : filtered.map((c) => (
+            <Card key={c.id} className="p-3 flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="font-medium truncate">{c.name}</div>
+                {c.description && <div className="text-xs text-muted-foreground truncate">{c.description}</div>}
+              </div>
+              <div className="flex gap-0.5 shrink-0">
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right w-[120px]">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No categories yet" : "No matches"}</TableCell></TableRow>
+              ) : filtered.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.description ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

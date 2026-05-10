@@ -68,44 +68,71 @@ export default function Warehouses() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 max-w-4xl">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
-            <WarehouseIcon className="h-6 w-6 text-primary" /> Warehouses
+          <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-2">
+            <WarehouseIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /> Warehouses
           </h1>
-          <p className="text-sm text-muted-foreground">Locations where you store inventory</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">Locations where you store inventory</p>
         </div>
-        <Button onClick={openNew} className="gap-1.5"><Plus className="h-4 w-4" /> New Warehouse</Button>
+        <Button onClick={openNew} size="sm" className="gap-1.5"><Plus className="h-4 w-4" /> New</Button>
       </div>
 
       <Card>
-        <div className="p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search warehouses…" className="max-w-sm" /></div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>Default</TableHead>
-              <TableHead className="text-right w-[120px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No warehouses yet" : "No matches"}</TableCell></TableRow>
-            ) : filtered.map((w) => (
-              <TableRow key={w.id}>
-                <TableCell className="font-medium">{w.name}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{w.address ?? "—"}</TableCell>
-                <TableCell>{w.is_default ? <span className="text-xs px-2 py-0.5 rounded bg-success-soft text-success">Default</span> : "—"}</TableCell>
-                <TableCell className="text-right">
-                  <Button size="icon" variant="ghost" onClick={() => openEdit(w)}><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => remove(w.id)}><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
+        <div className="p-3 sm:p-4 border-b"><SearchBar value={search} onChange={setSearch} placeholder="Search warehouses…" className="max-w-sm" /></div>
+
+        {/* Mobile cards */}
+        <div className="sm:hidden p-3 space-y-2">
+          {filtered.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-8">{rows.length === 0 ? "No warehouses yet" : "No matches"}</div>
+          ) : filtered.map((w) => (
+            <Card key={w.id} className="p-3">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium truncate">{w.name}</span>
+                    {w.is_default && <span className="text-[10px] px-1.5 py-0.5 rounded bg-success-soft text-success shrink-0">Default</span>}
+                  </div>
+                  {w.address && <div className="text-xs text-muted-foreground truncate">{w.address}</div>}
+                </div>
+                <div className="flex gap-0.5 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(w)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => remove(w.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead>Default</TableHead>
+                <TableHead className="text-right w-[120px]">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No warehouses yet" : "No matches"}</TableCell></TableRow>
+              ) : filtered.map((w) => (
+                <TableRow key={w.id}>
+                  <TableCell className="font-medium">{w.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{w.address ?? "—"}</TableCell>
+                  <TableCell>{w.is_default ? <span className="text-xs px-2 py-0.5 rounded bg-success-soft text-success">Default</span> : "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(w)}><Pencil className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove(w.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>

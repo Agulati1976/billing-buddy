@@ -162,34 +162,61 @@ export default function Payments() {
             <p className="text-sm text-muted-foreground">{rows.length === 0 ? "No payments yet" : "No matches"}</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Direction</TableHead>
-                <TableHead>Party</TableHead>
-                <TableHead>Invoice</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile cards */}
+            <div className="sm:hidden space-y-2">
               {filteredRows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-muted-foreground">{format(new Date(r.payment_date), "dd MMM yyyy")}</TableCell>
-                  <TableCell>
-                    <span className={`text-xs px-2 py-0.5 rounded ${r.direction === "in" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
-                      {r.direction === "in" ? "IN" : "OUT"}
-                    </span>
-                  </TableCell>
-                  <TableCell>{r.parties?.name ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.invoices?.invoice_number ?? "—"}</TableCell>
-                  <TableCell className="capitalize">{r.method}</TableCell>
-                  <TableCell className="text-right num font-medium">{formatINR(Number(r.amount))}</TableCell>
-                </TableRow>
+                <Card key={r.id} className="p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate text-sm">{r.parties?.name ?? "—"}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {format(new Date(r.payment_date), "dd MMM yyyy")} · <span className="capitalize">{r.method}</span>
+                        {r.invoices?.invoice_number && ` · ${r.invoices.invoice_number}`}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${r.direction === "in" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
+                        {r.direction === "in" ? "IN" : "OUT"}
+                      </span>
+                      <div className="text-sm font-semibold num mt-0.5">{formatINR(Number(r.amount))}</div>
+                    </div>
+                  </div>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Direction</TableHead>
+                    <TableHead>Party</TableHead>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-muted-foreground">{format(new Date(r.payment_date), "dd MMM yyyy")}</TableCell>
+                      <TableCell>
+                        <span className={`text-xs px-2 py-0.5 rounded ${r.direction === "in" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
+                          {r.direction === "in" ? "IN" : "OUT"}
+                        </span>
+                      </TableCell>
+                      <TableCell>{r.parties?.name ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{r.invoices?.invoice_number ?? "—"}</TableCell>
+                      <TableCell className="capitalize">{r.method}</TableCell>
+                      <TableCell className="text-right num font-medium">{formatINR(Number(r.amount))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
 
