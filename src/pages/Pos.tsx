@@ -284,7 +284,7 @@ export default function Pos() {
     const { data: design } = await supabase
       .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
     const pdf = await generateInvoicePdf(
-      { name: current.name, gstin: current.gstin, phone: current.phone, email: current.email, address: current.address, state: current.state, state_code: current.state_code },
+      { name: current.name, gstin: current.gstin, phone: current.phone, email: current.email, address: current.address, state: current.state, state_code: current.state_code, logo_url: (current as any).logo_url },
       party ? { name: party.name, gstin: party.gstin, phone: party.phone, state_code: party.state_code } : null,
       {
         type: "sale", invoice_number: "DRAFT",

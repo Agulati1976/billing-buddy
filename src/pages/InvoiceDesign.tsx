@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Palette, ArrowLeft, Eye, Save } from "lucide-react";
+import { Palette, ArrowLeft, Eye, Save, Upload, Trash2, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateInvoicePdf, type InvoiceDesign } from "@/lib/invoicePdf";
+import { useRef } from "react";
 
 const TEMPLATES = [
   { id: "classic",   label: "Classic",   desc: "Coloured header band, full details. Best for B2B." },
@@ -56,11 +57,38 @@ const DEFAULTS: Settings = {
 };
 
 export default function InvoiceDesign() {
-  const { current } = useBusiness();
+  const { current, refresh } = useBusiness();
   const { canEditSettings, loading: permsLoading } = usePermissions();
   const [s, setS] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onLogoFile = async (file: File) => {
+    if (!current) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Logo must be under 2 MB"); return; }
+    setUploading(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `${current.id}/logo-${Date.now()}.${ext}`;
+    const up = await supabase.storage.from("business-logos").upload(path, file, { upsert: true, contentType: file.type });
+    if (up.error) { setUploading(false); toast.error(up.error.message); return; }
+    const { data: pub } = supabase.storage.from("business-logos").getPublicUrl(path);
+    const { error } = await supabase.from("businesses").update({ logo_url: pub.publicUrl }).eq("id", current.id);
+    setUploading(false);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+    toast.success("Logo updated");
+  };
+
+  const removeLogo = async () => {
+    if (!current) return;
+    const { error } = await supabase.from("businesses").update({ logo_url: null }).eq("id", current.id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+    toast.success("Logo removed");
+  };
 
   useEffect(() => {
     if (!current) return;
@@ -100,6 +128,7 @@ export default function InvoiceDesign() {
       {
         name: current.name, gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
+        logo_url: (current as any).logo_url,
       },
       {
         name: "Sample Customer", gstin: "07AABCU9603R1ZX",
@@ -167,6 +196,36 @@ export default function InvoiceDesign() {
                 <div className="text-xs text-muted-foreground mt-1">{t.desc}</div>
               </button>
             ))}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-4">
+        <div>
+          <Label className="text-base">Business logo</Label>
+          <p className="text-xs text-muted-foreground mb-3">Shown at the top-left of every invoice PDF. PNG/JPG, under 2 MB.</p>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="h-20 w-20 rounded-lg border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+              {(current as any)?.logo_url ? (
+                <img src={(current as any).logo_url} alt="Logo" className="h-full w-full object-contain" />
+              ) : (
+                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <input
+                ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogoFile(f); e.target.value = ""; }}
+              />
+              <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !canEditSettings}>
+                <Upload className="h-4 w-4" /> {uploading ? "Uploading…" : (current as any)?.logo_url ? "Replace" : "Upload logo"}
+              </Button>
+              {(current as any)?.logo_url && (
+                <Button variant="ghost" onClick={removeLogo} disabled={uploading || !canEditSettings}>
+                  <Trash2 className="h-4 w-4" /> Remove
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Card>
