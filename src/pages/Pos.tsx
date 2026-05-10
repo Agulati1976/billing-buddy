@@ -211,8 +211,8 @@ export default function Pos() {
         number = `${number}-O${Date.now().toString().slice(-5)}`;
       }
 
-      const balance = Math.max(0, totals.total_amount - recordedPaid);
-      const status = balance <= 0 ? "paid" : (recordedPaid > 0 ? "partial" : "unpaid");
+      // POS sale is created as UNPAID — shopkeeper records payment from the Payments page.
+      const status: "unpaid" = "unpaid";
 
       const invoiceId = crypto.randomUUID();
       const invRes = await omInsert("invoices", {
@@ -240,27 +240,8 @@ export default function Pos() {
       const liRes = await omInsertMany("invoice_items", lineRows);
       if (liRes.error) throw liRes.error;
 
-      // Record payments (only the actual recorded amount; allow split methods)
-      if (recordedPaid > 0) {
-        let remaining = recordedPaid;
-        const payRows: any[] = [];
-        for (const s of splits) {
-          if (remaining <= 0) break;
-          const amt = Math.min(Number(s.amount) || 0, remaining);
-          if (amt > 0) {
-            payRows.push({
-              business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
-              direction: "in", method: s.method, amount: amt,
-              payment_date: new Date().toISOString().slice(0, 10), created_by: user.id,
-            });
-            remaining -= amt;
-          }
-        }
-        if (payRows.length) {
-          const pRes = await omInsertMany("payments", payRows);
-          if (pRes.error) throw pRes.error;
-        }
-      }
+      // NOTE: Payments are no longer auto-recorded from POS.
+      // Cashier must capture the payment from the Payments module.
 
       toast.success(queuedAny || liRes.queued ? `Sale ${number} saved offline — will sync` : `Sale ${number} completed`);
 
@@ -277,8 +258,8 @@ export default function Pos() {
           })),
           subtotal: totals.subtotal, discount_amount: totals.discount_amount,
           tax_amount: totals.tax_amount, round_off: totals.round_off,
-          total_amount: totals.total_amount, paid_amount: recordedPaid,
-          balance_amount: balance, payment_method: splits.map((s) => s.method).join("+"),
+          total_amount: totals.total_amount, paid_amount: 0,
+          balance_amount: totals.total_amount, payment_method: "Unpaid",
         },
         upiSettings ?? undefined,
       );

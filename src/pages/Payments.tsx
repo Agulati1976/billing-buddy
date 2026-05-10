@@ -29,7 +29,7 @@ interface PaymentRow {
   party_id: string | null;
   invoice_id: string | null;
   parties: { name: string } | null;
-  invoices: { invoice_number: string } | null;
+  invoices: { invoice_number: string; pos_session_id: string | null; type: string } | null;
 }
 
 interface Party { id: string; name: string; type: "customer" | "supplier"; }
@@ -59,17 +59,23 @@ export default function Payments() {
   const [customTo, setCustomTo] = useState<Date>(new Date());
   const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
   const dateFiltered = useDateFilter(rows, (r) => r.payment_date, range);
+  const partyLabel = (r: PaymentRow) => {
+    if (r.parties?.name) return r.parties.name;
+    if (r.invoices?.pos_session_id) return "Walk-in (POS)";
+    if (r.invoice_id) return "Walk-in customer";
+    return r.direction === "in" ? "Cash sale" : "Cash expense";
+  };
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return dateFiltered;
-    return dateFiltered.filter((r) => [r.parties?.name, r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
+    return dateFiltered.filter((r) => [partyLabel(r), r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [dateFiltered, search]);
 
   const load = async () => {
     if (!current) return;
     const [pays, prt] = await Promise.all([
       supabase.from("payments")
-        .select("id, direction, method, amount, payment_date, reference, notes, party_id, invoice_id, parties(name), invoices(invoice_number)")
+        .select("id, direction, method, amount, payment_date, reference, notes, party_id, invoice_id, parties(name), invoices(invoice_number, pos_session_id, type)")
         .eq("business_id", current.id).order("payment_date", { ascending: false }),
       supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name"),
     ]);
@@ -78,29 +84,33 @@ export default function Payments() {
   };
   useEffect(() => { load(); }, [current?.id]);
 
-  // Load invoices for selected party
+  // Load invoices: party-linked OR walk-in (when partyId is "WALKIN")
   useEffect(() => {
-    if (!current || !partyId) { setInvoices([]); return; }
+    if (!current) { setInvoices([]); return; }
     const wantType = direction === "in" ? "sale" : "purchase";
-    supabase.from("invoices")
-      .select("id, invoice_number, balance_amount, type")
+    let q = supabase.from("invoices")
+      .select("id, invoice_number, balance_amount, type, pos_session_id")
       .eq("business_id", current.id)
-      .eq("party_id", partyId)
       .eq("type", wantType)
-      .gt("balance_amount", 0)
-      .then(({ data }) => setInvoices((data as any) ?? []));
+      .gt("balance_amount", 0);
+    if (partyId === "WALKIN") q = q.is("party_id", null);
+    else if (partyId) q = q.eq("party_id", partyId);
+    else { setInvoices([]); return; }
+    q.order("invoice_date", { ascending: false }).then(({ data }) => setInvoices((data as any) ?? []));
   }, [partyId, direction, current?.id]);
 
   const submit = async () => {
     if (!current || !user) return;
     const amt = Number(amount);
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    const isWalkin = partyId === "WALKIN";
     if (!partyId) { toast.error("Select a party"); return; }
+    if (isWalkin && !invoiceId) { toast.error("Select a walk-in invoice"); return; }
     setSaving(true);
     const res = await omInsert("payments", {
       business_id: current.id,
       direction, method: method as any, amount: amt,
-      payment_date: date, party_id: partyId,
+      payment_date: date, party_id: isWalkin ? null : partyId,
       invoice_id: invoiceId || null,
       reference: reference.trim() || null,
       notes: notes.trim() || null,
@@ -169,7 +179,7 @@ export default function Payments() {
                 <Card key={r.id} className="p-3">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate text-sm">{r.parties?.name ?? "—"}</div>
+                      <div className="font-medium truncate text-sm">{partyLabel(r)}</div>
                       <div className="text-[11px] text-muted-foreground">
                         {format(new Date(r.payment_date), "dd MMM yyyy")} · <span className="capitalize">{r.method}</span>
                         {r.invoices?.invoice_number && ` · ${r.invoices.invoice_number}`}
@@ -207,7 +217,7 @@ export default function Payments() {
                           {r.direction === "in" ? "IN" : "OUT"}
                         </span>
                       </TableCell>
-                      <TableCell>{r.parties?.name ?? "—"}</TableCell>
+                      <TableCell>{partyLabel(r)}</TableCell>
                       <TableCell className="text-muted-foreground">{r.invoices?.invoice_number ?? "—"}</TableCell>
                       <TableCell className="capitalize">{r.method}</TableCell>
                       <TableCell className="text-right num font-medium">{formatINR(Number(r.amount))}</TableCell>
@@ -267,6 +277,9 @@ export default function Payments() {
               <Select value={partyId} onValueChange={(v) => { setPartyId(v); setInvoiceId(""); }}>
                 <SelectTrigger><SelectValue placeholder="Select party" /></SelectTrigger>
                 <SelectContent>
+                  {direction === "in" && (
+                    <SelectItem value="WALKIN">Walk-in / POS customer</SelectItem>
+                  )}
                   {filteredParties.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -274,13 +287,13 @@ export default function Payments() {
 
             {partyId && invoices.length > 0 && (
               <div className="space-y-2">
-                <Label>Against Invoice (optional)</Label>
+                <Label>Against Invoice {partyId === "WALKIN" ? "*" : "(optional)"}</Label>
                 <Select value={invoiceId} onValueChange={setInvoiceId}>
-                  <SelectTrigger><SelectValue placeholder="On account (no specific invoice)" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={partyId === "WALKIN" ? "Select POS invoice" : "On account (no specific invoice)"} /></SelectTrigger>
                   <SelectContent>
-                    {invoices.map((i) => (
+                    {invoices.map((i: any) => (
                       <SelectItem key={i.id} value={i.id}>
-                        {i.invoice_number} · Balance {formatINR(Number(i.balance_amount))}
+                        {i.invoice_number}{i.pos_session_id ? " · POS" : ""} · Balance {formatINR(Number(i.balance_amount))}
                       </SelectItem>
                     ))}
                   </SelectContent>
