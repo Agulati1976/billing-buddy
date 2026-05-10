@@ -221,7 +221,7 @@ export async function generateInvoicePdf(
   const contact = [business.phone, business.email].filter(Boolean).join(" · ");
   if (contact) headerLines.push(contact);
   if (business.gstin) headerLines.push(`GSTIN: ${business.gstin}`);
-  doc.text(headerLines, titleX, isBold ? 22 : isCompact ? 14 : 17, { maxWidth: 120 });
+  doc.text(headerLines, nameX, isBold ? 22 : isCompact ? 14 : 17, { maxWidth: 120 });
 
   // Title (right side)
   doc.setFont(bodyFont, "bold");
