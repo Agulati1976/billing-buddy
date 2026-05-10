@@ -207,7 +207,7 @@ export default function Team() {
         </div>
       </div>
 
-      <Card className="p-6 space-y-4">
+      <Card className="p-4 sm:p-6 space-y-4">
         <h2 className="font-semibold flex items-center gap-2"><UserPlus className="h-4 w-4" /> Create staff login</h2>
         <p className="text-xs text-muted-foreground">
           You set the email and password — share them with your staff. They'll only see the modules you turn on below.
