@@ -202,6 +202,36 @@ export default function InvoiceDesign() {
 
       <Card className="p-6 space-y-4">
         <div>
+          <Label className="text-base">Business logo</Label>
+          <p className="text-xs text-muted-foreground mb-3">Shown at the top-left of every invoice PDF. PNG/JPG, under 2 MB.</p>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="h-20 w-20 rounded-lg border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
+              {(current as any)?.logo_url ? (
+                <img src={(current as any).logo_url} alt="Logo" className="h-full w-full object-contain" />
+              ) : (
+                <ImageIcon className="h-8 w-8 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <input
+                ref={fileRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogoFile(f); e.target.value = ""; }}
+              />
+              <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !canEditSettings}>
+                <Upload className="h-4 w-4" /> {uploading ? "Uploading…" : (current as any)?.logo_url ? "Replace" : "Upload logo"}
+              </Button>
+              {(current as any)?.logo_url && (
+                <Button variant="ghost" onClick={removeLogo} disabled={uploading || !canEditSettings}>
+                  <Trash2 className="h-4 w-4" /> Remove
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-4">
+        <div>
           <Label className="text-base">Accent colour</Label>
           <p className="text-xs text-muted-foreground mb-3">Used for the header band, totals strip, and links.</p>
           <div className="flex flex-wrap items-center gap-2">
