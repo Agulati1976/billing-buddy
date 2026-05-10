@@ -553,6 +553,7 @@ export default function InvoiceEditor({ type }: Props) {
         name: current.name,
         gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
+        logo_url: (current as any).logo_url,
       },
       party ? {
         name: party.name, gstin: party.gstin, state_code: party.state_code,
