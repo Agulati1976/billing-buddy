@@ -175,7 +175,7 @@ export default function Payments() {
                 <Card key={r.id} className="p-3">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate text-sm">{r.parties?.name ?? "—"}</div>
+                      <div className="font-medium truncate text-sm">{partyLabel(r)}</div>
                       <div className="text-[11px] text-muted-foreground">
                         {format(new Date(r.payment_date), "dd MMM yyyy")} · <span className="capitalize">{r.method}</span>
                         {r.invoices?.invoice_number && ` · ${r.invoices.invoice_number}`}
