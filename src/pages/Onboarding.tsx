@@ -16,7 +16,11 @@ import { Building2 } from "lucide-react";
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { refresh } = useBusiness();
+  const { refresh, businesses } = useBusiness();
+  const FREE_LIMIT = 2;
+  const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
+  const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
+  const blocked = ownedCount >= FREE_LIMIT && !isPremium;
 
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
