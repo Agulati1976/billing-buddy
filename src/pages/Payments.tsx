@@ -277,6 +277,9 @@ export default function Payments() {
               <Select value={partyId} onValueChange={(v) => { setPartyId(v); setInvoiceId(""); }}>
                 <SelectTrigger><SelectValue placeholder="Select party" /></SelectTrigger>
                 <SelectContent>
+                  {direction === "in" && (
+                    <SelectItem value="WALKIN">Walk-in / POS customer</SelectItem>
+                  )}
                   {filteredParties.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -284,13 +287,13 @@ export default function Payments() {
 
             {partyId && invoices.length > 0 && (
               <div className="space-y-2">
-                <Label>Against Invoice (optional)</Label>
+                <Label>Against Invoice {partyId === "WALKIN" ? "*" : "(optional)"}</Label>
                 <Select value={invoiceId} onValueChange={setInvoiceId}>
-                  <SelectTrigger><SelectValue placeholder="On account (no specific invoice)" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={partyId === "WALKIN" ? "Select POS invoice" : "On account (no specific invoice)"} /></SelectTrigger>
                   <SelectContent>
-                    {invoices.map((i) => (
+                    {invoices.map((i: any) => (
                       <SelectItem key={i.id} value={i.id}>
-                        {i.invoice_number} · Balance {formatINR(Number(i.balance_amount))}
+                        {i.invoice_number}{i.pos_session_id ? " · POS" : ""} · Balance {formatINR(Number(i.balance_amount))}
                       </SelectItem>
                     ))}
                   </SelectContent>
