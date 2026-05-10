@@ -57,11 +57,38 @@ const DEFAULTS: Settings = {
 };
 
 export default function InvoiceDesign() {
-  const { current } = useBusiness();
+  const { current, refresh } = useBusiness();
   const { canEditSettings, loading: permsLoading } = usePermissions();
   const [s, setS] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onLogoFile = async (file: File) => {
+    if (!current) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Logo must be under 2 MB"); return; }
+    setUploading(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+    const path = `${current.id}/logo-${Date.now()}.${ext}`;
+    const up = await supabase.storage.from("business-logos").upload(path, file, { upsert: true, contentType: file.type });
+    if (up.error) { setUploading(false); toast.error(up.error.message); return; }
+    const { data: pub } = supabase.storage.from("business-logos").getPublicUrl(path);
+    const { error } = await supabase.from("businesses").update({ logo_url: pub.publicUrl }).eq("id", current.id);
+    setUploading(false);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+    toast.success("Logo updated");
+  };
+
+  const removeLogo = async () => {
+    if (!current) return;
+    const { error } = await supabase.from("businesses").update({ logo_url: null }).eq("id", current.id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+    toast.success("Logo removed");
+  };
 
   useEffect(() => {
     if (!current) return;
