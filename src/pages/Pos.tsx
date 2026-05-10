@@ -258,8 +258,8 @@ export default function Pos() {
           })),
           subtotal: totals.subtotal, discount_amount: totals.discount_amount,
           tax_amount: totals.tax_amount, round_off: totals.round_off,
-          total_amount: totals.total_amount, paid_amount: recordedPaid,
-          balance_amount: balance, payment_method: splits.map((s) => s.method).join("+"),
+          total_amount: totals.total_amount, paid_amount: 0,
+          balance_amount: totals.total_amount, payment_method: "Unpaid",
         },
         upiSettings ?? undefined,
       );
