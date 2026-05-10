@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { INDIAN_STATES } from "@/lib/states";
-import { Building2 } from "lucide-react";
+import { Building2, Sparkles } from "lucide-react";
 
 export default function Onboarding() {
   const navigate = useNavigate();
