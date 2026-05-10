@@ -215,7 +215,7 @@ export async function generateInvoicePdf(
   doc.text(meta.label, PAGE_W - MARGIN, isBold ? 22 : isCompact ? 14 : 17, { align: "right" });
 
   // Invoice meta box
-  let y = 36;
+  let y = headerH + 8;
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
