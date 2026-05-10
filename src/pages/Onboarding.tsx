@@ -34,6 +34,10 @@ export default function Onboarding() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (blocked) {
+      toast.error("Free plan allows up to 2 businesses. Upgrade to premium to add more.");
+      return;
+    }
     if (pincode && !/^\d{6}$/.test(pincode)) {
       toast.error("Pincode must be 6 digits");
       return;
