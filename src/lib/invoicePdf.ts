@@ -115,8 +115,13 @@ export async function generateInvoicePdf(
   const docTitle = isQuotation ? "QUOTATION" : "TAX INVOICE";
 
   const template = design?.template ?? "classic";
-  const isMinimal = template === "minimal";
-  const isModern = template === "modern";
+  const isMinimal   = template === "minimal";
+  const isModern    = template === "modern";
+  const isElegant   = template === "elegant";
+  const isBold      = template === "bold";
+  const isCompact   = template === "compact";
+  const isCorporate = template === "corporate";
+  const isStripe    = template === "stripe";
   const accent: [number, number, number] = isMinimal
     ? [30, 30, 30]
     : hexToRgb(design?.accent_color ?? "#2563EB");
@@ -125,37 +130,72 @@ export async function generateInvoicePdf(
   const sigLabel = design?.signature_label ?? "Authorised Signatory";
   const footer = design?.footer_text ?? "This is a computer-generated invoice and does not require a physical signature.";
 
-  // Header band
+  // Body font (elegant uses serif)
+  const bodyFont = isElegant ? "times" : "helvetica";
+
+  // ===== Header =====
+  let headerH = 28;
+  let titleColorWhite = false;
+  let titleX = MARGIN;
+
   if (isModern) {
-    // Left accent stripe instead of full band
     doc.setFillColor(...accent);
     doc.rect(0, 0, 4, 297, "F");
-    doc.setTextColor(30, 30, 30);
+    titleX = MARGIN + 4;
+  } else if (isMinimal) {
+    doc.setDrawColor(30);
+    doc.setLineWidth(0.5);
+    doc.line(MARGIN, 28, PAGE_W - MARGIN, 28);
+  } else if (isElegant) {
+    // Thin double border across top
+    doc.setDrawColor(...accent);
+    doc.setLineWidth(0.8);
+    doc.line(MARGIN, 10, PAGE_W - MARGIN, 10);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, 11.5, PAGE_W - MARGIN, 11.5);
+    headerH = 32;
+  } else if (isBold) {
+    doc.setFillColor(...accent);
+    doc.rect(0, 0, PAGE_W, 40, "F");
+    titleColorWhite = true;
+    headerH = 40;
+  } else if (isCompact) {
+    doc.setDrawColor(...accent);
+    doc.setLineWidth(1.2);
+    doc.line(MARGIN, 22, PAGE_W - MARGIN, 22);
+    headerH = 22;
+  } else if (isCorporate) {
+    doc.setFillColor(...accent);
+    doc.rect(0, 0, PAGE_W, 6, "F");
+    doc.rect(0, 30, PAGE_W, 1.5, "F");
+    headerH = 32;
+  } else if (isStripe) {
+    // Diagonal triangle in top-left corner + initial badge
+    doc.setFillColor(...accent);
+    doc.triangle(0, 0, 60, 0, 0, 28, "F");
+    doc.setFillColor(255, 255, 255);
+    doc.circle(14, 14, 7, "F");
+    doc.setTextColor(...accent);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text((business.name || "?").charAt(0).toUpperCase(), 14, 17, { align: "center" });
+    titleX = MARGIN + 18;
+    headerH = 30;
   } else {
+    // classic
     doc.setFillColor(...accent);
     doc.rect(0, 0, PAGE_W, 28, "F");
-    doc.setTextColor(isMinimal ? 30 : 255, isMinimal ? 30 : 255, isMinimal ? 30 : 255);
-    if (isMinimal) {
-      // For minimal, draw only a bottom border line
-      doc.setFillColor(255, 255, 255);
-      doc.rect(0, 0, PAGE_W, 28, "F");
-      doc.setDrawColor(30);
-      doc.setLineWidth(0.5);
-      doc.line(MARGIN, 28, PAGE_W - MARGIN, 28);
-      doc.setTextColor(30, 30, 30);
-    }
+    titleColorWhite = true;
   }
 
+  // Header text
+  doc.setTextColor(titleColorWhite ? 255 : 30, titleColorWhite ? 255 : 30, titleColorWhite ? 255 : 30);
+  doc.setFont(bodyFont, "bold");
+  doc.setFontSize(isBold ? 24 : isCompact ? 14 : 18);
+  doc.text(business.name, titleX, isBold ? 16 : isCompact ? 10 : 12);
 
-  // Header text colour: white if dark band, dark for minimal/modern
-  if (isModern || isMinimal) doc.setTextColor(30, 30, 30);
-  else doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(business.name, isModern ? MARGIN + 4 : MARGIN, 12);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFont(bodyFont, "normal");
+  doc.setFontSize(isCompact ? 8 : 9);
   const headerLines: string[] = [];
   if (business.address) headerLines.push(business.address);
   const cityLine = [business.state, business.state_code ? `State Code: ${business.state_code}` : null]
@@ -164,15 +204,15 @@ export async function generateInvoicePdf(
   const contact = [business.phone, business.email].filter(Boolean).join(" · ");
   if (contact) headerLines.push(contact);
   if (business.gstin) headerLines.push(`GSTIN: ${business.gstin}`);
-  doc.text(headerLines, isModern ? MARGIN + 4 : MARGIN, 17, { maxWidth: 120 });
+  doc.text(headerLines, titleX, isBold ? 22 : isCompact ? 14 : 17, { maxWidth: 120 });
 
   // Title (right side)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(docTitle, PAGE_W - MARGIN, 12, { align: "right" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text(meta.label, PAGE_W - MARGIN, 17, { align: "right" });
+  doc.setFont(bodyFont, "bold");
+  doc.setFontSize(isBold ? 20 : isCompact ? 13 : 16);
+  doc.text(docTitle, PAGE_W - MARGIN, isBold ? 16 : isCompact ? 10 : 12, { align: "right" });
+  doc.setFontSize(isCompact ? 8 : 9);
+  doc.setFont(bodyFont, "normal");
+  doc.text(meta.label, PAGE_W - MARGIN, isBold ? 22 : isCompact ? 14 : 17, { align: "right" });
 
   // Invoice meta box
   let y = 36;
