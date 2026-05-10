@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Palette, ArrowLeft, Eye, Save } from "lucide-react";
+import { Palette, ArrowLeft, Eye, Save, Upload, Trash2, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateInvoicePdf, type InvoiceDesign } from "@/lib/invoicePdf";
+import { useRef } from "react";
 
 const TEMPLATES = [
   { id: "classic",   label: "Classic",   desc: "Coloured header band, full details. Best for B2B." },
