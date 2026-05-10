@@ -104,6 +104,29 @@ function hexToRgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+async function loadImageAsDataUrl(url: string): Promise<{ data: string; w: number; h: number; format: string } | null> {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const data: string = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = reject;
+      img.src = data;
+    });
+    const mime = blob.type.toLowerCase();
+    const format = mime.includes("png") ? "PNG" : mime.includes("webp") ? "WEBP" : "JPEG";
+    return { data, w: dims.w, h: dims.h, format };
+  } catch { return null; }
+}
+
 export async function generateInvoicePdf(
   business: PdfBusiness,
   party: PdfParty | null,
