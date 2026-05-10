@@ -23,6 +23,7 @@ import {
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { savePdf } from "@/lib/pdfDownload";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
