@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { computeInvoice, nextInvoiceNumber, shopInvoiceBase, pickShopInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { savePdf } from "@/lib/pdfDownload";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { SearchBar } from "@/components/SearchBar";
@@ -282,7 +283,7 @@ export default function Pos() {
         upiSettings ?? undefined,
       );
       receipt.autoPrint();
-      window.open(receipt.output("bloburl"), "_blank");
+      await savePdf(receipt, `POS-Receipt-${Date.now()}.pdf`);
 
       // Reset
       setCart([]); setPartyId(""); setExtraDiscount("0");
@@ -326,7 +327,7 @@ export default function Pos() {
         show_upi_qr: (design as any).show_upi_qr,
       } : undefined,
     );
-    pdf.save(`POS-${Date.now()}.pdf`);
+    await savePdf(pdf, `POS-${Date.now()}.pdf`);
   };
 
   const downloadThermal = async () => {
@@ -355,7 +356,7 @@ export default function Pos() {
       },
       upiSettings ?? undefined,
     );
-    receipt.save(`POS-Receipt-${Date.now()}.pdf`);
+    await savePdf(receipt, `POS-Receipt-${Date.now()}.pdf`);
   };
 
   const holdCart = async () => {

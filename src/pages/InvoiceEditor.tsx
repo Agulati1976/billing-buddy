@@ -23,6 +23,7 @@ import {
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { savePdf } from "@/lib/pdfDownload";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
@@ -578,7 +579,7 @@ export default function InvoiceEditor({ type }: Props) {
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
     const label = type === "sale" ? "Invoice" : type === "purchase" ? "Purchase" : type === "sale_return" ? "SalesReturn" : type === "purchase_return" ? "PurchaseReturn" : type === "quotation" ? "Quotation" : type === "credit_note" ? "CreditNote" : "DebitNote";
-    doc.save(`${label}-${safeNum || "Document"}.pdf`);
+    await savePdf(doc, `${label}-${safeNum || "Document"}.pdf`);
   };
 
   const downloadThermal = async () => {
@@ -611,7 +612,7 @@ export default function InvoiceEditor({ type }: Props) {
       design ? { upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name, show_upi_qr: (design as any).show_upi_qr } : undefined,
     );
     const safeNum = number.replace(/[\/\\]/g, "-");
-    receipt.save(`POS-${safeNum || "Receipt"}.pdf`);
+    await savePdf(receipt, `POS-${safeNum || "Receipt"}.pdf`);
   };
 
   if (!loaded) return <div className="text-sm text-muted-foreground">Loading…</div>;
