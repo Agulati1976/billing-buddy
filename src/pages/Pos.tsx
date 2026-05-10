@@ -356,7 +356,7 @@ export default function Pos() {
       },
       upiSettings ?? undefined,
     );
-    receipt.save(`POS-Receipt-${Date.now()}.pdf`);
+    await savePdf(receipt, `POS-Receipt-${Date.now()}.pdf`);
   };
 
   const holdCart = async () => {
