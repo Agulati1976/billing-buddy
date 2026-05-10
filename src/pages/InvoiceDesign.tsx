@@ -15,9 +15,14 @@ import { toast } from "sonner";
 import { generateInvoicePdf, type InvoiceDesign } from "@/lib/invoicePdf";
 
 const TEMPLATES = [
-  { id: "classic", label: "Classic", desc: "Coloured header band, full details. Best for B2B." },
-  { id: "modern",  label: "Modern",  desc: "Clean side accent line, lots of whitespace." },
-  { id: "minimal", label: "Minimal", desc: "Black & white, no colour. Lowest ink, tidy." },
+  { id: "classic",   label: "Classic",   desc: "Coloured header band, full details. Best for B2B." },
+  { id: "modern",    label: "Modern",    desc: "Clean side accent line, lots of whitespace." },
+  { id: "minimal",   label: "Minimal",   desc: "Black & white, no colour. Lowest ink, tidy." },
+  { id: "elegant",   label: "Elegant",   desc: "Serif typography with thin double border. Premium feel." },
+  { id: "bold",      label: "Bold",      desc: "Tall accent banner, oversized title. High impact." },
+  { id: "compact",   label: "Compact",   desc: "Dense layout with smaller fonts. Fits many line items." },
+  { id: "corporate", label: "Corporate", desc: "Top + bottom accent strips, formal letterhead style." },
+  { id: "stripe",    label: "Stripe",    desc: "Diagonal accent corner with bold initial badge." },
 ];
 
 const PRESET_COLORS = ["#2563EB", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#111827"];
@@ -149,7 +154,7 @@ export default function InvoiceDesign() {
         <div>
           <Label className="text-base">Template</Label>
           <p className="text-xs text-muted-foreground mb-3">Pick the visual style.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {TEMPLATES.map((t) => (
               <button
                 key={t.id}
