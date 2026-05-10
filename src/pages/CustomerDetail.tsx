@@ -380,7 +380,8 @@ export default function CustomerDetail() {
               ))
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       </Card>
     </div>
   );
