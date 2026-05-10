@@ -70,6 +70,19 @@ export default function Onboarding() {
           </div>
         </div>
 
+        {blocked && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary-soft/40 p-4 flex items-start gap-3">
+            <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm">Upgrade to Premium</div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Free plan supports up to {FREE_LIMIT} businesses. You already have {ownedCount}. Upgrade to add unlimited stores.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => toast.info("Premium plans coming soon!")}>Upgrade</Button>
+          </div>
+        )}
+
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="bn">Business name *</Label>
