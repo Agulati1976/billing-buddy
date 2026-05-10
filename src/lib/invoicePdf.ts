@@ -189,11 +189,27 @@ export async function generateInvoicePdf(
     titleColorWhite = true;
   }
 
+  // Logo (top-left, before name)
+  let nameX = titleX;
+  if (business.logo_url) {
+    const logo = await loadImageAsDataUrl(business.logo_url);
+    if (logo) {
+      const maxH = isBold ? 22 : isCompact ? 14 : 18;
+      const maxW = 26;
+      const ratio = logo.w / logo.h;
+      let h = maxH; let w = h * ratio;
+      if (w > maxW) { w = maxW; h = w / ratio; }
+      const ly = isBold ? 9 : isCompact ? 4 : 6;
+      try { doc.addImage(logo.data, logo.format, titleX, ly, w, h); } catch {}
+      nameX = titleX + w + 4;
+    }
+  }
+
   // Header text
   doc.setTextColor(titleColorWhite ? 255 : 30, titleColorWhite ? 255 : 30, titleColorWhite ? 255 : 30);
   doc.setFont(bodyFont, "bold");
   doc.setFontSize(isBold ? 24 : isCompact ? 14 : 18);
-  doc.text(business.name, titleX, isBold ? 16 : isCompact ? 10 : 12);
+  doc.text(business.name, nameX, isBold ? 16 : isCompact ? 10 : 12);
 
   doc.setFont(bodyFont, "normal");
   doc.setFontSize(isCompact ? 8 : 9);
