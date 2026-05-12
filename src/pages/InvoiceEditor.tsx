@@ -197,6 +197,8 @@ export default function InvoiceEditor({ type }: Props) {
       setNotes(i.notes ?? "");
       setTerms(i.terms ?? "");
       setIsGst(i.is_gst !== false);
+      setIsOnlineOrder(!!i.is_online_order);
+      setBranchId(i.branch_id ?? "");
       setExtraDiscount(String(i.extra_discount ?? 0));
       setReadOnly(true); // existing invoices are view-only in MVP
       const ls = (ln.data as any[]) ?? [];
