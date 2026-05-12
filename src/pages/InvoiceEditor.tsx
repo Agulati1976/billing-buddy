@@ -115,10 +115,12 @@ export default function InvoiceEditor({ type }: Props) {
       supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name"),
       supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").eq("business_id", current.id).order("name"),
       supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
-    ]).then(([p, it, b]) => {
+      supabase.from("branches" as any).select("id, name, code").eq("business_id", current.id).order("name"),
+    ]).then(([p, it, b, br]) => {
       setParties((p.data as any) ?? []);
       setItems((it.data as any) ?? []);
       setBatches((b.data as any) ?? []);
+      setBranches(((br as any).data as any) ?? []);
     });
   }, [current?.id, type]);
 
