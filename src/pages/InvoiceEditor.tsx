@@ -498,6 +498,8 @@ export default function InvoiceEditor({ type }: Props) {
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
       is_gst: isGst,
+      is_online_order: type === "sale" ? isOnlineOrder : false,
+      branch_id: type === "sale" && isOnlineOrder && branchId ? branchId : null,
       extra_discount: computed.extra_discount,
       subtotal: computed.subtotal,
       discount_amount: computed.discount_amount,
