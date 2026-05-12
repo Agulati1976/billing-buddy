@@ -48,6 +48,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string; code: string }[]>([]);
   const [partyId, setPartyId] = useState<string>("");
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -56,6 +57,8 @@ export default function InvoiceEditor({ type }: Props) {
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
   const [isGst, setIsGst] = useState(true);
+  const [isOnlineOrder, setIsOnlineOrder] = useState(false);
+  const [branchId, setBranchId] = useState<string>("");
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
   const [scannerOpen, setScannerOpen] = useState(false);
