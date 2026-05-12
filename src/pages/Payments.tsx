@@ -92,6 +92,7 @@ export default function Payments() {
       .select("id, invoice_number, balance_amount, type, pos_session_id")
       .eq("business_id", current.id)
       .eq("type", wantType)
+      .is("deleted_at", null)
       .gt("balance_amount", 0);
     if (partyId === "WALKIN") q = q.is("party_id", null);
     else if (partyId) q = q.eq("party_id", partyId);
