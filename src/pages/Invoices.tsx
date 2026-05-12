@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, FileText, Trash2, Eye, Undo2 } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ interface InvoiceRow {
   status: keyof typeof STATUS_META;
   party_id: string | null;
   parties: { name: string } | null;
+  deleted_at: string | null;
 }
 
 export default function Invoices({ type }: Props) {
@@ -79,22 +80,29 @@ export default function Invoices({ type }: Props) {
   };
 
   const meta = INVOICE_TYPE_META[type];
+  const [view, setView] = useState<"active" | "trash">("active");
 
   const load = async () => {
     if (!current) return;
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("invoices")
-      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name)")
+      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name), deleted_at")
       .eq("business_id", current.id)
-      .eq("type", type)
-      .order("invoice_date", { ascending: false });
+      .eq("type", type);
+    if (view === "active") {
+      query = query.is("deleted_at", null).order("invoice_date", { ascending: false });
+    } else {
+      const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+      query = query.not("deleted_at", "is", null).gte("deleted_at", cutoff).order("deleted_at", { ascending: false });
+    }
+    const { data, error } = await query;
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     setRows((data as any) ?? []);
   };
 
-  useEffect(() => { load(); }, [current?.id, type]);
+  useEffect(() => { load(); }, [current?.id, type, view]);
 
   const [preset, setPreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
@@ -118,11 +126,36 @@ export default function Invoices({ type }: Props) {
   }, [dateFiltered]);
 
   const remove = async (id: string) => {
-    if (!confirm("Delete this entry? This cannot be undone.")) return;
+    if (!confirm("Move this invoice to Deleted? You can recover it within 180 days.")) return;
+    const now = new Date().toISOString();
+    const { error: e1 } = await supabase.from("invoices").update({ deleted_at: now }).eq("id", id);
+    if (e1) { toast.error(e1.message); return; }
+    await supabase.from("payments").update({ deleted_at: now }).eq("invoice_id", id).is("deleted_at", null);
+    toast.success("Moved to Deleted");
+    load();
+  };
+
+  const restore = async (id: string) => {
+    const { error: e1 } = await supabase.from("invoices").update({ deleted_at: null }).eq("id", id);
+    if (e1) { toast.error(e1.message); return; }
+    await supabase.from("payments").update({ deleted_at: null }).eq("invoice_id", id);
+    toast.success("Invoice restored");
+    load();
+  };
+
+  const purge = async (id: string) => {
+    if (!confirm("Permanently delete this invoice? This cannot be undone.")) return;
+    await supabase.from("payments").delete().eq("invoice_id", id);
     const res = await omDelete("invoices", { column: "id", value: id });
     if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    toast.success(res.queued ? "Deletion queued — will sync" : "Deleted");
+    toast.success("Permanently deleted");
     load();
+  };
+
+  const daysLeft = (deletedAt: string | null) => {
+    if (!deletedAt) return 0;
+    const ms = new Date(deletedAt).getTime() + 180 * 24 * 60 * 60 * 1000 - Date.now();
+    return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
   };
 
   return (
@@ -153,6 +186,17 @@ export default function Invoices({ type }: Props) {
         </Card>
       </div>
 
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView("active")}
+          className={`text-sm px-3 py-1.5 rounded-md border ${view === "active" ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}
+        >Active</button>
+        <button
+          onClick={() => setView("trash")}
+          className={`text-sm px-3 py-1.5 rounded-md border ${view === "trash" ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}
+        >Deleted</button>
+      </div>
+
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between mb-3 sm:mb-4">
           <div className="flex-1 min-w-[180px]">
@@ -175,15 +219,14 @@ export default function Invoices({ type }: Props) {
               {filtered.map((r) => {
                 const st = STATUS_META[r.status];
                 return (
-                  <button
-                    key={r.id}
-                    onClick={() => navigate(`/${type}s/${r.id}`)}
-                    className="w-full text-left mobile-card flex items-center gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
+                <div key={r.id} className="mobile-card flex items-center gap-3">
+                    <button
+                      onClick={() => navigate(`/${type}s/${r.id}`)}
+                      className="flex-1 min-w-0 text-left"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm truncate">{r.invoice_number}</span>
-                        {canPay && r.status !== "paid" ? (
+                        {view === "active" && canPay && r.status !== "paid" ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <button className={`text-[10px] px-1.5 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
@@ -198,15 +241,30 @@ export default function Invoices({ type }: Props) {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{r.parties?.name ?? "—"}</div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">{format(new Date(r.invoice_date), "dd MMM yyyy")}</div>
-                    </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {format(new Date(r.invoice_date), "dd MMM yyyy")}
+                        {view === "trash" && r.deleted_at && (
+                          <span className="ml-2 text-danger">· {daysLeft(r.deleted_at)}d left</span>
+                        )}
+                      </div>
+                    </button>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-semibold num">{formatINR(Number(r.total_amount))}</div>
                       {Number(r.balance_amount) > 0 && (
                         <div className="text-[11px] text-danger num">Bal {formatINR(Number(r.balance_amount))}</div>
                       )}
+                      {view === "trash" && (
+                        <div className="flex gap-1 justify-end mt-1">
+                          <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => purge(r.id)} title="Delete forever">
+                            <Trash2 className="h-4 w-4 text-danger" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -236,7 +294,7 @@ export default function Invoices({ type }: Props) {
                         <TableCell className="text-right num">{formatINR(Number(r.total_amount))}</TableCell>
                         <TableCell className="text-right num">{formatINR(Number(r.balance_amount))}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          {canPay && r.status !== "paid" ? (
+                          {view === "active" && canPay && r.status !== "paid" ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
@@ -249,21 +307,37 @@ export default function Invoices({ type }: Props) {
                           ) : (
                             <span className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label}</span>
                           )}
+                          {view === "trash" && r.deleted_at && (
+                            <div className="text-[11px] text-muted-foreground mt-1">{daysLeft(r.deleted_at)}d left</div>
+                          )}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {type === "sale" && (
-                              <Button size="icon" variant="ghost" title="Create sale return"
-                                onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
-                                <Undo2 className="h-4 w-4" />
-                              </Button>
+                            {view === "active" ? (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                {type === "sale" && (
+                                  <Button size="icon" variant="ghost" title="Create sale return"
+                                    onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
+                                    <Undo2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                                  <Trash2 className="h-4 w-4 text-danger" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => purge(r.id)} title="Delete forever">
+                                  <Trash2 className="h-4 w-4 text-danger" />
+                                </Button>
+                              </>
                             )}
-                            <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
-                              <Trash2 className="h-4 w-4 text-danger" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

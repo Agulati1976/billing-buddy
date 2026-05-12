@@ -425,6 +425,7 @@ export type Database = {
           cgst_amount: number
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           discount_amount: number
           due_date: string | null
           extra_discount: number
@@ -455,6 +456,7 @@ export type Database = {
           cgst_amount?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           discount_amount?: number
           due_date?: string | null
           extra_discount?: number
@@ -485,6 +487,7 @@ export type Database = {
           cgst_amount?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           discount_amount?: number
           due_date?: string | null
           extra_discount?: number
@@ -823,6 +826,7 @@ export type Database = {
           business_id: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           direction: Database["public"]["Enums"]["payment_direction"]
           id: string
           invoice_id: string | null
@@ -838,6 +842,7 @@ export type Database = {
           business_id: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           direction: Database["public"]["Enums"]["payment_direction"]
           id?: string
           invoice_id?: string | null
@@ -853,6 +858,7 @@ export type Database = {
           business_id?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           direction?: Database["public"]["Enums"]["payment_direction"]
           id?: string
           invoice_id?: string | null

@@ -63,6 +63,7 @@ export function DashboardChart() {
           .select("invoice_date, type, total_amount")
           .eq("business_id", current.id)
           .in("type", ["sale", "purchase"])
+          .is("deleted_at", null)
           .gte("invoice_date", sinceStr)
           .lte("invoice_date", untilStr),
         supabase.from("expenses")

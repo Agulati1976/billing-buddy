@@ -30,6 +30,7 @@ export default function Settings() {
       .from("invoices")
       .select("id, type, invoice_date, created_at")
       .eq("business_id", current.id)
+      .is("deleted_at", null)
       .order("invoice_date", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) { toast.error(error.message); return; }

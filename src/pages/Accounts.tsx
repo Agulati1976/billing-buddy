@@ -94,7 +94,7 @@ export default function Accounts() {
     const [pays, exps, prt] = await Promise.all([
       supabase.from("payments")
         .select("id, direction, method, amount, payment_date, reference, notes, parties(name), invoices(invoice_number)")
-        .eq("business_id", current.id),
+        .eq("business_id", current.id).is("deleted_at", null),
       supabase.from("expenses")
         .select("id, category, method, amount, expense_date, reference, description")
         .eq("business_id", current.id),
