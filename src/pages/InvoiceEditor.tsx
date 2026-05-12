@@ -124,14 +124,19 @@ export default function InvoiceEditor({ type }: Props) {
     });
   }, [current?.id, type]);
 
-  // Suggest invoice number for new
+  // Suggest invoice number for new (re-runs when branch/online flag changes)
+  const branchCodeForNumber = useMemo(() => {
+    if (!isOnlineOrder || !branchId) return null;
+    return branches.find((b) => b.id === branchId)?.code ?? null;
+  }, [isOnlineOrder, branchId, branches]);
+
   useEffect(() => {
     if (!current || !isNew) return;
     const todayISO = new Date().toISOString().slice(0, 10);
     const pin = (current as any).pincode as string | null;
     const rank = (current as any).pincode_rank as number | null;
     if (pin && rank) {
-      const base = shopInvoiceBase(pin, rank, todayISO);
+      const base = shopInvoiceBase(pin, rank, todayISO, branchCodeForNumber);
       supabase.from("invoices")
         .select("invoice_number")
         .eq("business_id", current.id)
@@ -152,9 +157,9 @@ export default function InvoiceEditor({ type }: Props) {
       .limit(1)
       .then(({ data }) => {
         const last = data?.[0]?.invoice_number ?? null;
-        setNumber(nextInvoiceNumber(meta.prefix, last));
+        setNumber(nextInvoiceNumber(meta.prefix, last, branchCodeForNumber));
       });
-  }, [current?.id, isNew, type]);
+  }, [current?.id, isNew, type, branchCodeForNumber]);
 
   // Load loyalty config (sale only)
   useEffect(() => {
