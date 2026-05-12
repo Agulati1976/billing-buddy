@@ -79,22 +79,29 @@ export default function Invoices({ type }: Props) {
   };
 
   const meta = INVOICE_TYPE_META[type];
+  const [view, setView] = useState<"active" | "trash">("active");
 
   const load = async () => {
     if (!current) return;
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("invoices")
-      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name)")
+      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name), deleted_at")
       .eq("business_id", current.id)
-      .eq("type", type)
-      .order("invoice_date", { ascending: false });
+      .eq("type", type);
+    if (view === "active") {
+      query = query.is("deleted_at", null).order("invoice_date", { ascending: false });
+    } else {
+      const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+      query = query.not("deleted_at", "is", null).gte("deleted_at", cutoff).order("deleted_at", { ascending: false });
+    }
+    const { data, error } = await query;
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     setRows((data as any) ?? []);
   };
 
-  useEffect(() => { load(); }, [current?.id, type]);
+  useEffect(() => { load(); }, [current?.id, type, view]);
 
   const [preset, setPreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
@@ -118,11 +125,36 @@ export default function Invoices({ type }: Props) {
   }, [dateFiltered]);
 
   const remove = async (id: string) => {
-    if (!confirm("Delete this entry? This cannot be undone.")) return;
+    if (!confirm("Move this invoice to Deleted? You can recover it within 180 days.")) return;
+    const now = new Date().toISOString();
+    const { error: e1 } = await supabase.from("invoices").update({ deleted_at: now }).eq("id", id);
+    if (e1) { toast.error(e1.message); return; }
+    await supabase.from("payments").update({ deleted_at: now }).eq("invoice_id", id).is("deleted_at", null);
+    toast.success("Moved to Deleted");
+    load();
+  };
+
+  const restore = async (id: string) => {
+    const { error: e1 } = await supabase.from("invoices").update({ deleted_at: null }).eq("id", id);
+    if (e1) { toast.error(e1.message); return; }
+    await supabase.from("payments").update({ deleted_at: null }).eq("invoice_id", id);
+    toast.success("Invoice restored");
+    load();
+  };
+
+  const purge = async (id: string) => {
+    if (!confirm("Permanently delete this invoice? This cannot be undone.")) return;
+    await supabase.from("payments").delete().eq("invoice_id", id);
     const res = await omDelete("invoices", { column: "id", value: id });
     if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    toast.success(res.queued ? "Deletion queued — will sync" : "Deleted");
+    toast.success("Permanently deleted");
     load();
+  };
+
+  const daysLeft = (deletedAt: string | null) => {
+    if (!deletedAt) return 0;
+    const ms = new Date(deletedAt).getTime() + 180 * 24 * 60 * 60 * 1000 - Date.now();
+    return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
   };
 
   return (
