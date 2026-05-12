@@ -294,7 +294,7 @@ export default function Invoices({ type }: Props) {
                         <TableCell className="text-right num">{formatINR(Number(r.total_amount))}</TableCell>
                         <TableCell className="text-right num">{formatINR(Number(r.balance_amount))}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          {canPay && r.status !== "paid" ? (
+                          {view === "active" && canPay && r.status !== "paid" ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
@@ -307,21 +307,37 @@ export default function Invoices({ type }: Props) {
                           ) : (
                             <span className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label}</span>
                           )}
+                          {view === "trash" && r.deleted_at && (
+                            <div className="text-[11px] text-muted-foreground mt-1">{daysLeft(r.deleted_at)}d left</div>
+                          )}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {type === "sale" && (
-                              <Button size="icon" variant="ghost" title="Create sale return"
-                                onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
-                                <Undo2 className="h-4 w-4" />
-                              </Button>
+                            {view === "active" ? (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                {type === "sale" && (
+                                  <Button size="icon" variant="ghost" title="Create sale return"
+                                    onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
+                                    <Undo2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                                  <Trash2 className="h-4 w-4 text-danger" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => purge(r.id)} title="Delete forever">
+                                  <Trash2 className="h-4 w-4 text-danger" />
+                                </Button>
+                              </>
                             )}
-                            <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
-                              <Trash2 className="h-4 w-4 text-danger" />
-                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
