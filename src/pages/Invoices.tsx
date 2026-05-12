@@ -275,6 +275,44 @@ export default function Invoices({ type }: Props) {
           </>
         )}
       </Card>
+
+      <Dialog open={!!payRow} onOpenChange={(o) => !o && setPayRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record payment {payRow ? `· ${payRow.invoice_number}` : ""}</DialogTitle>
+          </DialogHeader>
+          {payRow && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                Total {formatINR(Number(payRow.total_amount))} · Balance{" "}
+                <span className="text-danger font-medium">{formatINR(Number(payRow.balance_amount))}</span>
+              </div>
+              <div className="grid gap-2">
+                <Label>Amount</Label>
+                <Input type="number" inputMode="decimal" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Method</Label>
+                <Select value={payMethod} onValueChange={setPayMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayRow(null)}>Cancel</Button>
+            <Button onClick={submitPay} disabled={paySaving}>{paySaving ? "Saving…" : "Record payment"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
