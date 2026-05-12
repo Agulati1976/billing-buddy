@@ -219,15 +219,14 @@ export default function Invoices({ type }: Props) {
               {filtered.map((r) => {
                 const st = STATUS_META[r.status];
                 return (
-                  <button
-                    key={r.id}
-                    onClick={() => navigate(`/${type}s/${r.id}`)}
-                    className="w-full text-left mobile-card flex items-center gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
+                <div key={r.id} className="mobile-card flex items-center gap-3">
+                    <button
+                      onClick={() => navigate(`/${type}s/${r.id}`)}
+                      className="flex-1 min-w-0 text-left"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm truncate">{r.invoice_number}</span>
-                        {canPay && r.status !== "paid" ? (
+                        {view === "active" && canPay && r.status !== "paid" ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <button className={`text-[10px] px-1.5 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
@@ -242,15 +241,30 @@ export default function Invoices({ type }: Props) {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{r.parties?.name ?? "—"}</div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">{format(new Date(r.invoice_date), "dd MMM yyyy")}</div>
-                    </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {format(new Date(r.invoice_date), "dd MMM yyyy")}
+                        {view === "trash" && r.deleted_at && (
+                          <span className="ml-2 text-danger">· {daysLeft(r.deleted_at)}d left</span>
+                        )}
+                      </div>
+                    </button>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-semibold num">{formatINR(Number(r.total_amount))}</div>
                       {Number(r.balance_amount) > 0 && (
                         <div className="text-[11px] text-danger num">Bal {formatINR(Number(r.balance_amount))}</div>
                       )}
+                      {view === "trash" && (
+                        <div className="flex gap-1 justify-end mt-1">
+                          <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => purge(r.id)} title="Delete forever">
+                            <Trash2 className="h-4 w-4 text-danger" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
