@@ -72,12 +72,14 @@ export default function CustomerDetail() {
         .select("id,invoice_number,invoice_date,due_date,total_amount,paid_amount,balance_amount,status,type")
         .eq("business_id", current.id)
         .eq("party_id", id)
+        .is("deleted_at", null)
         .order("invoice_date", { ascending: false }),
       supabase
         .from("payments")
         .select("id,payment_date,amount,method,reference,invoice_id,direction")
         .eq("business_id", current.id)
         .eq("party_id", id)
+        .is("deleted_at", null)
         .order("payment_date", { ascending: false }),
     ]);
     if (pRes.error) toast.error(pRes.error.message);
