@@ -186,6 +186,17 @@ export default function Invoices({ type }: Props) {
         </Card>
       </div>
 
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView("active")}
+          className={`text-sm px-3 py-1.5 rounded-md border ${view === "active" ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}
+        >Active</button>
+        <button
+          onClick={() => setView("trash")}
+          className={`text-sm px-3 py-1.5 rounded-md border ${view === "trash" ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}
+        >Deleted</button>
+      </div>
+
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between mb-3 sm:mb-4">
           <div className="flex-1 min-w-[180px]">
