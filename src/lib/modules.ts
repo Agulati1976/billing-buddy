@@ -2,7 +2,7 @@
 export type ModuleKey =
   | "dashboard" | "pos"
   | "sales" | "sale_returns" | "quotations" | "purchases"
-  | "customers" | "suppliers"
+  | "customers" | "suppliers" | "party_ledger"
   | "items" | "stock" | "categories" | "warehouses" | "batches"
   | "accounts" | "payments" | "expenses" | "loyalty"
   | "reports" | "ai_insights";
@@ -18,6 +18,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: "purchases",    label: "Purchases",        group: "Sales & Purchases" },
   { key: "customers",    label: "Customers",        group: "Parties" },
   { key: "suppliers",    label: "Suppliers",        group: "Parties" },
+  { key: "party_ledger", label: "Party Ledger",     group: "Parties" },
   { key: "items",        label: "Items",            group: "Inventory" },
   { key: "stock",        label: "Stock Management", group: "Inventory" },
   { key: "categories",   label: "Categories",       group: "Inventory" },
@@ -46,6 +47,7 @@ export const ROUTE_TO_MODULE: Record<string, ModuleKey> = {
   "/purchases": "purchases",
   "/customers": "customers",
   "/suppliers": "suppliers",
+  "/party-ledger": "party_ledger",
   "/items": "items",
   "/stock": "stock",
   "/categories": "categories",
