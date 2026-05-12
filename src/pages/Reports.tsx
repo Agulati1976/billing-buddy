@@ -78,10 +78,10 @@ export default function Reports() {
       const since = fmtDate(range.from);
       const until = fmtDate(range.to);
       const [s, p, e, sr] = await Promise.all([
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").gte("invoice_date", since).lte("invoice_date", until),
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").gte("invoice_date", since).lte("invoice_date", until),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
         supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since).lte("expense_date", until),
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale_return").gte("invoice_date", since).lte("invoice_date", until),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale_return").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
       ]);
       if (s.error || p.error || e.error || sr.error) toast.error("Failed to load reports");
       const allInvIds = [...(s.data ?? []), ...(p.data ?? [])].map((i: any) => i.id);
