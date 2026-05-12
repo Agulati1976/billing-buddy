@@ -34,6 +34,7 @@ interface InvoiceRow {
   status: keyof typeof STATUS_META;
   party_id: string | null;
   parties: { name: string } | null;
+  deleted_at: string | null;
 }
 
 export default function Invoices({ type }: Props) {
