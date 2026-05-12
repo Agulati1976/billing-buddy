@@ -70,16 +70,16 @@ export default function Dashboard() {
 
       let rangeQuery = supabase.from("invoices")
         .select("total_amount, party_id, parties(name)")
-        .eq("business_id", current.id).eq("type", "sale");
+        .eq("business_id", current.id).eq("type", "sale").is("deleted_at", null);
       if (since) rangeQuery = rangeQuery.gte("invoice_date", since);
       if (until) rangeQuery = rangeQuery.lte("invoice_date", until);
 
       const [todayR, rangeR, recvR, payR, recentR, lowR, expR] = await Promise.all([
-        supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").eq("invoice_date", today),
+        supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).eq("invoice_date", today),
         rangeQuery,
-        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").gt("balance_amount", 0),
-        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").gt("balance_amount", 0),
-        supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").order("created_at", { ascending: false }).limit(5),
+        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gt("balance_amount", 0),
+        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0),
+        supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
         supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", in30Str).order("expiry_date").limit(10),
       ]);
