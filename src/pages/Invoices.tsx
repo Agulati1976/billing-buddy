@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { omDelete } from "@/lib/offlineMutate";
+import { omDelete, omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Search, FileText, Trash2, Eye, Undo2 } from "lucide-react";
@@ -33,10 +38,45 @@ interface InvoiceRow {
 
 export default function Invoices({ type }: Props) {
   const { current } = useBusiness();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [payRow, setPayRow] = useState<InvoiceRow | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState<string>("cash");
+  const [paySaving, setPaySaving] = useState(false);
+
+  const canPay = type === "sale" || type === "purchase";
+
+  const openPay = (r: InvoiceRow, full: boolean) => {
+    setPayRow(r);
+    setPayAmount(full ? String(Number(r.balance_amount || 0).toFixed(2)) : "");
+    setPayMethod("cash");
+  };
+
+  const submitPay = async () => {
+    if (!payRow || !current || !user) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    setPaySaving(true);
+    const res = await omInsert("payments", {
+      business_id: current.id,
+      direction: type === "sale" ? "in" : "out",
+      method: payMethod as any,
+      amount: amt,
+      payment_date: new Date().toISOString().slice(0, 10),
+      party_id: payRow.party_id,
+      invoice_id: payRow.id,
+      created_by: user.id,
+    });
+    setPaySaving(false);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
+    setPayRow(null);
+    load();
+  };
 
   const meta = INVOICE_TYPE_META[type];
 
@@ -143,7 +183,19 @@ export default function Invoices({ type }: Props) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm truncate">{r.invoice_number}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${st.classes}`}>{st.label}</span>
+                        {canPay && r.status !== "paid" ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <button className={`text-[10px] px-1.5 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem onClick={() => openPay(r, true)}>Mark fully paid</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openPay(r, false)}>Partial payment…</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${st.classes}`}>{st.label}</span>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">{r.parties?.name ?? "—"}</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">{format(new Date(r.invoice_date), "dd MMM yyyy")}</div>
@@ -183,8 +235,20 @@ export default function Invoices({ type }: Props) {
                         <TableCell>{r.parties?.name ?? "—"}</TableCell>
                         <TableCell className="text-right num">{formatINR(Number(r.total_amount))}</TableCell>
                         <TableCell className="text-right num">{formatINR(Number(r.balance_amount))}</TableCell>
-                        <TableCell>
-                          <span className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label}</span>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {canPay && r.status !== "paid" ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => openPay(r, true)}>Mark fully paid</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openPay(r, false)}>Partial payment…</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <span className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label}</span>
+                          )}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
@@ -211,6 +275,44 @@ export default function Invoices({ type }: Props) {
           </>
         )}
       </Card>
+
+      <Dialog open={!!payRow} onOpenChange={(o) => !o && setPayRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Record payment {payRow ? `· ${payRow.invoice_number}` : ""}</DialogTitle>
+          </DialogHeader>
+          {payRow && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                Total {formatINR(Number(payRow.total_amount))} · Balance{" "}
+                <span className="text-danger font-medium">{formatINR(Number(payRow.balance_amount))}</span>
+              </div>
+              <div className="grid gap-2">
+                <Label>Amount</Label>
+                <Input type="number" inputMode="decimal" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Method</Label>
+                <Select value={payMethod} onValueChange={setPayMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="bank">Bank</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayRow(null)}>Cancel</Button>
+            <Button onClick={submitPay} disabled={paySaving}>{paySaving ? "Saving…" : "Record payment"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
