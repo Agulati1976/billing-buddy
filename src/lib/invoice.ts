@@ -132,22 +132,24 @@ export const STATUS_META: Record<InvoiceStatus, { label: string; classes: string
   cancelled: { label: "Cancelled", classes: "bg-muted text-muted-foreground" },
 };
 
-// Suggest next invoice number: PREFIX/YYYY/0001
-export function nextInvoiceNumber(prefix: string, lastNumber: string | null): string {
+// Suggest next invoice number: PREFIX/YYYY/0001 (with optional branch code segment)
+export function nextInvoiceNumber(prefix: string, lastNumber: string | null, branchCode?: string | null): string {
   const year = new Date().getFullYear();
-  if (!lastNumber) return `${prefix}/${year}/0001`;
+  const branchSeg = branchCode ? `/${branchCode}` : "";
+  if (!lastNumber) return `${prefix}${branchSeg}/${year}/0001`;
   const m = lastNumber.match(/(\d+)$/);
   const n = m ? parseInt(m[1], 10) + 1 : 1;
-  return `${prefix}/${year}/${String(n).padStart(4, "0")}`;
+  return `${prefix}${branchSeg}/${year}/${String(n).padStart(4, "0")}`;
 }
 
-// New shop-style invoice number: PINCODE/RANK(3)/DDMMYY
-export function shopInvoiceBase(pincode: string, rank: number, dateISO: string): string {
+// New shop-style invoice number: PINCODE/RANK(3)[/BRANCH]/DDMMYY
+export function shopInvoiceBase(pincode: string, rank: number, dateISO: string, branchCode?: string | null): string {
   const d = dateISO ? new Date(dateISO) : new Date();
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(-2);
-  return `${pincode}/${String(rank).padStart(3, "0")}/${dd}${mm}${yy}`;
+  const branchSeg = branchCode ? `/${branchCode}` : "";
+  return `${pincode}/${String(rank).padStart(3, "0")}${branchSeg}/${dd}${mm}${yy}`;
 }
 
 // Pick next available number, adding -N suffix only if base is already taken that day

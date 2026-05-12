@@ -29,6 +29,7 @@ import AiInsights from "./pages/AiInsights";
 import Loyalty from "./pages/Loyalty";
 import Pos from "./pages/Pos";
 import PartyLedger from "./pages/PartyLedger";
+import Branches from "./pages/Branches";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="/quotations/:id" element={<InvoiceEditor type="quotation" />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/party-ledger" element={<PartyLedger />} />
+                <Route path="/branches" element={<Branches />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/reports" element={<Reports />} />

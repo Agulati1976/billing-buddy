@@ -127,6 +127,39 @@ export type Database = {
           },
         ]
       }
+      branches: {
+        Row: {
+          address: string | null
+          business_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_id: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_features: {
         Row: {
           business_id: string
@@ -421,6 +454,7 @@ export type Database = {
       invoices: {
         Row: {
           balance_amount: number
+          branch_id: string | null
           business_id: string
           cgst_amount: number
           created_at: string
@@ -435,6 +469,7 @@ export type Database = {
           invoice_number: string
           is_gst: boolean
           is_inter_state: boolean
+          is_online_order: boolean
           notes: string | null
           paid_amount: number
           party_id: string | null
@@ -452,6 +487,7 @@ export type Database = {
         }
         Insert: {
           balance_amount?: number
+          branch_id?: string | null
           business_id: string
           cgst_amount?: number
           created_at?: string
@@ -466,6 +502,7 @@ export type Database = {
           invoice_number: string
           is_gst?: boolean
           is_inter_state?: boolean
+          is_online_order?: boolean
           notes?: string | null
           paid_amount?: number
           party_id?: string | null
@@ -483,6 +520,7 @@ export type Database = {
         }
         Update: {
           balance_amount?: number
+          branch_id?: string | null
           business_id?: string
           cgst_amount?: number
           created_at?: string
@@ -497,6 +535,7 @@ export type Database = {
           invoice_number?: string
           is_gst?: boolean
           is_inter_state?: boolean
+          is_online_order?: boolean
           notes?: string | null
           paid_amount?: number
           party_id?: string | null

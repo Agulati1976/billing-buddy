@@ -48,6 +48,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string; code: string }[]>([]);
   const [partyId, setPartyId] = useState<string>("");
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -56,6 +57,8 @@ export default function InvoiceEditor({ type }: Props) {
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
   const [isGst, setIsGst] = useState(true);
+  const [isOnlineOrder, setIsOnlineOrder] = useState(false);
+  const [branchId, setBranchId] = useState<string>("");
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -112,21 +115,28 @@ export default function InvoiceEditor({ type }: Props) {
       supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name"),
       supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked").eq("business_id", current.id).order("name"),
       supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
-    ]).then(([p, it, b]) => {
+      supabase.from("branches" as any).select("id, name, code").eq("business_id", current.id).order("name"),
+    ]).then(([p, it, b, br]) => {
       setParties((p.data as any) ?? []);
       setItems((it.data as any) ?? []);
       setBatches((b.data as any) ?? []);
+      setBranches(((br as any).data as any) ?? []);
     });
   }, [current?.id, type]);
 
-  // Suggest invoice number for new
+  // Suggest invoice number for new (re-runs when branch/online flag changes)
+  const branchCodeForNumber = useMemo(() => {
+    if (!isOnlineOrder || !branchId) return null;
+    return branches.find((b) => b.id === branchId)?.code ?? null;
+  }, [isOnlineOrder, branchId, branches]);
+
   useEffect(() => {
     if (!current || !isNew) return;
     const todayISO = new Date().toISOString().slice(0, 10);
     const pin = (current as any).pincode as string | null;
     const rank = (current as any).pincode_rank as number | null;
     if (pin && rank) {
-      const base = shopInvoiceBase(pin, rank, todayISO);
+      const base = shopInvoiceBase(pin, rank, todayISO, branchCodeForNumber);
       supabase.from("invoices")
         .select("invoice_number")
         .eq("business_id", current.id)
@@ -147,9 +157,9 @@ export default function InvoiceEditor({ type }: Props) {
       .limit(1)
       .then(({ data }) => {
         const last = data?.[0]?.invoice_number ?? null;
-        setNumber(nextInvoiceNumber(meta.prefix, last));
+        setNumber(nextInvoiceNumber(meta.prefix, last, branchCodeForNumber));
       });
-  }, [current?.id, isNew, type]);
+  }, [current?.id, isNew, type, branchCodeForNumber]);
 
   // Load loyalty config (sale only)
   useEffect(() => {
@@ -187,6 +197,8 @@ export default function InvoiceEditor({ type }: Props) {
       setNotes(i.notes ?? "");
       setTerms(i.terms ?? "");
       setIsGst(i.is_gst !== false);
+      setIsOnlineOrder(!!i.is_online_order);
+      setBranchId(i.branch_id ?? "");
       setExtraDiscount(String(i.extra_discount ?? 0));
       setReadOnly(true); // existing invoices are view-only in MVP
       const ls = (ln.data as any[]) ?? [];
@@ -486,6 +498,8 @@ export default function InvoiceEditor({ type }: Props) {
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
       is_gst: isGst,
+      is_online_order: type === "sale" ? isOnlineOrder : false,
+      branch_id: type === "sale" && isOnlineOrder && branchId ? branchId : null,
       extra_discount: computed.extra_discount,
       subtotal: computed.subtotal,
       discount_amount: computed.discount_amount,
@@ -728,13 +742,37 @@ export default function InvoiceEditor({ type }: Props) {
             </p>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 pt-2 border-t">
+        <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
           <div className="flex items-center gap-2">
             <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
             <Label htmlFor="gst-toggle" className="cursor-pointer">
               {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
             </Label>
           </div>
+          {type === "sale" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Switch
+                id="online-order-toggle"
+                checked={isOnlineOrder}
+                onCheckedChange={(v) => { setIsOnlineOrder(v); if (!v) setBranchId(""); }}
+                disabled={readOnly}
+              />
+              <Label htmlFor="online-order-toggle" className="cursor-pointer">Online order</Label>
+              {isOnlineOrder && (
+                <Select value={branchId} onValueChange={setBranchId} disabled={readOnly}>
+                  <SelectTrigger className="h-8 min-w-[180px]"><SelectValue placeholder={branches.length ? "Select branch" : "No branches yet"} /></SelectTrigger>
+                  <SelectContent>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {isOnlineOrder && branches.length === 0 && !readOnly && (
+                <Button type="button" size="sm" variant="outline" onClick={() => navigate("/branches")}>Add branch</Button>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 
