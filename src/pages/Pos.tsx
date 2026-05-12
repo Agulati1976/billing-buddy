@@ -379,7 +379,7 @@ export default function Pos() {
     if (!session) return;
     // expected = opening + sum cash payments today for this session
     const { data: pays } = await supabase.from("payments").select("amount,method")
-      .eq("business_id", current!.id).eq("direction", "in")
+      .eq("business_id", current!.id).eq("direction", "in").is("deleted_at", null)
       .gte("created_at", session.opened_at);
     const cashIn = (pays ?? []).filter((p: any) => p.method === "cash").reduce((s, p: any) => s + Number(p.amount), 0);
     const expected = Number(session.opening_cash) + cashIn;
