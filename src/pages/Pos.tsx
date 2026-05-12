@@ -397,7 +397,7 @@ export default function Pos() {
     setReturnsOpen(true);
     if (!current) return;
     const { data } = await supabase.from("invoices").select("id,invoice_number,invoice_date,total_amount,party_id")
-      .eq("business_id", current.id).eq("type", "sale")
+      .eq("business_id", current.id).eq("type", "sale").is("deleted_at", null)
       .order("created_at", { ascending: false }).limit(50);
     setReturnsItems(data ?? []);
   };
