@@ -742,13 +742,37 @@ export default function InvoiceEditor({ type }: Props) {
             </p>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 pt-2 border-t">
+        <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
           <div className="flex items-center gap-2">
             <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
             <Label htmlFor="gst-toggle" className="cursor-pointer">
               {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
             </Label>
           </div>
+          {type === "sale" && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Switch
+                id="online-order-toggle"
+                checked={isOnlineOrder}
+                onCheckedChange={(v) => { setIsOnlineOrder(v); if (!v) setBranchId(""); }}
+                disabled={readOnly}
+              />
+              <Label htmlFor="online-order-toggle" className="cursor-pointer">Online order</Label>
+              {isOnlineOrder && (
+                <Select value={branchId} onValueChange={setBranchId} disabled={readOnly}>
+                  <SelectTrigger className="h-8 min-w-[180px]"><SelectValue placeholder={branches.length ? "Select branch" : "No branches yet"} /></SelectTrigger>
+                  <SelectContent>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {isOnlineOrder && branches.length === 0 && !readOnly && (
+                <Button type="button" size="sm" variant="outline" onClick={() => navigate("/branches")}>Add branch</Button>
+              )}
+            </div>
+          )}
         </div>
       </Card>
 
