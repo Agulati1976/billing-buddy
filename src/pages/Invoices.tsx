@@ -37,10 +37,45 @@ interface InvoiceRow {
 
 export default function Invoices({ type }: Props) {
   const { current } = useBusiness();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [payRow, setPayRow] = useState<InvoiceRow | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState<string>("cash");
+  const [paySaving, setPaySaving] = useState(false);
+
+  const canPay = type === "sale" || type === "purchase";
+
+  const openPay = (r: InvoiceRow, full: boolean) => {
+    setPayRow(r);
+    setPayAmount(full ? String(Number(r.balance_amount || 0).toFixed(2)) : "");
+    setPayMethod("cash");
+  };
+
+  const submitPay = async () => {
+    if (!payRow || !current || !user) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    setPaySaving(true);
+    const res = await omInsert("payments", {
+      business_id: current.id,
+      direction: type === "sale" ? "in" : "out",
+      method: payMethod as any,
+      amount: amt,
+      payment_date: new Date().toISOString().slice(0, 10),
+      party_id: payRow.party_id,
+      invoice_id: payRow.id,
+      created_by: user.id,
+    });
+    setPaySaving(false);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
+    setPayRow(null);
+    load();
+  };
 
   const meta = INVOICE_TYPE_META[type];
 
