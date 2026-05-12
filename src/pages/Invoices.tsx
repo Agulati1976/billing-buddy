@@ -235,8 +235,20 @@ export default function Invoices({ type }: Props) {
                         <TableCell>{r.parties?.name ?? "—"}</TableCell>
                         <TableCell className="text-right num">{formatINR(Number(r.total_amount))}</TableCell>
                         <TableCell className="text-right num">{formatINR(Number(r.balance_amount))}</TableCell>
-                        <TableCell>
-                          <span className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label}</span>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {canPay && r.status !== "paid" ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label} ▾</button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => openPay(r, true)}>Mark fully paid</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openPay(r, false)}>Partial payment…</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <span className={`text-xs px-2 py-0.5 rounded ${st.classes}`}>{st.label}</span>
+                          )}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-1">
