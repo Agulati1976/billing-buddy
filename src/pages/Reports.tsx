@@ -21,6 +21,7 @@ type Inv = {
   cgst_amount: number; sgst_amount: number; igst_amount: number;
   subtotal: number; type: string; status: string; party_id: string | null;
   is_inter_state: boolean; party_state_code: string | null;
+  paid_amount: number; balance_amount: number;
 };
 type Item = { invoice_id: string; item_name: string; quantity: number; total_amount: number; taxable_amount: number; tax_rate: number; };
 type Exp = { category: string; amount: number; expense_date: string; };
@@ -110,6 +111,8 @@ export default function Reports() {
     const netSales = salesTotal - returnsTotal;
     const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const creditSales = sales.filter((i) => i.status === "unpaid" || i.status === "partial");
+    const creditOutstanding = creditSales.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     return {
       sales: salesTotal,
       saleReturns: returnsTotal,
@@ -120,6 +123,8 @@ export default function Reports() {
       salesCount: sales.length,
       returnsCount: saleReturns.length,
       purchasesCount: purchases.length,
+      creditOutstanding,
+      creditCount: creditSales.length,
     };
   }, [sales, saleReturns, purchases, expenses]);
 
@@ -289,6 +294,8 @@ export default function Reports() {
               ["Overview", "Net", totals.net],
               ["Overview", "Sales Invoices", totals.salesCount],
               ["Overview", "Purchase Invoices", totals.purchasesCount],
+              ["Overview", "Sales on Credit (Outstanding)", totals.creditOutstanding],
+              ["Overview", "Sales on Credit (Bills)", totals.creditCount],
               [],
               ["P&L", "Revenue", pnl.revenue],
               ["P&L", "COGS", pnl.cogs],
@@ -346,9 +353,10 @@ export default function Reports() {
             <Stat label="Net Sales" value={formatINR(totals.netSales)} tone="success" />
             <Stat label="Net Profit" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Stat label="Purchases" value={formatINR(totals.purchases)} />
             <Stat label="Expenses" value={formatINR(totals.expenses)} />
+            <Stat label="Sales on Credit (Unpaid)" value={`${formatINR(totals.creditOutstanding)} · ${totals.creditCount}`} tone={totals.creditOutstanding > 0 ? "danger" : undefined} />
             <Stat label="Returns Count" value={String(totals.returnsCount)} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
