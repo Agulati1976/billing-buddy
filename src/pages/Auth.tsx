@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Receipt, Eye, EyeOff, Mail, Lock, User, ShieldCheck, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ShieldCheck, Loader2 } from "lucide-react";
+import logoAsset from "@/assets/billlook-logo.png.asset.json";
+
+
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -82,8 +85,8 @@ export default function Auth() {
         <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <div className="relative flex flex-col items-center text-center gap-3">
-          <div className="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shadow-lg">
-            <Receipt className="h-8 w-8" />
+          <div className="h-24 w-24 rounded-2xl bg-white flex items-center justify-center shadow-lg overflow-hidden p-2">
+            <img src={logoAsset.url} alt="Bill Look logo" className="h-full w-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Bill Look</h1>
           <p className="text-sm opacity-90">GST billing & inventory for Indian businesses</p>
