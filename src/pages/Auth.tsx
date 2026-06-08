@@ -202,7 +202,8 @@ export default function Auth() {
                   {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating account…</> : "Create account"}
                 </Button>
                 <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-                  By creating an account you agree to our Terms & Privacy Policy.
+                  By creating an account you agree to our Terms &{" "}
+                  <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
                 </p>
               </form>
             </TabsContent>
