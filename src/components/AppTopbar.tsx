@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { OfflineBadge } from "@/components/OfflineBadge";
 import { SyncStatusBadge } from "@/components/SyncStatusBadge";
+import logoAsset from "@/assets/billlook-logo.png.asset.json";
 
 const TITLES: Record<string, string> = {
   "/": "Home",
@@ -109,7 +110,9 @@ export function AppTopbar() {
                   !isHome ? "hidden md:inline-flex" : ""
                 }`}
               >
-                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="h-5 w-5 rounded bg-background border flex items-center justify-center overflow-hidden shrink-0">
+                  <img src={logoAsset.url} alt="Bill Look" className="h-full w-full object-contain" />
+                </span>
                 <span className="truncate text-sm">{current.name}</span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </Button>
@@ -120,7 +123,9 @@ export function AppTopbar() {
               </DropdownMenuLabel>
               {businesses.map((b) => (
                 <DropdownMenuItem key={b.id} onClick={() => setCurrent(b)} className="gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="h-5 w-5 rounded bg-background border flex items-center justify-center overflow-hidden shrink-0">
+                    <img src={logoAsset.url} alt="Bill Look" className="h-full w-full object-contain" />
+                  </span>
                   <span className="flex-1 truncate">{b.name}</span>
                   {b.id === current.id && <Check className="h-4 w-4 text-primary" />}
                 </DropdownMenuItem>
