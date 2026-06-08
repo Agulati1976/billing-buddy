@@ -37,6 +37,7 @@ import AdminShopkeepers from "./pages/admin/AdminShopkeepers";
 import AdminShopkeeperDetail from "./pages/admin/AdminShopkeeperDetail";
 import AdminAdmins from "./pages/admin/AdminAdmins";
 import NotFound from "./pages/NotFound.tsx";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const App = () => (
           <BusinessProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverview />} />
