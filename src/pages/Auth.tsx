@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Receipt, Eye, EyeOff, Mail, Lock, User, ShieldCheck, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ShieldCheck, Loader2 } from "lucide-react";
+import logoAsset from "@/assets/billlook-logo.png.asset.json";
+
+
 
 export default function Auth() {
   const navigate = useNavigate();
