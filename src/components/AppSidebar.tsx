@@ -11,6 +11,7 @@ import {
 import { usePosAccess } from "@/hooks/usePosAccess";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTE_TO_MODULE } from "@/lib/modules";
+import logoAsset from "@/assets/billlook-logo.png.asset.json";
 
 type NavItem = { to: string; label: string; icon: any; end?: boolean; soon?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
@@ -96,8 +97,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2 py-1">
-          <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shrink-0">
-            <Receipt className="h-5 w-5 text-primary-foreground" />
+          <div className="h-8 w-8 rounded-md bg-white flex items-center justify-center shrink-0 overflow-hidden border">
+            <img src={logoAsset.url} alt="Bill Look" className="h-full w-full object-contain" />
           </div>
           {!collapsed && <span className="font-bold text-lg">Bill Look</span>}
         </div>
