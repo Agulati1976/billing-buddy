@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, LogOut, Building2, Check, ChevronDown, ChevronLeft } from "lucide-react";
+import { Plus, LogOut, Check, ChevronDown, ChevronLeft } from "lucide-react";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
