@@ -85,7 +85,7 @@ export default function Auth() {
           <div className="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shadow-lg">
             <Receipt className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">BillBook</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Bill Look</h1>
           <p className="text-sm opacity-90">GST billing & inventory for Indian businesses</p>
         </div>
       </div>

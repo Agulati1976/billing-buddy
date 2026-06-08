@@ -22,8 +22,8 @@ export default defineConfig(({ mode }) => ({
       devOptions: { enabled: false },
       includeAssets: ["favicon.ico", "robots.txt", "icon-192.png", "icon-512.png", "icon-maskable-512.png"],
       manifest: {
-        name: "BillBook — GST Billing & Inventory",
-        short_name: "BillBook",
+        name: "Bill Look — GST Billing & Inventory",
+        short_name: "Bill Look",
         description: "Simple GST billing, inventory, and party management for Indian SMBs.",
         theme_color: "#1d4fb8",
         background_color: "#ffffff",

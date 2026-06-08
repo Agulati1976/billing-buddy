@@ -2,10 +2,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.billingsoftwareonline.app',
-  appName: 'BillBook',
+  appName: 'Bill Look',
   webDir: 'dist',
   server: {
-    url: 'https://maroon-reindeer-995262.hostingersite.com/',
+    url: 'https://billlook.com/',
     cleartext: true,
   },
   android: {
