@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       injectRegister: false, // we register manually with iframe/preview guard
       devOptions: { enabled: false },
-      includeAssets: ["favicon.ico", "robots.txt", "icon-192.png", "icon-512.png", "icon-maskable-512.png"],
+      includeAssets: ["billlook-favicon.ico", "robots.txt", "billlook-icon-192.png", "billlook-icon-512.png", "billlook-maskable-512.png"],
       manifest: {
         name: "Bill Look — GST Billing & Inventory",
         short_name: "Bill Look",
@@ -32,9 +32,9 @@ export default defineConfig(({ mode }) => ({
         start_url: "/",
         scope: "/",
         icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-          { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "/billlook-icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/billlook-icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/billlook-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
