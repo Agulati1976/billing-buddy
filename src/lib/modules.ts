@@ -1,7 +1,7 @@
 // Module catalog used for staff access toggles.
 export type ModuleKey =
   | "dashboard" | "pos"
-  | "sales" | "sale_returns" | "quotations" | "purchases"
+  | "sales" | "sale_returns" | "quotations" | "purchases" | "quick_invoices"
   | "customers" | "suppliers" | "party_ledger"
   | "items" | "stock" | "categories" | "warehouses" | "batches" | "branches"
   | "accounts" | "payments" | "expenses" | "loyalty"
