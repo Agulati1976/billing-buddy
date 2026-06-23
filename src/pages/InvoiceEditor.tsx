@@ -196,6 +196,7 @@ export default function InvoiceEditor({ type }: Props) {
     ]).then(([inv, ln]) => {
       if (inv.error) { toast.error(inv.error.message); return; }
       const i = inv.data as any;
+      const ls = (ln.data as any[]) ?? [];
       setPartyId(i.party_id ?? "");
       setNumber(i.invoice_number);
       setDate(i.invoice_date);
@@ -206,8 +207,8 @@ export default function InvoiceEditor({ type }: Props) {
       setIsOnlineOrder(!!i.is_online_order);
       setBranchId(i.branch_id ?? "");
       setExtraDiscount(String(i.extra_discount ?? 0));
-      setReadOnly(true); // existing invoices are view-only in MVP
-      const ls = (ln.data as any[]) ?? [];
+      setReadOnly(true);
+      setOriginalSnapshot({ invoice: i, lines: ls });
       setLines(ls.length ? ls.map((l) => ({
         item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
@@ -217,6 +218,29 @@ export default function InvoiceEditor({ type }: Props) {
       setLoaded(true);
     });
   }, [id, isNew, current?.id]);
+
+  // Load edit history for this invoice
+  const loadHistory = async () => {
+    if (isNew || !id) return;
+    const { data } = await supabase
+      .from("invoice_edit_log")
+      .select("id, edited_at, summary, changes, edited_by")
+      .eq("invoice_id", id)
+      .order("edited_at", { ascending: false });
+    const rows = (data as any[]) ?? [];
+    const userIds = Array.from(new Set(rows.map((r) => r.edited_by).filter(Boolean)));
+    let emailMap: Record<string, string> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles").select("user_id, email, full_name").in("user_id", userIds);
+      for (const p of (profs as any[]) ?? []) {
+        emailMap[p.user_id] = p.full_name || p.email || "Unknown";
+      }
+    }
+    setHistory(rows.map((r) => ({ ...r, editor_email: emailMap[r.edited_by] ?? "Unknown" })));
+  };
+  useEffect(() => { if (!isNew && id) void loadHistory(); }, [id, isNew]);
+
 
   // Source-invoice picker (sale return creation)
   const [sourceOpen, setSourceOpen] = useState(false);
