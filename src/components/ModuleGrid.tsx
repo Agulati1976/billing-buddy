@@ -36,6 +36,7 @@ const TILES: Tile[] = [
   { to: "/sale_returns",label: "Sale Returns",  icon: ArrowUpDown,     module: "sale_returns", tone: "warning" },
   { to: "/purchases",   label: "Purchases",     icon: ReceiptIcon,     module: "purchases",    tone: "violet" },
   { to: "/quotations",  label: "Quotations",    icon: FileEdit,        module: "quotations",   tone: "info" },
+  { to: "/quick_invoices", label: "Quick Invoices", icon: FileEdit,    module: "quick_invoices", tone: "teal" },
   { to: "/customers",   label: "Customers",     icon: Users,           module: "customers",    tone: "teal" },
   { to: "/suppliers",   label: "Suppliers",     icon: Truck,           module: "suppliers",    tone: "violet" },
   { to: "/party-ledger",label: "Party Ledger",  icon: BookOpen,        module: "party_ledger", tone: "info" },
