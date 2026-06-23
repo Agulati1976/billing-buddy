@@ -1280,6 +1280,31 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit history dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Edit history
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-3">
+            {history.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-4 text-center">No edits yet.</div>
+            ) : history.map((h) => (
+              <div key={h.id} className="border rounded-md p-3">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="text-sm font-medium">{h.editor_email}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(h.edited_at).toLocaleString()}</div>
+                </div>
+                {h.summary && <div className="text-sm mb-2">{h.summary}</div>}
+                <HistoryDiffView changes={h.changes} />
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Mobile sticky save bar */}
       {!readOnly && (
         <div
