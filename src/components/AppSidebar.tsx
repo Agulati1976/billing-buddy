@@ -28,6 +28,7 @@ const groups: NavGroup[] = [
       { to: "/sale_returns", label: "Sale Returns", icon: ArrowUpDown },
       { to: "/quotations", label: "Quotations", icon: FileEdit },
       { to: "/purchases", label: "Purchases", icon: ReceiptIcon },
+      { to: "/quick_invoices", label: "Quick Invoices", icon: FileEdit },
     ],
   },
   {

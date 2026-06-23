@@ -35,7 +35,7 @@ export const ALL_MODULES: ModuleDef[] = [
 ];
 
 export const DEFAULT_STAFF_MODULES: ModuleKey[] = [
-  "dashboard", "sales", "sale_returns", "quotations", "purchases",
+  "dashboard", "sales", "sale_returns", "quotations", "purchases", "quick_invoices",
   "customers", "suppliers", "items", "stock", "payments",
 ];
 
