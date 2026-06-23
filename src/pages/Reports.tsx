@@ -59,6 +59,7 @@ export default function Reports() {
   const [sales, setSales] = useState<Inv[]>([]);
   const [saleReturns, setSaleReturns] = useState<Inv[]>([]);
   const [purchases, setPurchases] = useState<Inv[]>([]);
+  const [quickInvoices, setQuickInvoices] = useState<Inv[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [expenses, setExpenses] = useState<Exp[]>([]);
 
