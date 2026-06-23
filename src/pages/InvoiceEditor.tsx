@@ -801,8 +801,12 @@ export default function InvoiceEditor({ type }: Props) {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-2xl font-semibold truncate">{readOnly ? "View" : "New"} {meta.label}</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{readOnly ? "View mode" : "Fill the details below"}</p>
+            <h1 className="text-lg sm:text-2xl font-semibold truncate">
+              {isNew ? "New" : readOnly ? "View" : "Edit"} {meta.label}
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+              {isNew ? "Fill the details below" : readOnly ? "View mode" : "Editing — changes will be logged in history"}
+            </p>
           </div>
         </div>
         <div className="flex gap-1.5 sm:gap-2 flex-wrap">
