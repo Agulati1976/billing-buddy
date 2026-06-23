@@ -144,11 +144,19 @@ export default function Settings() {
       <Card className="p-6 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold flex items-center gap-2"><Building2 className="h-4 w-4" /> Current business</h2>
-          {role && <Badge variant="secondary" className="capitalize">{role}</Badge>}
+          <div className="flex items-center gap-2">
+            {role && <Badge variant="secondary" className="capitalize">{role}</Badge>}
+            {isOwnerAdmin && (
+              <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+              </Button>
+            )}
+          </div>
         </div>
         <dl className="text-sm grid grid-cols-3 gap-y-2">
           <dt className="text-muted-foreground">Name</dt><dd className="col-span-2">{current?.name}</dd>
           <dt className="text-muted-foreground">GSTIN</dt><dd className="col-span-2 font-mono">{current?.gstin || "—"}</dd>
+          <dt className="text-muted-foreground">PAN</dt><dd className="col-span-2 font-mono">{(current as any)?.pan || "—"}</dd>
           <dt className="text-muted-foreground">State</dt><dd className="col-span-2">{current?.state_code ? `${current.state_code} · ${current.state}` : "—"}</dd>
           <dt className="text-muted-foreground">Pincode</dt><dd className="col-span-2 font-mono">{curPin || "—"}</dd>
           <dt className="text-muted-foreground">Phone</dt><dd className="col-span-2">{current?.phone || "—"}</dd>
@@ -156,6 +164,64 @@ export default function Settings() {
           <dt className="text-muted-foreground">Address</dt><dd className="col-span-2 whitespace-pre-line">{current?.address || "—"}</dd>
         </dl>
       </Card>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit business details</DialogTitle>
+            <DialogDescription>Update your shop's basic information. Pincode is changed from the numbering section.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="b-name">Business name *</Label>
+              <Input id="b-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="b-phone">Phone</Label>
+                <Input id="b-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="b-email">Email</Label>
+                <Input id="b-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="b-gstin">GSTIN</Label>
+                <Input id="b-gstin" maxLength={15} className="font-mono uppercase"
+                  value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase() })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="b-pan">PAN</Label>
+                <Input id="b-pan" maxLength={10} className="font-mono uppercase" placeholder="ABCDE1234F"
+                  value={form.pan} onChange={(e) => setForm({ ...form, pan: e.target.value.toUpperCase() })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-[1fr_120px] gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="b-state">State</Label>
+                <Input id="b-state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="b-stcode">State code</Label>
+                <Input id="b-stcode" maxLength={2} className="font-mono"
+                  value={form.state_code} onChange={(e) => setForm({ ...form, state_code: e.target.value.replace(/\D/g, "").slice(0,2) })} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="b-addr">Address</Label>
+              <Textarea id="b-addr" rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingProfile}>Cancel</Button>
+            <Button onClick={saveProfile} disabled={savingProfile}>
+              {savingProfile ? "Saving…" : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card className="p-6 space-y-4">
         <div className="flex items-start gap-3">
