@@ -67,6 +67,12 @@ export default function InvoiceEditor({ type }: Props) {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
+  const [originalSnapshot, setOriginalSnapshot] = useState<null | {
+    invoice: any;
+    lines: any[];
+  }>(null);
+  const [history, setHistory] = useState<Array<{ id: string; edited_at: string; summary: string | null; changes: any; editor_email?: string | null }>>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Party quick add / full add
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
