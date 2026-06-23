@@ -360,6 +360,51 @@ export type Database = {
           },
         ]
       }
+      invoice_edit_log: {
+        Row: {
+          business_id: string
+          changes: Json
+          edited_at: string
+          edited_by: string | null
+          id: string
+          invoice_id: string
+          summary: string | null
+        }
+        Insert: {
+          business_id: string
+          changes?: Json
+          edited_at?: string
+          edited_by?: string | null
+          id?: string
+          invoice_id: string
+          summary?: string | null
+        }
+        Update: {
+          business_id?: string
+          changes?: Json
+          edited_at?: string
+          edited_by?: string | null
+          id?: string
+          invoice_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_edit_log_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_edit_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           batch_id: string | null

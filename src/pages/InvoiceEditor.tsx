@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine, UserPlus, Undo2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Save, Printer, Download, ScanLine, UserPlus, Undo2, Pencil, History, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { PartyDialog } from "@/components/PartyDialog";
 import { toast } from "sonner";
@@ -67,6 +67,12 @@ export default function InvoiceEditor({ type }: Props) {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
+  const [originalSnapshot, setOriginalSnapshot] = useState<null | {
+    invoice: any;
+    lines: any[];
+  }>(null);
+  const [history, setHistory] = useState<Array<{ id: string; edited_at: string; summary: string | null; changes: any; editor_email?: string | null }>>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Party quick add / full add
   const [partyDialogOpen, setPartyDialogOpen] = useState(false);
@@ -190,6 +196,7 @@ export default function InvoiceEditor({ type }: Props) {
     ]).then(([inv, ln]) => {
       if (inv.error) { toast.error(inv.error.message); return; }
       const i = inv.data as any;
+      const ls = (ln.data as any[]) ?? [];
       setPartyId(i.party_id ?? "");
       setNumber(i.invoice_number);
       setDate(i.invoice_date);
@@ -200,8 +207,8 @@ export default function InvoiceEditor({ type }: Props) {
       setIsOnlineOrder(!!i.is_online_order);
       setBranchId(i.branch_id ?? "");
       setExtraDiscount(String(i.extra_discount ?? 0));
-      setReadOnly(true); // existing invoices are view-only in MVP
-      const ls = (ln.data as any[]) ?? [];
+      setReadOnly(true);
+      setOriginalSnapshot({ invoice: i, lines: ls });
       setLines(ls.length ? ls.map((l) => ({
         item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
@@ -211,6 +218,29 @@ export default function InvoiceEditor({ type }: Props) {
       setLoaded(true);
     });
   }, [id, isNew, current?.id]);
+
+  // Load edit history for this invoice
+  const loadHistory = async () => {
+    if (isNew || !id) return;
+    const { data } = await supabase
+      .from("invoice_edit_log")
+      .select("id, edited_at, summary, changes, edited_by")
+      .eq("invoice_id", id)
+      .order("edited_at", { ascending: false });
+    const rows = (data as any[]) ?? [];
+    const userIds = Array.from(new Set(rows.map((r) => r.edited_by).filter(Boolean)));
+    let emailMap: Record<string, string> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles").select("user_id, email, full_name").in("user_id", userIds);
+      for (const p of (profs as any[]) ?? []) {
+        emailMap[p.user_id] = p.full_name || p.email || "Unknown";
+      }
+    }
+    setHistory(rows.map((r) => ({ ...r, editor_email: emailMap[r.edited_by] ?? "Unknown" })));
+  };
+  useEffect(() => { if (!isNew && id) void loadHistory(); }, [id, isNew]);
+
 
   // Source-invoice picker (sale return creation)
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -485,6 +515,136 @@ export default function InvoiceEditor({ type }: Props) {
       : "unpaid";
     const isReturn = type === "sale_return" || type === "purchase_return";
 
+    // ==== EDIT (UPDATE) PATH ====
+    if (!isNew && id && originalSnapshot) {
+      try {
+        const oldLines = originalSnapshot.lines;
+        const oldInv = originalSnapshot.invoice;
+
+        // 1. Reverse batch quantities for old batch-tracked lines
+        for (const ol of oldLines) {
+          if (!ol.batch_id) continue;
+          let delta = 0;
+          if (type === "sale") delta = Number(ol.quantity);
+          else if (type === "purchase") delta = -Number(ol.quantity);
+          else if (type === "sale_return") delta = -Number(ol.quantity);
+          else if (type === "purchase_return") delta = Number(ol.quantity);
+          if (delta !== 0) {
+            const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
+            if (b) {
+              await supabase.from("batches").update({ quantity: Number((b as any).quantity) + delta }).eq("id", ol.batch_id);
+            }
+          }
+        }
+
+        // 2. Delete stock_movements that reference the old invoice lines
+        const oldLineIds = oldLines.map((l) => l.id).filter(Boolean);
+        if (oldLineIds.length) {
+          await supabase.from("stock_movements").delete().in("reference_id", oldLineIds);
+        }
+
+        // 3. Delete old invoice_items
+        await supabase.from("invoice_items").delete().eq("invoice_id", id);
+
+        // 4. Insert new invoice_items
+        const liRes = await supabase.from("invoice_items").insert(
+          computed.lines.map((l) => ({
+            invoice_id: id,
+            item_id: l.item_id,
+            item_name: l.item_name,
+            hsn_code: l.hsn_code,
+            quantity: l.quantity,
+            unit: l.unit,
+            price: l.price,
+            discount_pct: l.discount_pct,
+            tax_rate: l.tax_rate,
+            batch_id: l.batch_id ?? null,
+            taxable_amount: l.taxable_amount,
+            tax_amount: l.tax_amount,
+            total_amount: l.total_amount,
+          }))
+        );
+        if (liRes.error) throw liRes.error;
+
+        // 5. Recompute paid/balance/status from existing payments
+        const { data: pays } = await supabase.from("payments")
+          .select("amount").eq("invoice_id", id).is("deleted_at", null);
+        const paid = ((pays as any[]) ?? []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const balance = Math.max(0, Number(computed.total_amount) - paid);
+        const newStatus: any = type === "quotation" ? "draft"
+          : isReturn ? "paid"
+          : balance <= 0 ? "paid"
+          : paid > 0 ? "partial"
+          : "unpaid";
+
+        // 6. Update invoice header
+        const updRes = await supabase.from("invoices").update({
+          party_id: partyId || null,
+          status: newStatus,
+          invoice_number: number.trim(),
+          invoice_date: date,
+          due_date: dueDate || null,
+          party_state_code: party?.state_code ?? null,
+          is_inter_state: isInterState,
+          is_gst: isGst,
+          is_online_order: type === "sale" ? isOnlineOrder : false,
+          branch_id: type === "sale" && isOnlineOrder && branchId ? branchId : null,
+          extra_discount: computed.extra_discount,
+          subtotal: computed.subtotal,
+          discount_amount: computed.discount_amount,
+          tax_amount: computed.tax_amount,
+          cgst_amount: computed.cgst_amount,
+          sgst_amount: computed.sgst_amount,
+          igst_amount: computed.igst_amount,
+          round_off: computed.round_off,
+          total_amount: computed.total_amount,
+          paid_amount: paid,
+          balance_amount: isReturn ? 0 : balance,
+          notes: notes.trim() || null,
+          terms: terms.trim() || null,
+        }).eq("id", id);
+        if (updRes.error) throw updRes.error;
+
+        // 7. Build diff & write audit log
+        const diff = buildInvoiceDiff(
+          oldInv, oldLines,
+          {
+            invoice_number: number.trim(), invoice_date: date, due_date: dueDate || null,
+            party_id: partyId || null, is_gst: isGst, notes: notes.trim() || null,
+            terms: terms.trim() || null, total_amount: computed.total_amount,
+            subtotal: computed.subtotal, discount_amount: computed.discount_amount,
+            tax_amount: computed.tax_amount, extra_discount: computed.extra_discount,
+          },
+          computed.lines
+        );
+        const summary = summarizeDiff(diff);
+        await supabase.from("invoice_edit_log").insert({
+          invoice_id: id,
+          business_id: current.id,
+          edited_by: user.id,
+          changes: diff,
+          summary,
+        });
+
+        setSaving(false);
+        toast.success(`${meta.label} updated`);
+        await loadHistory();
+        // refresh snapshot
+        const [invFresh, lnFresh] = await Promise.all([
+          supabase.from("invoices").select("*").eq("id", id).single(),
+          supabase.from("invoice_items").select("*").eq("invoice_id", id),
+        ]);
+        if (invFresh.data) setOriginalSnapshot({ invoice: invFresh.data, lines: (lnFresh.data as any[]) ?? [] });
+        setReadOnly(true);
+        return;
+      } catch (e: any) {
+        setSaving(false);
+        toast.error(e?.message || "Failed to update invoice");
+        return;
+      }
+    }
+
+    // ==== NEW INVOICE PATH ====
     const invoiceId = crypto.randomUUID();
     const invRes = await omInsert("invoices", {
       id: invoiceId,
@@ -554,6 +714,7 @@ export default function InvoiceEditor({ type }: Props) {
     toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
     navigate(`/${type}s`);
   };
+
 
   const downloadPdf = async () => {
     if (!current) return;
@@ -640,8 +801,12 @@ export default function InvoiceEditor({ type }: Props) {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-2xl font-semibold truncate">{readOnly ? "View" : "New"} {meta.label}</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">{readOnly ? "View mode" : "Fill the details below"}</p>
+            <h1 className="text-lg sm:text-2xl font-semibold truncate">
+              {isNew ? "New" : readOnly ? "View" : "Edit"} {meta.label}
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+              {isNew ? "Fill the details below" : readOnly ? "View mode" : "Editing — changes will be logged in history"}
+            </p>
           </div>
         </div>
         <div className="flex gap-1.5 sm:gap-2 flex-wrap">
@@ -678,9 +843,45 @@ export default function InvoiceEditor({ type }: Props) {
               <Printer className="h-4 w-4" /> <span>Print</span>
             </Button>
           )}
+          {readOnly && !isNew && history.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="gap-1.5 px-2 sm:px-3" title="View edit history">
+              <History className="h-4 w-4" /> <span>History ({history.length})</span>
+            </Button>
+          )}
+          {readOnly && !isNew && (
+            <Button variant="outline" size="sm" onClick={() => setReadOnly(false)} className="gap-1.5 px-2 sm:px-3" title="Edit invoice">
+              <Pencil className="h-4 w-4" /> <span>Edit</span>
+            </Button>
+          )}
+          {!readOnly && !isNew && (
+            <Button variant="ghost" size="sm" onClick={() => {
+              // Reset to snapshot
+              if (originalSnapshot) {
+                const i = originalSnapshot.invoice;
+                const ls = originalSnapshot.lines;
+                setPartyId(i.party_id ?? "");
+                setNumber(i.invoice_number);
+                setDate(i.invoice_date);
+                setDueDate(i.due_date ?? "");
+                setNotes(i.notes ?? "");
+                setTerms(i.terms ?? "");
+                setIsGst(i.is_gst !== false);
+                setExtraDiscount(String(i.extra_discount ?? 0));
+                setLines(ls.length ? ls.map((l: any) => ({
+                  item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+                  quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
+                  discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate),
+                  batch_id: l.batch_id ?? null,
+                })) : [emptyLine()]);
+              }
+              setReadOnly(true);
+            }} className="gap-1.5 px-2 sm:px-3">
+              <X className="h-4 w-4" /> <span>Cancel</span>
+            </Button>
+          )}
           {!readOnly && (
             <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
-              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+              <Save className="h-4 w-4" /> {saving ? "Saving…" : isNew ? "Save" : "Save Changes"}
             </Button>
           )}
         </div>
@@ -1079,6 +1280,31 @@ export default function InvoiceEditor({ type }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit history dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Edit history
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto space-y-3">
+            {history.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-4 text-center">No edits yet.</div>
+            ) : history.map((h) => (
+              <div key={h.id} className="border rounded-md p-3">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="text-sm font-medium">{h.editor_email}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(h.edited_at).toLocaleString()}</div>
+                </div>
+                {h.summary && <div className="text-sm mb-2">{h.summary}</div>}
+                <HistoryDiffView changes={h.changes} />
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Mobile sticky save bar */}
       {!readOnly && (
         <div
@@ -1104,3 +1330,145 @@ const Row = ({ label, value, bold }: { label: string; value: string; bold?: bool
     <dd className="num">{value}</dd>
   </div>
 );
+
+// ===== Edit-diff helpers =====
+
+const HEADER_FIELDS: Array<{ key: string; label: string; money?: boolean }> = [
+  { key: "invoice_number", label: "Invoice number" },
+  { key: "invoice_date", label: "Date" },
+  { key: "due_date", label: "Due date" },
+  { key: "party_id", label: "Party" },
+  { key: "is_gst", label: "GST" },
+  { key: "notes", label: "Notes" },
+  { key: "terms", label: "Terms" },
+  { key: "subtotal", label: "Subtotal", money: true },
+  { key: "discount_amount", label: "Discount", money: true },
+  { key: "tax_amount", label: "Tax", money: true },
+  { key: "extra_discount", label: "Overall discount", money: true },
+  { key: "total_amount", label: "Total", money: true },
+];
+
+function fmtVal(v: any) {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  return String(v);
+}
+
+function buildInvoiceDiff(
+  oldInv: any, oldLines: any[],
+  newInv: Record<string, any>, newLines: any[]
+) {
+  const header: Record<string, { old: any; new: any; label: string; money?: boolean }> = {};
+  for (const f of HEADER_FIELDS) {
+    const a = oldInv?.[f.key] ?? null;
+    const b = newInv[f.key] ?? null;
+    const norm = (x: any) => (x === null || x === undefined ? null : typeof x === "number" ? Number(x) : x);
+    if (norm(a) !== norm(b) && !(a == null && b == null)) {
+      header[f.key] = { old: a, new: b, label: f.label, money: f.money };
+    }
+  }
+
+  const keyOf = (l: any) => (l.item_id || l.item_name || "").toString();
+  const oldMap = new Map<string, any>();
+  for (const l of oldLines) oldMap.set(keyOf(l), l);
+  const newMap = new Map<string, any>();
+  for (const l of newLines) newMap.set(keyOf(l), l);
+
+  const added: any[] = [];
+  const removed: any[] = [];
+  const modified: any[] = [];
+
+  for (const [k, n] of newMap.entries()) {
+    const o = oldMap.get(k);
+    if (!o) {
+      added.push({ item_name: n.item_name, quantity: Number(n.quantity), price: Number(n.price), total: Number(n.total_amount) });
+    } else {
+      const fields: Record<string, { old: any; new: any }> = {};
+      if (Number(o.quantity) !== Number(n.quantity)) fields.quantity = { old: Number(o.quantity), new: Number(n.quantity) };
+      if (Number(o.price) !== Number(n.price)) fields.price = { old: Number(o.price), new: Number(n.price) };
+      if (Number(o.discount_pct) !== Number(n.discount_pct)) fields.discount_pct = { old: Number(o.discount_pct), new: Number(n.discount_pct) };
+      if (Number(o.tax_rate) !== Number(n.tax_rate)) fields.tax_rate = { old: Number(o.tax_rate), new: Number(n.tax_rate) };
+      if (Number(o.total_amount) !== Number(n.total_amount)) fields.total = { old: Number(o.total_amount), new: Number(n.total_amount) };
+      if (Object.keys(fields).length) modified.push({ item_name: n.item_name, fields });
+    }
+  }
+  for (const [k, o] of oldMap.entries()) {
+    if (!newMap.has(k)) removed.push({ item_name: o.item_name, quantity: Number(o.quantity), price: Number(o.price), total: Number(o.total_amount) });
+  }
+
+  return { header, lines: { added, removed, modified } };
+}
+
+function summarizeDiff(diff: any): string {
+  const parts: string[] = [];
+  const hKeys = Object.keys(diff.header || {});
+  if (hKeys.length) parts.push(`${hKeys.length} field${hKeys.length === 1 ? "" : "s"} changed`);
+  const a = diff.lines?.added?.length ?? 0;
+  const r = diff.lines?.removed?.length ?? 0;
+  const m = diff.lines?.modified?.length ?? 0;
+  if (a) parts.push(`+${a} line${a === 1 ? "" : "s"}`);
+  if (r) parts.push(`−${r} line${r === 1 ? "" : "s"}`);
+  if (m) parts.push(`${m} line${m === 1 ? "" : "s"} modified`);
+  return parts.join(" · ") || "No changes";
+}
+
+function HistoryDiffView({ changes }: { changes: any }) {
+  const header = changes?.header ?? {};
+  const lines = changes?.lines ?? { added: [], removed: [], modified: [] };
+  const hKeys = Object.keys(header);
+  return (
+    <div className="space-y-2 text-xs">
+      {hKeys.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Header changes</div>
+          {hKeys.map((k) => {
+            const v = header[k];
+            return (
+              <div key={k} className="flex items-baseline gap-2">
+                <span className="font-medium">{v.label}:</span>
+                <span className="line-through text-danger">{fmtVal(v.old)}</span>
+                <span>→</span>
+                <span className="text-success">{fmtVal(v.new)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {lines.added?.length > 0 && (
+        <div>
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Added lines</div>
+          {lines.added.map((l: any, i: number) => (
+            <div key={i} className="text-success">+ {l.item_name} × {l.quantity} @ {l.price}</div>
+          ))}
+        </div>
+      )}
+      {lines.removed?.length > 0 && (
+        <div>
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Removed lines</div>
+          {lines.removed.map((l: any, i: number) => (
+            <div key={i} className="text-danger">− {l.item_name} × {l.quantity} @ {l.price}</div>
+          ))}
+        </div>
+      )}
+      {lines.modified?.length > 0 && (
+        <div>
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Modified lines</div>
+          {lines.modified.map((l: any, i: number) => (
+            <div key={i}>
+              <div className="font-medium">{l.item_name}</div>
+              {Object.entries(l.fields).map(([fk, fv]: any) => (
+                <div key={fk} className="ml-3 flex items-baseline gap-2">
+                  <span className="text-muted-foreground">{fk}:</span>
+                  <span className="line-through text-danger">{fmtVal(fv.old)}</span>
+                  <span>→</span>
+                  <span className="text-success">{fmtVal(fv.new)}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
