@@ -24,9 +24,61 @@ export default function Settings() {
   const [pincode, setPincode] = useState("");
   const [savingPin, setSavingPin] = useState(false);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [form, setForm] = useState({
+    name: "", phone: "", email: "", gstin: "", pan: "",
+    state: "", state_code: "", address: "",
+  });
+
   useEffect(() => {
     setPincode((current as any)?.pincode ?? "");
   }, [current?.id]);
+
+  useEffect(() => {
+    if (!current) return;
+    setForm({
+      name: current.name ?? "",
+      phone: (current as any).phone ?? "",
+      email: (current as any).email ?? "",
+      gstin: (current as any).gstin ?? "",
+      pan: (current as any).pan ?? "",
+      state: (current as any).state ?? "",
+      state_code: (current as any).state_code ?? "",
+      address: (current as any).address ?? "",
+    });
+  }, [current?.id, editOpen]);
+
+  const saveProfile = async () => {
+    if (!current) return;
+    if (!form.name.trim()) { toast.error("Business name is required"); return; }
+    if (form.gstin && !/^[0-9A-Z]{15}$/.test(form.gstin.trim().toUpperCase())) {
+      toast.error("GSTIN must be 15 characters"); return;
+    }
+    if (form.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(form.pan.trim().toUpperCase())) {
+      toast.error("PAN must be in format ABCDE1234F"); return;
+    }
+    if (form.email && !/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+      toast.error("Invalid email"); return;
+    }
+    setSavingProfile(true);
+    const payload: any = {
+      name: form.name.trim(),
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      gstin: form.gstin ? form.gstin.trim().toUpperCase() : null,
+      pan: form.pan ? form.pan.trim().toUpperCase() : null,
+      state: form.state.trim() || null,
+      state_code: form.state_code.trim() || null,
+      address: form.address.trim() || null,
+    };
+    const { error } = await supabase.from("businesses").update(payload).eq("id", current.id);
+    setSavingProfile(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Business details updated");
+    setEditOpen(false);
+    await refresh();
+  };
 
   const renumberAll = async (pin: string, rank: number) => {
     if (!current) return;
