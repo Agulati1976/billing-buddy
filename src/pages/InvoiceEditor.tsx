@@ -515,6 +515,136 @@ export default function InvoiceEditor({ type }: Props) {
       : "unpaid";
     const isReturn = type === "sale_return" || type === "purchase_return";
 
+    // ==== EDIT (UPDATE) PATH ====
+    if (!isNew && id && originalSnapshot) {
+      try {
+        const oldLines = originalSnapshot.lines;
+        const oldInv = originalSnapshot.invoice;
+
+        // 1. Reverse batch quantities for old batch-tracked lines
+        for (const ol of oldLines) {
+          if (!ol.batch_id) continue;
+          let delta = 0;
+          if (type === "sale") delta = Number(ol.quantity);
+          else if (type === "purchase") delta = -Number(ol.quantity);
+          else if (type === "sale_return") delta = -Number(ol.quantity);
+          else if (type === "purchase_return") delta = Number(ol.quantity);
+          if (delta !== 0) {
+            const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
+            if (b) {
+              await supabase.from("batches").update({ quantity: Number((b as any).quantity) + delta }).eq("id", ol.batch_id);
+            }
+          }
+        }
+
+        // 2. Delete stock_movements that reference the old invoice lines
+        const oldLineIds = oldLines.map((l) => l.id).filter(Boolean);
+        if (oldLineIds.length) {
+          await supabase.from("stock_movements").delete().in("reference_id", oldLineIds);
+        }
+
+        // 3. Delete old invoice_items
+        await supabase.from("invoice_items").delete().eq("invoice_id", id);
+
+        // 4. Insert new invoice_items
+        const liRes = await supabase.from("invoice_items").insert(
+          computed.lines.map((l) => ({
+            invoice_id: id,
+            item_id: l.item_id,
+            item_name: l.item_name,
+            hsn_code: l.hsn_code,
+            quantity: l.quantity,
+            unit: l.unit,
+            price: l.price,
+            discount_pct: l.discount_pct,
+            tax_rate: l.tax_rate,
+            batch_id: l.batch_id ?? null,
+            taxable_amount: l.taxable_amount,
+            tax_amount: l.tax_amount,
+            total_amount: l.total_amount,
+          }))
+        );
+        if (liRes.error) throw liRes.error;
+
+        // 5. Recompute paid/balance/status from existing payments
+        const { data: pays } = await supabase.from("payments")
+          .select("amount").eq("invoice_id", id).is("deleted_at", null);
+        const paid = ((pays as any[]) ?? []).reduce((s, p) => s + Number(p.amount || 0), 0);
+        const balance = Math.max(0, Number(computed.total_amount) - paid);
+        const newStatus: any = type === "quotation" ? "draft"
+          : isReturn ? "paid"
+          : balance <= 0 ? "paid"
+          : paid > 0 ? "partial"
+          : "unpaid";
+
+        // 6. Update invoice header
+        const updRes = await supabase.from("invoices").update({
+          party_id: partyId || null,
+          status: newStatus,
+          invoice_number: number.trim(),
+          invoice_date: date,
+          due_date: dueDate || null,
+          party_state_code: party?.state_code ?? null,
+          is_inter_state: isInterState,
+          is_gst: isGst,
+          is_online_order: type === "sale" ? isOnlineOrder : false,
+          branch_id: type === "sale" && isOnlineOrder && branchId ? branchId : null,
+          extra_discount: computed.extra_discount,
+          subtotal: computed.subtotal,
+          discount_amount: computed.discount_amount,
+          tax_amount: computed.tax_amount,
+          cgst_amount: computed.cgst_amount,
+          sgst_amount: computed.sgst_amount,
+          igst_amount: computed.igst_amount,
+          round_off: computed.round_off,
+          total_amount: computed.total_amount,
+          paid_amount: paid,
+          balance_amount: isReturn ? 0 : balance,
+          notes: notes.trim() || null,
+          terms: terms.trim() || null,
+        }).eq("id", id);
+        if (updRes.error) throw updRes.error;
+
+        // 7. Build diff & write audit log
+        const diff = buildInvoiceDiff(
+          oldInv, oldLines,
+          {
+            invoice_number: number.trim(), invoice_date: date, due_date: dueDate || null,
+            party_id: partyId || null, is_gst: isGst, notes: notes.trim() || null,
+            terms: terms.trim() || null, total_amount: computed.total_amount,
+            subtotal: computed.subtotal, discount_amount: computed.discount_amount,
+            tax_amount: computed.tax_amount, extra_discount: computed.extra_discount,
+          },
+          computed.lines
+        );
+        const summary = summarizeDiff(diff);
+        await supabase.from("invoice_edit_log").insert({
+          invoice_id: id,
+          business_id: current.id,
+          edited_by: user.id,
+          changes: diff,
+          summary,
+        });
+
+        setSaving(false);
+        toast.success(`${meta.label} updated`);
+        await loadHistory();
+        // refresh snapshot
+        const [invFresh, lnFresh] = await Promise.all([
+          supabase.from("invoices").select("*").eq("id", id).single(),
+          supabase.from("invoice_items").select("*").eq("invoice_id", id),
+        ]);
+        if (invFresh.data) setOriginalSnapshot({ invoice: invFresh.data, lines: (lnFresh.data as any[]) ?? [] });
+        setReadOnly(true);
+        return;
+      } catch (e: any) {
+        setSaving(false);
+        toast.error(e?.message || "Failed to update invoice");
+        return;
+      }
+    }
+
+    // ==== NEW INVOICE PATH ====
     const invoiceId = crypto.randomUUID();
     const invRes = await omInsert("invoices", {
       id: invoiceId,
@@ -584,6 +714,7 @@ export default function InvoiceEditor({ type }: Props) {
     toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
     navigate(`/${type}s`);
   };
+
 
   const downloadPdf = async () => {
     if (!current) return;
