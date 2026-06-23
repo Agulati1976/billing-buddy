@@ -375,6 +375,11 @@ export default function Reports() {
               value={formatINR(totals.salesCount ? totals.sales / totals.salesCount : 0)}
             />
           </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Quick Invoices Total" value={formatINR(totals.quickTotal)} tone="success" />
+            <Stat label="Quick Invoices Count" value={String(totals.quickCount)} />
+            <Stat label="Quick Invoices Outstanding" value={formatINR(totals.quickOutstanding)} tone={totals.quickOutstanding > 0 ? "danger" : undefined} />
+          </div>
         </TabsContent>
 
         {/* DAILY BREAKDOWN */}
