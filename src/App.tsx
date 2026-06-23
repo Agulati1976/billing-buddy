@@ -36,6 +36,11 @@ import AdminOverview from "./pages/admin/AdminOverview";
 import AdminShopkeepers from "./pages/admin/AdminShopkeepers";
 import AdminShopkeeperDetail from "./pages/admin/AdminShopkeeperDetail";
 import AdminAdmins from "./pages/admin/AdminAdmins";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminInvoices from "./pages/admin/AdminInvoices";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminPlans from "./pages/admin/AdminPlans";
+import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import NotFound from "./pages/NotFound.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DeleteAccount from "./pages/DeleteAccount";
@@ -59,6 +64,11 @@ const App = () => (
                 <Route index element={<AdminOverview />} />
                 <Route path="shopkeepers" element={<AdminShopkeepers />} />
                 <Route path="shopkeepers/:id" element={<AdminShopkeeperDetail />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="invoices" element={<AdminInvoices />} />
+                <Route path="payments" element={<AdminPayments />} />
+                <Route path="plans" element={<AdminPlans />} />
+                <Route path="audit" element={<AdminAuditLog />} />
                 <Route path="admins" element={<AdminAdmins />} />
               </Route>
               <Route path="/onboarding" element={<Onboarding />} />
