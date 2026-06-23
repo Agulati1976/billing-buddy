@@ -64,7 +64,7 @@ export default function Invoices({ type }: Props) {
     setPaySaving(true);
     const res = await omInsert("payments", {
       business_id: current.id,
-      direction: type === "sale" ? "in" : "out",
+      direction: (type === "sale" || type === "non_inventory") ? "in" : "out",
       method: payMethod as any,
       amount: amt,
       payment_date: new Date().toISOString().slice(0, 10),
