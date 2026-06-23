@@ -34,6 +34,7 @@ const MENU_GROUPS: MobileMenuGroup[] = [
       { to: "/sale_returns", label: "Sale Returns", icon: ArrowUpDown, module: "sale_returns" },
       { to: "/quotations", label: "Quotations", icon: FileEdit, module: "quotations" },
       { to: "/purchases", label: "Purchases", icon: ReceiptIcon, module: "purchases" },
+      { to: "/quick_invoices", label: "Quick Invoices", icon: FileEdit, module: "quick_invoices" },
     ],
   },
   {

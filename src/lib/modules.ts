@@ -1,7 +1,7 @@
 // Module catalog used for staff access toggles.
 export type ModuleKey =
   | "dashboard" | "pos"
-  | "sales" | "sale_returns" | "quotations" | "purchases"
+  | "sales" | "sale_returns" | "quotations" | "purchases" | "quick_invoices"
   | "customers" | "suppliers" | "party_ledger"
   | "items" | "stock" | "categories" | "warehouses" | "batches" | "branches"
   | "accounts" | "payments" | "expenses" | "loyalty"
@@ -16,6 +16,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: "sale_returns", label: "Sale Returns",     group: "Sales & Purchases" },
   { key: "quotations",   label: "Quotations",       group: "Sales & Purchases" },
   { key: "purchases",    label: "Purchases",        group: "Sales & Purchases" },
+  { key: "quick_invoices", label: "Quick Invoices", group: "Sales & Purchases" },
   { key: "customers",    label: "Customers",        group: "Parties" },
   { key: "suppliers",    label: "Suppliers",        group: "Parties" },
   { key: "party_ledger", label: "Party Ledger",     group: "Parties" },
@@ -46,6 +47,7 @@ export const ROUTE_TO_MODULE: Record<string, ModuleKey> = {
   "/sale_returns": "sale_returns",
   "/quotations": "quotations",
   "/purchases": "purchases",
+  "/quick_invoices": "quick_invoices",
   "/customers": "customers",
   "/suppliers": "suppliers",
   "/party-ledger": "party_ledger",

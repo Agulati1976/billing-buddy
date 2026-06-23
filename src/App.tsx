@@ -91,6 +91,8 @@ const App = () => (
                 <Route path="/purchases/:id" element={<InvoiceEditor type="purchase" />} />
                 <Route path="/quotations" element={<Invoices type="quotation" />} />
                 <Route path="/quotations/:id" element={<InvoiceEditor type="quotation" />} />
+                <Route path="/quick_invoices" element={<Invoices type="non_inventory" />} />
+                <Route path="/quick_invoices/:id" element={<InvoiceEditor type="non_inventory" />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/party-ledger" element={<PartyLedger />} />
                 <Route path="/branches" element={<Branches />} />

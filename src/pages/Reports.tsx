@@ -59,6 +59,7 @@ export default function Reports() {
   const [sales, setSales] = useState<Inv[]>([]);
   const [saleReturns, setSaleReturns] = useState<Inv[]>([]);
   const [purchases, setPurchases] = useState<Inv[]>([]);
+  const [quickInvoices, setQuickInvoices] = useState<Inv[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [expenses, setExpenses] = useState<Exp[]>([]);
 
@@ -78,13 +79,14 @@ export default function Reports() {
       setLoading(true);
       const since = fmtDate(range.from);
       const until = fmtDate(range.to);
-      const [s, p, e, sr] = await Promise.all([
+      const [s, p, e, sr, qi] = await Promise.all([
         supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
         supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
         supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since).lte("expense_date", until),
         supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale_return").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
+        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "non_inventory").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
       ]);
-      if (s.error || p.error || e.error || sr.error) toast.error("Failed to load reports");
+      if (s.error || p.error || e.error || sr.error || qi.error) toast.error("Failed to load reports");
       const allInvIds = [...(s.data ?? []), ...(p.data ?? [])].map((i: any) => i.id);
       let it: Item[] = [];
       if (allInvIds.length) {
@@ -97,6 +99,7 @@ export default function Reports() {
       setPurchases((p.data ?? []) as Inv[]);
       setExpenses((e.data ?? []) as Exp[]);
       setSaleReturns((sr.data ?? []) as Inv[]);
+      setQuickInvoices((qi.data ?? []) as Inv[]);
       setItems(it);
       setLoading(false);
     })();
@@ -111,6 +114,8 @@ export default function Reports() {
     const netSales = salesTotal - returnsTotal;
     const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const quickTotal = quickInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const quickOutstanding = quickInvoices.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     const creditSales = sales.filter((i) => i.status === "unpaid" || i.status === "partial");
     const creditOutstanding = creditSales.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     return {
@@ -125,8 +130,11 @@ export default function Reports() {
       purchasesCount: purchases.length,
       creditOutstanding,
       creditCount: creditSales.length,
+      quickTotal,
+      quickCount: quickInvoices.length,
+      quickOutstanding,
     };
-  }, [sales, saleReturns, purchases, expenses]);
+  }, [sales, saleReturns, purchases, expenses, quickInvoices]);
 
   // P&L for the selected range
   const pnl = useMemo(() => {
@@ -296,6 +304,9 @@ export default function Reports() {
               ["Overview", "Purchase Invoices", totals.purchasesCount],
               ["Overview", "Sales on Credit (Outstanding)", totals.creditOutstanding],
               ["Overview", "Sales on Credit (Bills)", totals.creditCount],
+              ["Overview", "Quick Invoices Total", totals.quickTotal],
+              ["Overview", "Quick Invoices Count", totals.quickCount],
+              ["Overview", "Quick Invoices Outstanding", totals.quickOutstanding],
               [],
               ["P&L", "Revenue", pnl.revenue],
               ["P&L", "COGS", pnl.cogs],
@@ -366,6 +377,11 @@ export default function Reports() {
               label="Avg. Sale"
               value={formatINR(totals.salesCount ? totals.sales / totals.salesCount : 0)}
             />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Stat label="Quick Invoices Total" value={formatINR(totals.quickTotal)} tone="success" />
+            <Stat label="Quick Invoices Count" value={String(totals.quickCount)} />
+            <Stat label="Quick Invoices Outstanding" value={formatINR(totals.quickOutstanding)} tone={totals.quickOutstanding > 0 ? "danger" : undefined} />
           </div>
         </TabsContent>
 

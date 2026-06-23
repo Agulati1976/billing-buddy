@@ -49,7 +49,7 @@ export default function Invoices({ type }: Props) {
   const [payMethod, setPayMethod] = useState<string>("cash");
   const [paySaving, setPaySaving] = useState(false);
 
-  const canPay = type === "sale" || type === "purchase";
+  const canPay = type === "sale" || type === "purchase" || type === "non_inventory";
 
   const openPay = (r: InvoiceRow, full: boolean) => {
     setPayRow(r);
@@ -64,7 +64,7 @@ export default function Invoices({ type }: Props) {
     setPaySaving(true);
     const res = await omInsert("payments", {
       business_id: current.id,
-      direction: type === "sale" ? "in" : "out",
+      direction: (type === "sale" || type === "non_inventory") ? "in" : "out",
       method: payMethod as any,
       amount: amt,
       payment_date: new Date().toISOString().slice(0, 10),
@@ -165,7 +165,7 @@ export default function Invoices({ type }: Props) {
           <h1 className="text-xl sm:text-2xl font-semibold truncate">{meta.label}s</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">{totals.count} entries · {formatINR(totals.total)} total</p>
         </div>
-        <Button onClick={() => navigate(`/${type}s/new`)} size="sm" className="gap-1.5 shrink-0">
+        <Button onClick={() => navigate(`/${meta.route}/new`)} size="sm" className="gap-1.5 shrink-0">
           <Plus className="h-4 w-4" /> <span className="hidden xs:inline sm:inline">New</span>
         </Button>
       </div>
@@ -221,7 +221,7 @@ export default function Invoices({ type }: Props) {
                 return (
                 <div key={r.id} className="mobile-card flex items-center gap-3">
                     <button
-                      onClick={() => navigate(`/${type}s/${r.id}`)}
+                      onClick={() => navigate(`/${meta.route}/${r.id}`)}
                       className="flex-1 min-w-0 text-left"
                     >
                       <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ export default function Invoices({ type }: Props) {
                   {filtered.map((r) => {
                     const st = STATUS_META[r.status];
                     return (
-                      <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/${type}s/${r.id}`)}>
+                      <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/${meta.route}/${r.id}`)}>
                         <TableCell className="font-medium">{r.invoice_number}</TableCell>
                         <TableCell className="text-muted-foreground">{format(new Date(r.invoice_date), "dd MMM yyyy")}</TableCell>
                         <TableCell>{r.parties?.name ?? "—"}</TableCell>
@@ -315,7 +315,7 @@ export default function Invoices({ type }: Props) {
                           <div className="flex gap-1">
                             {view === "active" ? (
                               <>
-                                <Button size="icon" variant="ghost" onClick={() => navigate(`/${type}s/${r.id}`)}>
+                                <Button size="icon" variant="ghost" onClick={() => navigate(`/${meta.route}/${r.id}`)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 {type === "sale" && (
