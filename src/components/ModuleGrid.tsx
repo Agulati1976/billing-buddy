@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, FileText, ArrowUpDown, FileEdit, Receipt as ReceiptIcon,
-  Users, Truck, Package, Tags, Warehouse, Boxes,
+  Users, Truck, Package, Tags, Warehouse, Boxes, Building2, BookOpen,
   Wallet, Gift, BarChart3, Sparkles, Settings,
 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
