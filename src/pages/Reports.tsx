@@ -114,6 +114,8 @@ export default function Reports() {
     const netSales = salesTotal - returnsTotal;
     const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const quickTotal = quickInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const quickOutstanding = quickInvoices.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     const creditSales = sales.filter((i) => i.status === "unpaid" || i.status === "partial");
     const creditOutstanding = creditSales.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     return {
@@ -128,8 +130,11 @@ export default function Reports() {
       purchasesCount: purchases.length,
       creditOutstanding,
       creditCount: creditSales.length,
+      quickTotal,
+      quickCount: quickInvoices.length,
+      quickOutstanding,
     };
-  }, [sales, saleReturns, purchases, expenses]);
+  }, [sales, saleReturns, purchases, expenses, quickInvoices]);
 
   // P&L for the selected range
   const pnl = useMemo(() => {
