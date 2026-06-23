@@ -1330,3 +1330,145 @@ const Row = ({ label, value, bold }: { label: string; value: string; bold?: bool
     <dd className="num">{value}</dd>
   </div>
 );
+
+// ===== Edit-diff helpers =====
+
+const HEADER_FIELDS: Array<{ key: string; label: string; money?: boolean }> = [
+  { key: "invoice_number", label: "Invoice number" },
+  { key: "invoice_date", label: "Date" },
+  { key: "due_date", label: "Due date" },
+  { key: "party_id", label: "Party" },
+  { key: "is_gst", label: "GST" },
+  { key: "notes", label: "Notes" },
+  { key: "terms", label: "Terms" },
+  { key: "subtotal", label: "Subtotal", money: true },
+  { key: "discount_amount", label: "Discount", money: true },
+  { key: "tax_amount", label: "Tax", money: true },
+  { key: "extra_discount", label: "Overall discount", money: true },
+  { key: "total_amount", label: "Total", money: true },
+];
+
+function fmtVal(v: any) {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  return String(v);
+}
+
+function buildInvoiceDiff(
+  oldInv: any, oldLines: any[],
+  newInv: Record<string, any>, newLines: any[]
+) {
+  const header: Record<string, { old: any; new: any; label: string; money?: boolean }> = {};
+  for (const f of HEADER_FIELDS) {
+    const a = oldInv?.[f.key] ?? null;
+    const b = newInv[f.key] ?? null;
+    const norm = (x: any) => (x === null || x === undefined ? null : typeof x === "number" ? Number(x) : x);
+    if (norm(a) !== norm(b) && !(a == null && b == null)) {
+      header[f.key] = { old: a, new: b, label: f.label, money: f.money };
+    }
+  }
+
+  const keyOf = (l: any) => (l.item_id || l.item_name || "").toString();
+  const oldMap = new Map<string, any>();
+  for (const l of oldLines) oldMap.set(keyOf(l), l);
+  const newMap = new Map<string, any>();
+  for (const l of newLines) newMap.set(keyOf(l), l);
+
+  const added: any[] = [];
+  const removed: any[] = [];
+  const modified: any[] = [];
+
+  for (const [k, n] of newMap.entries()) {
+    const o = oldMap.get(k);
+    if (!o) {
+      added.push({ item_name: n.item_name, quantity: Number(n.quantity), price: Number(n.price), total: Number(n.total_amount) });
+    } else {
+      const fields: Record<string, { old: any; new: any }> = {};
+      if (Number(o.quantity) !== Number(n.quantity)) fields.quantity = { old: Number(o.quantity), new: Number(n.quantity) };
+      if (Number(o.price) !== Number(n.price)) fields.price = { old: Number(o.price), new: Number(n.price) };
+      if (Number(o.discount_pct) !== Number(n.discount_pct)) fields.discount_pct = { old: Number(o.discount_pct), new: Number(n.discount_pct) };
+      if (Number(o.tax_rate) !== Number(n.tax_rate)) fields.tax_rate = { old: Number(o.tax_rate), new: Number(n.tax_rate) };
+      if (Number(o.total_amount) !== Number(n.total_amount)) fields.total = { old: Number(o.total_amount), new: Number(n.total_amount) };
+      if (Object.keys(fields).length) modified.push({ item_name: n.item_name, fields });
+    }
+  }
+  for (const [k, o] of oldMap.entries()) {
+    if (!newMap.has(k)) removed.push({ item_name: o.item_name, quantity: Number(o.quantity), price: Number(o.price), total: Number(o.total_amount) });
+  }
+
+  return { header, lines: { added, removed, modified } };
+}
+
+function summarizeDiff(diff: any): string {
+  const parts: string[] = [];
+  const hKeys = Object.keys(diff.header || {});
+  if (hKeys.length) parts.push(`${hKeys.length} field${hKeys.length === 1 ? "" : "s"} changed`);
+  const a = diff.lines?.added?.length ?? 0;
+  const r = diff.lines?.removed?.length ?? 0;
+  const m = diff.lines?.modified?.length ?? 0;
+  if (a) parts.push(`+${a} line${a === 1 ? "" : "s"}`);
+  if (r) parts.push(`−${r} line${r === 1 ? "" : "s"}`);
+  if (m) parts.push(`${m} line${m === 1 ? "" : "s"} modified`);
+  return parts.join(" · ") || "No changes";
+}
+
+function HistoryDiffView({ changes }: { changes: any }) {
+  const header = changes?.header ?? {};
+  const lines = changes?.lines ?? { added: [], removed: [], modified: [] };
+  const hKeys = Object.keys(header);
+  return (
+    <div className="space-y-2 text-xs">
+      {hKeys.length > 0 && (
+        <div className="space-y-1">
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Header changes</div>
+          {hKeys.map((k) => {
+            const v = header[k];
+            return (
+              <div key={k} className="flex items-baseline gap-2">
+                <span className="font-medium">{v.label}:</span>
+                <span className="line-through text-danger">{fmtVal(v.old)}</span>
+                <span>→</span>
+                <span className="text-success">{fmtVal(v.new)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {lines.added?.length > 0 && (
+        <div>
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Added lines</div>
+          {lines.added.map((l: any, i: number) => (
+            <div key={i} className="text-success">+ {l.item_name} × {l.quantity} @ {l.price}</div>
+          ))}
+        </div>
+      )}
+      {lines.removed?.length > 0 && (
+        <div>
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Removed lines</div>
+          {lines.removed.map((l: any, i: number) => (
+            <div key={i} className="text-danger">− {l.item_name} × {l.quantity} @ {l.price}</div>
+          ))}
+        </div>
+      )}
+      {lines.modified?.length > 0 && (
+        <div>
+          <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Modified lines</div>
+          {lines.modified.map((l: any, i: number) => (
+            <div key={i}>
+              <div className="font-medium">{l.item_name}</div>
+              {Object.entries(l.fields).map(([fk, fv]: any) => (
+                <div key={fk} className="ml-3 flex items-baseline gap-2">
+                  <span className="text-muted-foreground">{fk}:</span>
+                  <span className="line-through text-danger">{fmtVal(fv.old)}</span>
+                  <span>→</span>
+                  <span className="text-success">{fmtVal(fv.new)}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
