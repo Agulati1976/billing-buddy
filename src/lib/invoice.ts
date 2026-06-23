@@ -121,6 +121,7 @@ export const INVOICE_TYPE_META: Record<
   purchase_return: { label: "Purchase Return", prefix: "PR", color: "danger" },
   credit_note: { label: "Credit Note", prefix: "CN", color: "warning" },
   debit_note: { label: "Debit Note", prefix: "DN", color: "warning" },
+  non_inventory: { label: "Quick Invoice", prefix: "QINV", color: "primary" },
 };
 
 export const STATUS_META: Record<InvoiceStatus, { label: string; classes: string }> = {
