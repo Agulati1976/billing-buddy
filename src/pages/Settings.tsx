@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Users, Palette, Settings as SettingsIcon, ChevronRight, Hash } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import { Building2, Users, Palette, Settings as SettingsIcon, ChevronRight, Hash, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePermissions } from "@/hooks/usePermissions";
