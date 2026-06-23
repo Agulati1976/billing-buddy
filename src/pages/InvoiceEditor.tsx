@@ -843,9 +843,45 @@ export default function InvoiceEditor({ type }: Props) {
               <Printer className="h-4 w-4" /> <span>Print</span>
             </Button>
           )}
+          {readOnly && !isNew && history.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="gap-1.5 px-2 sm:px-3" title="View edit history">
+              <History className="h-4 w-4" /> <span>History ({history.length})</span>
+            </Button>
+          )}
+          {readOnly && !isNew && (
+            <Button variant="outline" size="sm" onClick={() => setReadOnly(false)} className="gap-1.5 px-2 sm:px-3" title="Edit invoice">
+              <Pencil className="h-4 w-4" /> <span>Edit</span>
+            </Button>
+          )}
+          {!readOnly && !isNew && (
+            <Button variant="ghost" size="sm" onClick={() => {
+              // Reset to snapshot
+              if (originalSnapshot) {
+                const i = originalSnapshot.invoice;
+                const ls = originalSnapshot.lines;
+                setPartyId(i.party_id ?? "");
+                setNumber(i.invoice_number);
+                setDate(i.invoice_date);
+                setDueDate(i.due_date ?? "");
+                setNotes(i.notes ?? "");
+                setTerms(i.terms ?? "");
+                setIsGst(i.is_gst !== false);
+                setExtraDiscount(String(i.extra_discount ?? 0));
+                setLines(ls.length ? ls.map((l: any) => ({
+                  item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+                  quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
+                  discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate),
+                  batch_id: l.batch_id ?? null,
+                })) : [emptyLine()]);
+              }
+              setReadOnly(true);
+            }} className="gap-1.5 px-2 sm:px-3">
+              <X className="h-4 w-4" /> <span>Cancel</span>
+            </Button>
+          )}
           {!readOnly && (
             <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
-              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+              <Save className="h-4 w-4" /> {saving ? "Saving…" : isNew ? "Save" : "Save Changes"}
             </Button>
           )}
         </div>
