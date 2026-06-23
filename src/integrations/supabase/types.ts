@@ -231,6 +231,7 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string
+          pan: string | null
           phone: string | null
           pincode: string | null
           pincode_rank: number | null
@@ -249,6 +250,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id: string
+          pan?: string | null
           phone?: string | null
           pincode?: string | null
           pincode_rank?: number | null
@@ -267,6 +269,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string
+          pan?: string | null
           phone?: string | null
           pincode?: string | null
           pincode_rank?: number | null
