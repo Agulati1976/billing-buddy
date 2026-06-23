@@ -712,7 +712,7 @@ export default function InvoiceEditor({ type }: Props) {
     setSaving(false);
     if (liRes.error) { toast.error((liRes.error as any).message ?? "Failed"); return; }
     toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
-    navigate(`/${type}s`);
+    navigate(`/${meta.route}`);
   };
 
 
@@ -797,7 +797,7 @@ export default function InvoiceEditor({ type }: Props) {
     <div className="space-y-3 sm:space-y-4 max-w-6xl pb-24 md:pb-0">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/${type}s`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/${meta.route}`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
