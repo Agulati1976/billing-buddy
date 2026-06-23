@@ -1349,6 +1349,7 @@ export type Database = {
         | "quotation"
         | "credit_note"
         | "debit_note"
+        | "non_inventory"
       item_type: "product" | "service"
       party_type: "customer" | "supplier"
       payment_direction: "in" | "out"
@@ -1505,6 +1506,7 @@ export const Constants = {
         "quotation",
         "credit_note",
         "debit_note",
+        "non_inventory",
       ],
       item_type: ["product", "service"],
       party_type: ["customer", "supplier"],
