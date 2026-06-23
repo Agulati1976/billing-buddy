@@ -49,7 +49,7 @@ export default function Invoices({ type }: Props) {
   const [payMethod, setPayMethod] = useState<string>("cash");
   const [paySaving, setPaySaving] = useState(false);
 
-  const canPay = type === "sale" || type === "purchase";
+  const canPay = type === "sale" || type === "purchase" || type === "non_inventory";
 
   const openPay = (r: InvoiceRow, full: boolean) => {
     setPayRow(r);
