@@ -112,16 +112,16 @@ export const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export const INVOICE_TYPE_META: Record<
   InvoiceType,
-  { label: string; prefix: string; color: string }
+  { label: string; prefix: string; color: string; route: string }
 > = {
-  sale: { label: "Sale Invoice", prefix: "INV", color: "primary" },
-  purchase: { label: "Purchase Bill", prefix: "PUR", color: "primary" },
-  quotation: { label: "Quotation", prefix: "QUO", color: "warning" },
-  sale_return: { label: "Sale Return", prefix: "SR", color: "danger" },
-  purchase_return: { label: "Purchase Return", prefix: "PR", color: "danger" },
-  credit_note: { label: "Credit Note", prefix: "CN", color: "warning" },
-  debit_note: { label: "Debit Note", prefix: "DN", color: "warning" },
-  non_inventory: { label: "Quick Invoice", prefix: "QINV", color: "primary" },
+  sale: { label: "Sale Invoice", prefix: "INV", color: "primary", route: "sales" },
+  purchase: { label: "Purchase Bill", prefix: "PUR", color: "primary", route: "purchases" },
+  quotation: { label: "Quotation", prefix: "QUO", color: "warning", route: "quotations" },
+  sale_return: { label: "Sale Return", prefix: "SR", color: "danger", route: "sale_returns" },
+  purchase_return: { label: "Purchase Return", prefix: "PR", color: "danger", route: "purchase_returns" },
+  credit_note: { label: "Credit Note", prefix: "CN", color: "warning", route: "credit_notes" },
+  debit_note: { label: "Debit Note", prefix: "DN", color: "warning", route: "debit_notes" },
+  non_inventory: { label: "Quick Invoice", prefix: "QINV", color: "primary", route: "quick_invoices" },
 };
 
 export const STATUS_META: Record<InvoiceStatus, { label: string; classes: string }> = {
