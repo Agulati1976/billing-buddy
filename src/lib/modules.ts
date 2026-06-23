@@ -16,6 +16,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: "sale_returns", label: "Sale Returns",     group: "Sales & Purchases" },
   { key: "quotations",   label: "Quotations",       group: "Sales & Purchases" },
   { key: "purchases",    label: "Purchases",        group: "Sales & Purchases" },
+  { key: "quick_invoices", label: "Quick Invoices", group: "Sales & Purchases" },
   { key: "customers",    label: "Customers",        group: "Parties" },
   { key: "suppliers",    label: "Suppliers",        group: "Parties" },
   { key: "party_ledger", label: "Party Ledger",     group: "Parties" },
