@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: []
+      }
       barcode_catalog: {
         Row: {
           barcode: string
@@ -164,6 +194,7 @@ export type Database = {
         Row: {
           business_id: string
           created_at: string
+          plan: string
           pos_enabled: boolean
           pos_enabled_at: string | null
           pos_enabled_by: string | null
@@ -172,6 +203,7 @@ export type Database = {
         Insert: {
           business_id: string
           created_at?: string
+          plan?: string
           pos_enabled?: boolean
           pos_enabled_at?: string | null
           pos_enabled_by?: string | null
@@ -180,6 +212,7 @@ export type Database = {
         Update: {
           business_id?: string
           created_at?: string
+          plan?: string
           pos_enabled?: boolean
           pos_enabled_at?: string | null
           pos_enabled_by?: string | null
@@ -191,6 +224,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          deleted_at: string | null
           email: string | null
           gstin: string | null
           id: string
@@ -202,11 +236,13 @@ export type Database = {
           pincode_rank: number | null
           state: string | null
           state_code: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           address?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           gstin?: string | null
           id?: string
@@ -218,11 +254,13 @@ export type Database = {
           pincode_rank?: number | null
           state?: string | null
           state_code?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           address?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           gstin?: string | null
           id?: string
@@ -234,6 +272,7 @@ export type Database = {
           pincode_rank?: number | null
           state?: string | null
           state_code?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
