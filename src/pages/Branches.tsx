@@ -178,8 +178,8 @@ export default function Branches() {
             <div><Label>Branch Name *</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. MG Road Outlet" /></div>
             <div>
               <Label>Branch Code *</Label>
-              <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={8} placeholder="e.g. MG, BLR1" />
-              <p className="text-xs text-muted-foreground mt-1">Short code (A–Z, 0–9). Added to invoice numbers for online orders.</p>
+              <Input value={code} onChange={(e) => { setCodeTouched(true); setCode(e.target.value.toUpperCase()); }} maxLength={8} placeholder="Auto-generated from name" />
+              <p className="text-xs text-muted-foreground mt-1">Auto-generated from the branch name. You can edit it if needed (A–Z, 0–9).</p>
             </div>
             <div><Label>Address</Label><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></div>
           </div>
