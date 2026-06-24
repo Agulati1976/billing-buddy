@@ -41,14 +41,47 @@ export default function Branches() {
   };
   useEffect(() => { load(); }, [current?.id]);
 
-  const openNew = () => { setEditing(null); setName(""); setCode(""); setAddress(""); setOpen(true); };
-  const openEdit = (b: Branch) => { setEditing(b); setName(b.name); setCode(b.code); setAddress(b.address ?? ""); setOpen(true); };
+  const [codeTouched, setCodeTouched] = useState(false);
+
+  const generateCode = (n: string) => {
+    const base = n.trim().toUpperCase().replace(/[^A-Z0-9\s]/g, "");
+    if (!base) return "";
+    const words = base.split(/\s+/).filter(Boolean);
+    let code = words.length >= 2
+      ? words.slice(0, 3).map((w) => w[0]).join("")
+      : words[0].slice(0, 4);
+    const existing = new Set(
+      rows.filter((r) => !editing || r.id !== editing.id).map((r) => r.code)
+    );
+    if (!existing.has(code)) return code;
+    for (let i = 1; i < 100; i++) {
+      const c = `${code}${i}`;
+      if (!existing.has(c)) return c;
+    }
+    return code + Date.now().toString().slice(-3);
+  };
+
+  const openNew = () => {
+    setEditing(null); setName(""); setCode(""); setAddress(""); setCodeTouched(false); setOpen(true);
+  };
+  const openEdit = (b: Branch) => {
+    setEditing(b); setName(b.name); setCode(b.code); setAddress(b.address ?? ""); setCodeTouched(true); setOpen(true);
+  };
+
+  // Auto-generate code from name for new branches until the user edits it manually
+  useEffect(() => {
+    if (open && !editing && !codeTouched) {
+      setCode(generateCode(name));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, open, editing, codeTouched]);
 
   const submit = async () => {
     if (!current || !user) return;
     if (!name.trim()) { toast.error("Branch name is required"); return; }
-    const cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (!cleanCode) { toast.error("Branch code is required (letters/digits)"); return; }
+    let cleanCode = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!cleanCode) cleanCode = generateCode(name);
+    if (!cleanCode) { toast.error("Could not generate branch code"); return; }
     setSaving(true);
     const payload: any = {
       business_id: current.id,
