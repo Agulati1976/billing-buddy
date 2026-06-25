@@ -595,7 +595,11 @@ export default function Pos() {
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Math.max(1, Number(l.quantity) - 1) })}><Minus className="h-3 w-3" /></Button>
-                      <Input className="h-6 w-14 text-center" value={l.quantity} onChange={(e) => updateLine(l._key, { quantity: Number(e.target.value) || 0 })} />
+                      <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} min="0" value={l.quantity} onChange={(e) => {
+                        const n = Number(e.target.value);
+                        if (!Number.isFinite(n)) return;
+                        updateLine(l._key, { quantity: (l as any).allow_decimal_qty ? n : Math.max(0, Math.floor(n)) });
+                      }} />
                       <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Number(l.quantity) + 1 })}><Plus className="h-3 w-3" /></Button>
                       <span className="text-xs text-muted-foreground ml-1">Disc%</span>
                       <Input className="h-6 w-14" value={l.discount_pct} onChange={(e) => updateLine(l._key, { discount_pct: Number(e.target.value) || 0 })} />
