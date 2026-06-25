@@ -1,62 +1,24 @@
-## Why this is a local edit
+## Polish voice input mic release
 
-The `android/` folder is generated on your Windows machine by `npx cap add android` — it isn't part of the Lovable project, so I can't modify it from here. You'll edit one file locally.
+Update `src/hooks/useVoiceInput.tsx` to release the temporary microphone stream immediately after the permission probe, so Android doesn't show two mic indicators when voice search starts.
 
-## File to edit
+### Change
+In the `start()` callback, replace the current permission probe:
 
-`C:\Users\welcome\Downloads\newapp\billing-buddy\android\app\src\main\AndroidManifest.xml`
-
-## Changes
-
-Inside the root `<manifest>` element (NOT inside `<application>`), add these lines — place them just above the `<application ...>` tag:
-
-```xml
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
-
-<uses-feature android:name="android.hardware.camera" android:required="false" />
-<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+```ts
+await (navigator as any).mediaDevices.getUserMedia({ audio: true });
 ```
 
-Notes:
-- `CAMERA` is the one required for barcode scanning.
-- `RECORD_AUDIO` / `MODIFY_AUDIO_SETTINGS` are only needed if you also use mic (safe to include; harmless otherwise — remove if you want a minimal manifest).
-- `android:required="false"` on the features means the app still installs on devices without a camera (recommended for Play Store reach).
+with:
 
-## Example — full top of file should look like
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
-
-    <application
-        android:allowBackup="true"
-        ...
-    >
-        ...
-    </application>
-</manifest>
+```ts
+const probeStream = await (navigator as any).mediaDevices.getUserMedia({ audio: true });
+probeStream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
 ```
 
-Keep any existing `<uses-permission>` lines that are already there (e.g. `INTERNET`).
+Everything else (error handling, the `SpeechRecognition` setup, the deny toast) stays exactly as in the version you pasted.
 
-## Rebuild
+### File touched
+- `src/hooks/useVoiceInput.tsx`
 
-From `C:\Users\welcome\Downloads\newapp\billing-buddy\android` in PowerShell:
-
-```
-./gradlew clean
-./gradlew bundleRelease
-```
-
-Output `.aab`: `android/app/build/outputs/bundle/release/app-release.aab`
-
-## After install
-
-The first time the user taps "Scan barcode" / "Enable camera", Android will show a system permission prompt. If they tap "Don't allow", they'll need to enable it manually in Settings → Apps → Bill Look → Permissions → Camera.
+No native Android changes needed for this tweak — you still apply the `RECORD_AUDIO` permission and `MainActivity.java` override locally as planned.
