@@ -48,12 +48,26 @@ export function useVoiceInput({ lang = "en-IN", onResult }: UseVoiceInputOptions
     };
   }, []);
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) {
       toast.error("Voice search not supported in this browser");
       return;
     }
+    // Request microphone access as a runtime permission prompt where supported
+    // (Capacitor WebView / some browsers won't prompt from SpeechRecognition alone)
+    const md = (typeof navigator !== "undefined" ? (navigator as unknown as { mediaDevices?: { getUserMedia?: (c: MediaStreamConstraints) => Promise<MediaStream> } }).mediaDevices : undefined);
+    if (md?.getUserMedia) {
+      try {
+        const probeStream = await md.getUserMedia({ audio: true });
+        // Release immediately so we don't hold the mic; SpeechRecognition opens its own stream.
+        probeStream.getTracks().forEach((t) => t.stop());
+      } catch {
+        toast.error("Microphone permission denied");
+        return;
+      }
+    }
+
     try {
       const rec = new Ctor();
       rec.lang = lang;
