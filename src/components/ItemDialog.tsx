@@ -404,8 +404,17 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
             <>
               <div>
                 <Label>Opening Stock</Label>
-                <Input type="number" step="0.01" disabled={form.is_batch_tracked} value={form.opening_stock}
-                  onChange={(e) => setForm({ ...form, opening_stock: e.target.value })} />
+                <Input
+                  type="number"
+                  step={form.allow_decimal_qty ? "0.01" : "1"}
+                  min="0"
+                  disabled={form.is_batch_tracked}
+                  value={form.opening_stock}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, opening_stock: form.allow_decimal_qty ? v : v.replace(/[^\d-]/g, "") });
+                  }}
+                />
                 {form.is_batch_tracked ? (
                   <p className="text-xs text-muted-foreground mt-1">Stock comes from batches.</p>
                 ) : item ? (
@@ -414,11 +423,20 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
               </div>
               <div>
                 <Label>Low Stock Alert</Label>
-                <Input type="number" step="0.01" value={form.low_stock_alert}
-                  onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value })} />
+                <Input
+                  type="number"
+                  step={form.allow_decimal_qty ? "0.01" : "1"}
+                  min="0"
+                  value={form.low_stock_alert}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, low_stock_alert: form.allow_decimal_qty ? v : v.replace(/[^\d-]/g, "") });
+                  }}
+                />
               </div>
             </>
           )}
+
           <div className="col-span-2">
             <Label>Category</Label>
             <Select value={form.category_id || "__none"} onValueChange={(v) => setForm({ ...form, category_id: v === "__none" ? "" : v })}>
