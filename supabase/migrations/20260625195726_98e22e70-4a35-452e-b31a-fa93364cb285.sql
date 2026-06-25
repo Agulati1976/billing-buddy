@@ -1,0 +1,1 @@
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS allow_decimal_qty boolean NOT NULL DEFAULT false;

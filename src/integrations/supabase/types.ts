@@ -657,6 +657,7 @@ export type Database = {
       }
       items: {
         Row: {
+          allow_decimal_qty: boolean
           barcode: string | null
           brand: string | null
           business_id: string
@@ -685,6 +686,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_decimal_qty?: boolean
           barcode?: string | null
           brand?: string | null
           business_id: string
@@ -713,6 +715,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_decimal_qty?: boolean
           barcode?: string | null
           brand?: string | null
           business_id?: string
