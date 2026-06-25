@@ -456,6 +456,17 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
               <Switch checked={form.is_batch_tracked} onCheckedChange={(v) => setForm({ ...form, is_batch_tracked: v })} />
             </div>
           )}
+          {form.type === "product" && (
+            <div className="col-span-2 flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label className="cursor-pointer">Allow decimal quantity</Label>
+                <p className="text-xs text-muted-foreground">
+                  Turn on if this item is sold in fractions (e.g. 1.5 kg, 0.25 ltr). Otherwise quantity stays whole numbers.
+                </p>
+              </div>
+              <Switch checked={form.allow_decimal_qty} onCheckedChange={(v) => setForm({ ...form, allow_decimal_qty: v })} />
+            </div>
+          )}
           <div className="col-span-2">
             <Label>Description</Label>
             <Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
