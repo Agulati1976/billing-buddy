@@ -39,7 +39,9 @@ export interface ItemRow {
   mrp?: number | null;
   image_url?: string | null;
   catalog_id?: string | null;
+  allow_decimal_qty?: boolean;
 }
+
 
 const UNITS = ["pcs", "kg", "g", "box", "ltr", "ml", "mtr", "ft", "dozen", "pack"];
 const TAX_RATES = [0, 5, 12, 18, 28];
