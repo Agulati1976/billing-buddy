@@ -65,8 +65,18 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
           </div>
           <div>
             <Label>Quantity ({item?.unit})</Label>
-            <Input type="number" step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} />
+            <Input
+              type="number"
+              step={item?.allow_decimal_qty ? "0.01" : "1"}
+              min="0"
+              value={qty}
+              onChange={(e) => {
+                const v = e.target.value;
+                setQty(item?.allow_decimal_qty ? v : v.replace(/[^\d]/g, ""));
+              }}
+            />
           </div>
+
           <div>
             <Label>Notes</Label>
             <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />

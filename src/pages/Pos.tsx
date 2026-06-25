@@ -28,9 +28,11 @@ interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
   tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
   image_url?: string | null;
+  allow_decimal_qty?: boolean;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
-interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; }
+interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; }
+
 
 type PaymentMethod = "cash" | "card" | "upi" | "bank_transfer" | "cheque" | "other";
 
@@ -74,7 +76,7 @@ export default function Pos() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
     ]).then(([it, p, s]) => {
@@ -123,9 +125,11 @@ export default function Pos() {
         quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
         discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: null,
         max_stock: Number(it.current_stock) || 0,
+        allow_decimal_qty: !!it.allow_decimal_qty,
       }];
     });
   };
+
 
   const onScan = async (code: string) => {
     setScannerOpen(false);
@@ -270,7 +274,7 @@ export default function Pos() {
       setCart([]); setPartyId(""); setExtraDiscount("0");
       setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
       // Refresh items stock
-      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url").eq("business_id", current.id).order("name");
+      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty").eq("business_id", current.id).order("name");
       setItems((it as any) ?? []);
     } catch (e: any) {
       toast.error(e.message || "Failed to save sale");
@@ -591,7 +595,11 @@ export default function Pos() {
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Math.max(1, Number(l.quantity) - 1) })}><Minus className="h-3 w-3" /></Button>
-                      <Input className="h-6 w-14 text-center" value={l.quantity} onChange={(e) => updateLine(l._key, { quantity: Number(e.target.value) || 0 })} />
+                      <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} min="0" value={l.quantity} onChange={(e) => {
+                        const n = Number(e.target.value);
+                        if (!Number.isFinite(n)) return;
+                        updateLine(l._key, { quantity: (l as any).allow_decimal_qty ? n : Math.max(0, Math.floor(n)) });
+                      }} />
                       <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Number(l.quantity) + 1 })}><Plus className="h-3 w-3" /></Button>
                       <span className="text-xs text-muted-foreground ml-1">Disc%</span>
                       <Input className="h-6 w-14" value={l.discount_pct} onChange={(e) => updateLine(l._key, { discount_pct: Number(e.target.value) || 0 })} />

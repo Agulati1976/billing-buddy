@@ -39,7 +39,9 @@ export interface ItemRow {
   mrp?: number | null;
   image_url?: string | null;
   catalog_id?: string | null;
+  allow_decimal_qty?: boolean;
 }
+
 
 const UNITS = ["pcs", "kg", "g", "box", "ltr", "ml", "mtr", "ft", "dozen", "pack"];
 const TAX_RATES = [0, 5, 12, 18, 28];
@@ -57,9 +59,10 @@ const emptyForm = {
   name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
   unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
   opening_stock: "0", low_stock_alert: "0", description: "",
-  category_id: "", is_batch_tracked: false,
+  category_id: "", is_batch_tracked: false, allow_decimal_qty: false,
   brand: "", flavour: "", color: "", mrp: "0",
 };
+
 
 export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }: Props) {
   const { current } = useBusiness();
@@ -95,9 +98,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
         category_id: item.category_id ?? "",
         is_batch_tracked: !!item.is_batch_tracked,
+        allow_decimal_qty: !!item.allow_decimal_qty,
         brand: item.brand ?? "", flavour: item.flavour ?? "", color: item.color ?? "",
         mrp: String(item.mrp ?? 0),
       });
+
       setCatalogId(item.catalog_id ?? null);
       setImageUrl(item.image_url ?? null);
     } else {
@@ -211,7 +216,9 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       description: form.description.trim() || null,
       category_id: form.category_id || null,
       is_batch_tracked: form.type === "product" ? form.is_batch_tracked : false,
+      allow_decimal_qty: form.type === "product" ? !!form.allow_decimal_qty : true,
       brand: form.brand.trim() || null,
+
       flavour: form.flavour.trim() || null,
       color: form.color.trim() || null,
       mrp: Number(form.mrp) || null,
@@ -397,8 +404,17 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
             <>
               <div>
                 <Label>Opening Stock</Label>
-                <Input type="number" step="0.01" disabled={form.is_batch_tracked} value={form.opening_stock}
-                  onChange={(e) => setForm({ ...form, opening_stock: e.target.value })} />
+                <Input
+                  type="number"
+                  step={form.allow_decimal_qty ? "0.01" : "1"}
+                  min="0"
+                  disabled={form.is_batch_tracked}
+                  value={form.opening_stock}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, opening_stock: form.allow_decimal_qty ? v : v.replace(/[^\d-]/g, "") });
+                  }}
+                />
                 {form.is_batch_tracked ? (
                   <p className="text-xs text-muted-foreground mt-1">Stock comes from batches.</p>
                 ) : item ? (
@@ -407,11 +423,20 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
               </div>
               <div>
                 <Label>Low Stock Alert</Label>
-                <Input type="number" step="0.01" value={form.low_stock_alert}
-                  onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value })} />
+                <Input
+                  type="number"
+                  step={form.allow_decimal_qty ? "0.01" : "1"}
+                  min="0"
+                  value={form.low_stock_alert}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm({ ...form, low_stock_alert: form.allow_decimal_qty ? v : v.replace(/[^\d-]/g, "") });
+                  }}
+                />
               </div>
             </>
           )}
+
           <div className="col-span-2">
             <Label>Category</Label>
             <Select value={form.category_id || "__none"} onValueChange={(v) => setForm({ ...form, category_id: v === "__none" ? "" : v })}>
@@ -429,6 +454,17 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                 <p className="text-xs text-muted-foreground">Track stock per batch (with batch no, mfg & expiry).</p>
               </div>
               <Switch checked={form.is_batch_tracked} onCheckedChange={(v) => setForm({ ...form, is_batch_tracked: v })} />
+            </div>
+          )}
+          {form.type === "product" && (
+            <div className="col-span-2 flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label className="cursor-pointer">Allow decimal quantity</Label>
+                <p className="text-xs text-muted-foreground">
+                  Turn on if this item is sold in fractions (e.g. 1.5 kg, 0.25 ltr). Otherwise quantity stays whole numbers.
+                </p>
+              </div>
+              <Switch checked={form.allow_decimal_qty} onCheckedChange={(v) => setForm({ ...form, allow_decimal_qty: v })} />
             </div>
           )}
           <div className="col-span-2">
