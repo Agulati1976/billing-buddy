@@ -125,9 +125,11 @@ export default function Pos() {
         quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
         discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: null,
         max_stock: Number(it.current_stock) || 0,
+        allow_decimal_qty: !!it.allow_decimal_qty,
       }];
     });
   };
+
 
   const onScan = async (code: string) => {
     setScannerOpen(false);
