@@ -216,7 +216,9 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       description: form.description.trim() || null,
       category_id: form.category_id || null,
       is_batch_tracked: form.type === "product" ? form.is_batch_tracked : false,
+      allow_decimal_qty: form.type === "product" ? !!form.allow_decimal_qty : true,
       brand: form.brand.trim() || null,
+
       flavour: form.flavour.trim() || null,
       color: form.color.trim() || null,
       mrp: Number(form.mrp) || null,
