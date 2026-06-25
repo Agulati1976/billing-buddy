@@ -1056,10 +1056,27 @@ export default function InvoiceEditor({ type }: Props) {
                   )}
                 </TableCell>
                 <TableCell>
-                  {readOnly ? <span className="num">{l.quantity}</span> : (
-                    <Input className="h-8 num" type="number" step="0.01" value={l.quantity} onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })} />
-                  )}
+                  {readOnly ? <span className="num">{l.quantity}</span> : (() => {
+                    const it = l.item_id ? items.find((x: any) => x.id === l.item_id) : null;
+                    const allowDec = it ? !!(it as any).allow_decimal_qty : true;
+                    return (
+                      <Input
+                        className="h-8 num"
+                        type="number"
+                        step={allowDec ? "0.01" : "1"}
+                        min="0"
+                        value={l.quantity}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const n = Number(raw);
+                          if (!Number.isFinite(n)) return;
+                          updateLine(idx, { quantity: allowDec ? n : Math.max(0, Math.floor(n)) });
+                        }}
+                      />
+                    );
+                  })()}
                 </TableCell>
+
                 <TableCell>
                   {readOnly ? <span className="num">{formatINR(l.price)}</span> : (
                     <Input className="h-8 num" type="number" step="0.01" value={l.price} onChange={(e) => updateLine(idx, { price: Number(e.target.value) })} />
