@@ -28,9 +28,11 @@ interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
   tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
   image_url?: string | null;
+  allow_decimal_qty?: boolean;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
-interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; }
+interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; }
+
 
 type PaymentMethod = "cash" | "card" | "upi" | "bank_transfer" | "cheque" | "other";
 
