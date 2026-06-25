@@ -1,5 +1,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
+import { Capacitor } from "@capacitor/core";
+import { Camera as CapCamera } from "@capacitor/camera";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, AlertCircle } from "lucide-react";
