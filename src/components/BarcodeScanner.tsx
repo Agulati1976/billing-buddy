@@ -68,6 +68,22 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
     setErrMsg("");
     setPerm("requesting");
     try {
+      // On Capacitor native (Android/iOS app), request permission via native API first.
+      if (Capacitor.isNativePlatform()) {
+        try {
+          let status = await CapCamera.checkPermissions();
+          if (status.camera !== "granted") {
+            status = await CapCamera.requestPermissions({ permissions: ["camera"] });
+          }
+          if (status.camera !== "granted") {
+            setPerm("denied");
+            setErrMsg("Camera permission denied. Open app settings → Permissions → Camera and allow access.");
+            return;
+          }
+        } catch (e) {
+          console.warn("Native camera permission check failed", e);
+        }
+      }
       // Step 1: explicit getUserMedia call from a user-gesture click → triggers permission prompt
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" } },
