@@ -98,9 +98,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
         category_id: item.category_id ?? "",
         is_batch_tracked: !!item.is_batch_tracked,
+        allow_decimal_qty: !!item.allow_decimal_qty,
         brand: item.brand ?? "", flavour: item.flavour ?? "", color: item.color ?? "",
         mrp: String(item.mrp ?? 0),
       });
+
       setCatalogId(item.catalog_id ?? null);
       setImageUrl(item.image_url ?? null);
     } else {
