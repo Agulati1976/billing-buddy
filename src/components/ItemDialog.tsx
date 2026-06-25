@@ -59,9 +59,10 @@ const emptyForm = {
   name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
   unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
   opening_stock: "0", low_stock_alert: "0", description: "",
-  category_id: "", is_batch_tracked: false,
+  category_id: "", is_batch_tracked: false, allow_decimal_qty: false,
   brand: "", flavour: "", color: "", mrp: "0",
 };
+
 
 export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }: Props) {
   const { current } = useBusiness();
