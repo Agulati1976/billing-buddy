@@ -123,6 +123,7 @@ export default function Billing() {
           customer_email: current.email || user?.email,
           customer_phone: current.phone || "9999999999",
           return_url: `${window.location.origin}/billing?order_id={order_id}`,
+          mode: testMode ? "test" : "production",
         },
       });
       if (error) {
@@ -131,7 +132,7 @@ export default function Billing() {
       }
       if (!data?.payment_session_id) throw new Error(data?.error || "Failed to create order");
 
-      const cashfree = await load({ mode: "production" });
+      const cashfree = await load({ mode: testMode ? "sandbox" : "production" });
       await cashfree.checkout({
         paymentSessionId: data.payment_session_id,
         redirectTarget: "_self",
