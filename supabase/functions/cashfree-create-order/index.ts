@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       payment_session_id: cfData.payment_session_id,
       order_amount: cfData.order_amount,
     });
-  } catch (e) {
+  } catch (e: any) {
     console.error("create-order error", e);
     return json({ error: String(e?.message || e) }, 500);
   }
