@@ -220,6 +220,57 @@ export type Database = {
         }
         Relationships: []
       }
+      business_subscriptions: {
+        Row: {
+          business_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          last_order_id: string | null
+          plan_id: string | null
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_order_id?: string | null
+          plan_id?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          last_order_id?: string | null
+          plan_id?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
           address: string | null
@@ -277,6 +328,39 @@ export type Database = {
           state_code?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      cashfree_webhook_events: {
+        Row: {
+          cf_order_id: string | null
+          created_at: string
+          error: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean
+          signature_verified: boolean
+        }
+        Insert: {
+          cf_order_id?: string | null
+          created_at?: string
+          error?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean
+          signature_verified?: boolean
+        }
+        Update: {
+          cf_order_id?: string | null
+          created_at?: string
+          error?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          signature_verified?: boolean
         }
         Relationships: []
       }
@@ -1250,6 +1334,117 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_orders: {
+        Row: {
+          business_id: string
+          cf_order_id: string
+          cf_payment_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          order_amount: number
+          order_currency: string
+          paid_at: string | null
+          payment_method: string | null
+          payment_session_id: string | null
+          plan_id: string | null
+          raw_response: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          cf_order_id: string
+          cf_payment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_amount: number
+          order_currency?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_session_id?: string | null
+          plan_id?: string | null
+          raw_response?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          cf_order_id?: string
+          cf_payment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          order_amount?: number
+          order_currency?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_session_id?: string | null
+          plan_id?: string | null
+          raw_response?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_orders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_orders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          duration_days: number
+          features: Json
+          id: string
+          is_active: boolean
+          name: string
+          price_inr: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name: string
+          price_inr?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          features?: Json
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_inr?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
