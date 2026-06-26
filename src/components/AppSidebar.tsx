@@ -24,7 +24,8 @@ const groups: NavGroup[] = [
   {
     label: "Sales & Purchases",
     items: [
-      { to: "/sales", label: "Sale Invoices", icon: FileText },
+      { to: "/sales", label: "Sale Invoices", icon: FileText, end: true },
+      { to: "/sales/new", label: "New Sale", icon: FileText },
       { to: "/sale_returns", label: "Sale Returns", icon: ArrowUpDown },
       { to: "/quotations", label: "Quotations", icon: FileEdit },
       { to: "/purchases", label: "Purchases", icon: ReceiptIcon },
