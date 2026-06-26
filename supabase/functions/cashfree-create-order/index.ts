@@ -133,6 +133,7 @@ Deno.serve(async (req) => {
       order_amount: Number(plan.price_inr),
       order_currency: "INR",
       status: "CREATED",
+      mode,
       payment_session_id: cfData.payment_session_id,
       raw_response: cfData,
       created_by: userId,
