@@ -148,26 +148,46 @@ Deno.serve(async (req) => {
         const password = String(metadata?.password ?? "");
         const full_name = String(metadata?.full_name ?? "").trim() || null;
         if (!email || !password) return json(400, { error: "email and password required" });
+        if (password.length < 6) return json(400, { error: "Password must be at least 6 characters" });
 
-        // Check if user already exists
         let targetUserId: string | null = null;
-        const { data: existingProf } = await admin
-          .from("profiles").select("user_id").eq("email", email).maybeSingle();
-        if (existingProf?.user_id) {
-          targetUserId = existingProf.user_id;
-        } else {
-          const { data: created, error: cErr } = await admin.auth.admin.createUser({
-            email, password, email_confirm: true,
-            user_metadata: full_name ? { full_name } : {},
-          });
-          if (cErr || !created?.user) return json(500, { error: cErr?.message ?? "Failed to create user" });
+
+        const { data: created, error: cErr } = await admin.auth.admin.createUser({
+          email, password, email_confirm: true,
+          user_metadata: full_name ? { full_name } : {},
+        });
+
+        if (created?.user) {
           targetUserId = created.user.id;
+        } else {
+          const msg = (cErr?.message ?? "").toLowerCase();
+          const alreadyExists = msg.includes("already") || msg.includes("registered") || msg.includes("exists") || msg.includes("duplicate");
+          if (!alreadyExists && cErr) return json(500, { error: cErr.message });
+
+          let page = 1;
+          while (page <= 20 && !targetUserId) {
+            const { data: list } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+            const found = list?.users?.find((u: any) => (u.email ?? "").toLowerCase() === email);
+            if (found) { targetUserId = found.id; break; }
+            if (!list || list.users.length < 1000) break;
+            page++;
+          }
+          if (!targetUserId) {
+            const { data: prof } = await admin.from("profiles").select("user_id").eq("email", email).maybeSingle();
+            if (prof?.user_id) targetUserId = prof.user_id;
+          }
+          if (!targetUserId) return json(500, { error: cErr?.message ?? "Could not create or locate user" });
+
+          // Reset password so the admin can sign in with the value just entered
+          await admin.auth.admin.updateUserById(targetUserId, { password, email_confirm: true });
         }
 
         const { error: paErr } = await admin
           .from("platform_admins")
           .insert({ user_id: targetUserId, created_by: userData.user!.id });
-        if (paErr && !paErr.message.includes("duplicate")) return json(500, { error: paErr.message });
+        if (paErr && !paErr.message.toLowerCase().includes("duplicate")) {
+          return json(500, { error: paErr.message });
+        }
 
         await log("create_admin_user", "user", targetUserId, { email });
         return json(200, { ok: true, user_id: targetUserId });
