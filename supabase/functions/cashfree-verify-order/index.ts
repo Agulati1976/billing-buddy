@@ -5,7 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const CF_BASE = "https://api.cashfree.com/pg";
+function cfBase(appId: string) {
+  return appId.toUpperCase().startsWith("TEST")
+    ? "https://sandbox.cashfree.com/pg"
+    : "https://api.cashfree.com/pg";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -37,7 +41,7 @@ Deno.serve(async (req) => {
 
     const appId = Deno.env.get("CASHFREE_APP_ID");
     const secretKey = Deno.env.get("CASHFREE_SECRET_KEY");
-    const cfRes = await fetch(`${CF_BASE}/orders/${cf_order_id}`, {
+    const cfRes = await fetch(`${cfBase(appId!)}/orders/${cf_order_id}`, {
       headers: {
         "x-api-version": "2023-08-01",
         "x-client-id": appId!, "x-client-secret": secretKey!,
