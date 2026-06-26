@@ -6,8 +6,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const CF_BASE = "https://api.cashfree.com/pg";
 const CF_API_VERSION = "2023-08-01";
+function cfBase(appId: string) {
+  return appId.toUpperCase().startsWith("TEST")
+    ? "https://sandbox.cashfree.com/pg"
+    : "https://api.cashfree.com/pg";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
