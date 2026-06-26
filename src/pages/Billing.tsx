@@ -60,6 +60,7 @@ export default function Billing() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState<string | null>(null);
+  const [testMode, setTestMode] = useState<boolean>(() => localStorage.getItem("cf_test_mode") === "1");
 
   const loadAll = async () => {
     if (!current) return;
