@@ -55,7 +55,7 @@ export default function Invoices({ type }: Props) {
   const canShare = type === "sale" || type === "non_inventory" || type === "quotation";
 
   const shareUrl = (r: InvoiceRow) =>
-    `${window.location.origin}/i/${r.id}?view=${shareView}`;
+    `https://billlook.com/i/${r.id}?view=${shareView}`;
   const shareMessage = (r: InvoiceRow) => {
     const biz = current?.name ?? "";
     return `Hi${r.parties?.name ? " " + r.parties.name : ""}, here is your ${shareView === "pos" ? "receipt" : "invoice"} ${r.invoice_number} for ${formatINR(Number(r.total_amount))}${Number(r.balance_amount) > 0 ? ` (Balance ${formatINR(Number(r.balance_amount))})` : ""}.\n\nView: ${shareUrl(r)}\n\n— ${biz}`;
