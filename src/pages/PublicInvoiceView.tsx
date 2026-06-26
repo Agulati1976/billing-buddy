@@ -20,7 +20,7 @@ export default function PublicInvoiceView() {
     if (!id) return;
     (async () => {
       setLoading(true);
-      const { data: res, error } = await supabase.functions.invoke(`public-invoice?id=${id}`, { method: "GET" } as any);
+      const { data: res, error } = await supabase.functions.invoke("public-invoice", { body: { id } });
       setLoading(false);
       if (error || (res as any)?.error) { setError((res as any)?.error || error?.message || "Not found"); return; }
       setData(res);

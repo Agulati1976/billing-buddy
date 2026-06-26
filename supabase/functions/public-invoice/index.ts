@@ -11,7 +11,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const url = new URL(req.url);
-    const id = url.searchParams.get("id");
+    let id = url.searchParams.get("id");
+    if (!id && req.method !== "GET") {
+      try { const body = await req.json(); id = body?.id ?? null; } catch { /* ignore */ }
+    }
     if (!id) return json({ error: "Missing id" }, 400);
 
     const supabase = createClient(
