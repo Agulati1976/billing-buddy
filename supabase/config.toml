@@ -11,3 +11,6 @@ verify_jwt = true
 
 [functions.cashfree-webhook]
 verify_jwt = false
+
+[functions.public-invoice]
+verify_jwt = false
