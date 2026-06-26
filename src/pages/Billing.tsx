@@ -33,6 +33,24 @@ const STATUS_COLOR: Record<string, string> = {
   DROPPED: "bg-muted text-muted-foreground",
 };
 
+const getFunctionErrorMessage = async (error: any, fallback = "Payment failed to start") => {
+  const response = error?.context;
+  if (response?.clone) {
+    try {
+      const payload = await response.clone().json();
+      return payload?.hint || payload?.error || payload?.details?.message || error?.message || fallback;
+    } catch {
+      try {
+        const text = await response.clone().text();
+        if (text) return text;
+      } catch {
+        // keep fallback below
+      }
+    }
+  }
+  return error?.message || fallback;
+};
+
 export default function Billing() {
   const { current } = useBusiness();
   const { user } = useAuth();
@@ -65,9 +83,13 @@ export default function Billing() {
     if (!orderId || !current) return;
     (async () => {
       try {
-        const { data } = await supabase.functions.invoke("cashfree-verify-order", {
+        const { data, error } = await supabase.functions.invoke("cashfree-verify-order", {
           body: { cf_order_id: orderId },
         });
+        if (error) {
+          toast.error(await getFunctionErrorMessage(error, "Unable to verify payment"));
+          return;
+        }
         if (data?.status === "PAID") {
           toast.success("Payment successful! Your plan is now active.");
         } else if (data?.status === "ACTIVE") {
@@ -102,7 +124,10 @@ export default function Billing() {
           return_url: `${window.location.origin}/billing?order_id={order_id}`,
         },
       });
-      if (error) throw error;
+      if (error) {
+        toast.error(await getFunctionErrorMessage(error));
+        return;
+      }
       if (!data?.payment_session_id) throw new Error(data?.error || "Failed to create order");
 
       const cashfree = await load({ mode: "production" });
@@ -111,7 +136,6 @@ export default function Billing() {
         redirectTarget: "_self",
       });
     } catch (e: any) {
-      console.error(e);
       toast.error(e?.message || "Payment failed to start");
     } finally {
       setPaying(null);
