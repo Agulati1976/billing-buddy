@@ -481,6 +481,21 @@ export default function InvoiceEditor({ type }: Props) {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   };
 
+  // Edit final line amount → back-calculate unit price (clears line discount for clarity)
+  const setLineAmount = (idx: number, newTotal: number) => {
+    setLines((ls) => ls.map((l, i) => {
+      if (i !== idx) return l;
+      const qty = Number(l.quantity) || 0;
+      if (qty <= 0 || !Number.isFinite(newTotal) || newTotal < 0) return l;
+      const rate = isGst ? Number(l.tax_rate) || 0 : 0;
+      // In inclusive mode the entered price already includes tax → price = total / qty
+      // In exclusive mode → price = total / (qty * (1 + rate/100))
+      const denom = qty * (pricesIncludeTax ? 1 : (1 + rate / 100));
+      const newPrice = denom > 0 ? newTotal / denom : 0;
+      return { ...l, price: Math.round(newPrice * 100) / 100, discount_amount: 0, discount_pct: 0, discount_mode: "pct" as const };
+    }));
+  };
+
   const pickItem = (idx: number, itemId: string) => {
     const it = items.find((x) => x.id === itemId);
     if (!it) return;
