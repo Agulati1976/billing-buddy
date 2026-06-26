@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
       order_id: cfOrderId,
       payment_session_id: cfData.payment_session_id,
       order_amount: cfData.order_amount,
+      mode,
     });
   } catch (e: any) {
     console.error("create-order error", e);
