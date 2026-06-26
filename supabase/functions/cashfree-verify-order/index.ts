@@ -11,6 +11,21 @@ function cfBase(appId: string) {
     : "https://api.cashfree.com/pg";
 }
 
+function env(name: string) {
+  return Deno.env.get(name)?.trim() || "";
+}
+
+function safeCredentialMeta(appId: string, secretKey: string) {
+  const normalizedAppId = appId.trim();
+  return {
+    endpoint: cfBase(normalizedAppId),
+    app_id_prefix: normalizedAppId.slice(0, 4),
+    app_id_suffix: normalizedAppId.slice(-4),
+    app_id_length: normalizedAppId.length,
+    secret_length: secretKey.trim().length,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -20,8 +35,8 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      env("SUPABASE_URL"),
+      env("SUPABASE_ANON_KEY"),
       { global: { headers: { Authorization: authHeader } } },
     );
     const token = authHeader.replace("Bearer ", "");
@@ -32,23 +47,38 @@ Deno.serve(async (req) => {
     if (!cf_order_id) return json({ error: "cf_order_id required" }, 400);
 
     const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      env("SUPABASE_URL"),
+      env("SUPABASE_SERVICE_ROLE_KEY"),
     );
     const { data: order } = await admin.from("subscription_orders")
       .select("*").eq("cf_order_id", cf_order_id).maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
 
-    const appId = Deno.env.get("CASHFREE_APP_ID");
-    const secretKey = Deno.env.get("CASHFREE_SECRET_KEY");
-    const cfRes = await fetch(`${cfBase(appId!)}/orders/${cf_order_id}`, {
+    const appId = env("CASHFREE_APP_ID");
+    const secretKey = env("CASHFREE_SECRET_KEY");
+    if (!appId || !secretKey) return json({ error: "Cashfree not configured" }, 500);
+
+    const cfRes = await fetch(`${cfBase(appId)}/orders/${cf_order_id}`, {
       headers: {
         "x-api-version": "2023-08-01",
-        "x-client-id": appId!, "x-client-secret": secretKey!,
+        "x-client-id": appId, "x-client-secret": secretKey,
       },
     });
     const cfData = await cfRes.json();
-    if (!cfRes.ok) return json({ error: cfData.message || "Cashfree error" }, cfRes.status);
+    if (!cfRes.ok) {
+      console.error("Cashfree verify order failed", {
+        status: cfRes.status,
+        cashfree: cfData,
+        credentials: safeCredentialMeta(appId, secretKey),
+      });
+      return json({
+        error: cfData.message || "Cashfree error",
+        details: cfData,
+        hint: cfRes.status === 401
+          ? "Cashfree rejected the production credentials. Re-copy Production App ID and Secret Key exactly; the function now trims hidden spaces/new lines and logs safe key metadata."
+          : undefined,
+      }, cfRes.status);
+    }
 
     // If paid and our record isn't updated, update it (idempotent fallback for webhook)
     if (cfData.order_status === "PAID" && order.status !== "PAID") {
