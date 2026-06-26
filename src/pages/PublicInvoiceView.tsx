@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Printer, FileText, Receipt } from "lucide-react";
-import { formatINR } from "@/lib/states";
-import { format } from "date-fns";
+import { Download, FileText, Receipt } from "lucide-react";
+import { generateInvoicePdf } from "@/lib/invoicePdf";
+import { generateThermalReceipt } from "@/lib/thermalReceipt";
 
 type View = "invoice" | "pos";
 
@@ -15,6 +15,9 @@ export default function PublicInvoiceView() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfName, setPdfName] = useState<string>("Document.pdf");
+  const [rendering, setRendering] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -32,191 +35,160 @@ export default function PublicInvoiceView() {
     setParams(params, { replace: true });
   };
 
+  useEffect(() => {
+    if (!data) return;
+    let revoke: string | null = null;
+    let cancelled = false;
+    (async () => {
+      setRendering(true);
+      try {
+        const { invoice, items, business, party, settings } = data;
+        const safeNum = String(invoice.invoice_number || "Document").replace(/[\/\\]/g, "-");
+
+        if (view === "invoice") {
+          const doc = await generateInvoicePdf(
+            {
+              name: business?.name ?? "",
+              gstin: business?.gstin, phone: business?.phone, email: business?.email,
+              address: business?.address, state: business?.state, state_code: business?.state_code,
+              logo_url: business?.logo_url,
+            },
+            party ? {
+              name: party.name, gstin: party.gstin, state_code: party.state_code,
+              billing_address: party.billing_address ?? null,
+              phone: party.phone ?? null, email: party.email ?? null,
+              state: party.state ?? null,
+            } : null,
+            {
+              type: invoice.type ?? "sale",
+              invoice_number: invoice.invoice_number,
+              invoice_date: invoice.invoice_date,
+              due_date: invoice.due_date ?? null,
+              is_inter_state: !!invoice.is_inter_state,
+              subtotal: Number(invoice.subtotal) || 0,
+              discount_amount: Number(invoice.discount_amount) || 0,
+              taxable_total: Number(invoice.taxable_total ?? invoice.taxable_amount ?? invoice.subtotal) || 0,
+              cgst_amount: Number(invoice.cgst_amount) || 0,
+              sgst_amount: Number(invoice.sgst_amount) || 0,
+              igst_amount: Number(invoice.igst_amount) || 0,
+              round_off: Number(invoice.round_off) || 0,
+              total_amount: Number(invoice.total_amount) || 0,
+              paid_amount: Number(invoice.paid_amount) || 0,
+              balance_amount: Number(invoice.balance_amount) || 0,
+              notes: invoice.notes, terms: invoice.terms,
+              lines: (items ?? []).map((l: any) => ({
+                item_name: l.item_name,
+                hsn_code: l.hsn_code,
+                quantity: Number(l.quantity) || 0,
+                unit: l.unit,
+                price: Number(l.price) || 0,
+                discount_pct: Number(l.discount_pct) || 0,
+                tax_rate: Number(l.tax_rate) || 0,
+                taxable_amount: Number(l.taxable_amount) || 0,
+                tax_amount: Number(l.tax_amount) || 0,
+                total_amount: Number(l.total_amount) || 0,
+              })),
+            },
+            settings ? {
+              template: settings.template, accent_color: settings.accent_color,
+              footer_text: settings.footer_text, signature_label: settings.signature_label,
+              show_signature: settings.show_signature, show_amount_in_words: settings.show_amount_in_words,
+              upi_id: settings.upi_id, upi_payee_name: settings.upi_payee_name,
+              show_upi_qr: settings.show_upi_qr,
+            } : undefined,
+          );
+          const blob = doc.output("blob");
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          revoke = url;
+          setPdfUrl(url);
+          setPdfName(`Invoice-${safeNum}.pdf`);
+        } else {
+          const receipt = await generateThermalReceipt(
+            { name: business?.name ?? "", gstin: business?.gstin, phone: business?.phone, address: business?.address },
+            {
+              invoice_number: invoice.invoice_number,
+              invoice_date: new Date(invoice.invoice_date).toLocaleString(),
+              party_name: party?.name ?? null,
+              party_phone: party?.phone ?? null,
+              cashier: null,
+              lines: (items ?? []).map((l: any) => ({
+                item_name: l.item_name,
+                quantity: Number(l.quantity) || 0,
+                unit: l.unit,
+                price: Number(l.price) || 0,
+                total_amount: Number(l.total_amount) || 0,
+              })),
+              subtotal: Number(invoice.subtotal) || 0,
+              discount_amount: Number(invoice.discount_amount) || 0,
+              tax_amount: (Number(invoice.cgst_amount) || 0) + (Number(invoice.sgst_amount) || 0) + (Number(invoice.igst_amount) || 0),
+              round_off: Number(invoice.round_off) || 0,
+              total_amount: Number(invoice.total_amount) || 0,
+              paid_amount: Number(invoice.paid_amount) || 0,
+              balance_amount: Number(invoice.balance_amount) || 0,
+              payment_method: null,
+            },
+            settings ? { upi_id: settings.upi_id, upi_payee_name: settings.upi_payee_name, show_upi_qr: settings.show_upi_qr } : undefined,
+          );
+          const blob = receipt.output("blob");
+          if (cancelled) return;
+          const url = URL.createObjectURL(blob);
+          revoke = url;
+          setPdfUrl(url);
+          setPdfName(`POS-${safeNum}.pdf`);
+        }
+      } catch (e) {
+        if (!cancelled) setError("Failed to render document");
+      } finally {
+        if (!cancelled) setRendering(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [data, view]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (error || !data) return <div className="min-h-screen flex items-center justify-center text-danger">{error ?? "Invoice not found"}</div>;
 
-  const { invoice, items, business, party } = data;
-
   return (
-    <div className="min-h-screen bg-muted/30 py-4 print:bg-white print:py-0">
-      <div className="max-w-3xl mx-auto px-3">
-        {/* Top bar — hidden on print */}
-        <div className="flex items-center justify-between mb-4 print:hidden">
-          <div className="inline-flex rounded-md border bg-background p-0.5">
-            <button
-              onClick={() => setView("invoice")}
-              className={`text-xs sm:text-sm px-3 py-1.5 rounded gap-1 inline-flex items-center ${view === "invoice" ? "bg-primary text-primary-foreground" : ""}`}
-            ><FileText className="h-3.5 w-3.5" /> Invoice</button>
-            <button
-              onClick={() => setView("pos")}
-              className={`text-xs sm:text-sm px-3 py-1.5 rounded gap-1 inline-flex items-center ${view === "pos" ? "bg-primary text-primary-foreground" : ""}`}
-            ><Receipt className="h-3.5 w-3.5" /> POS Receipt</button>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => window.print()} className="gap-1.5">
-            <Printer className="h-4 w-4" /> Print / Save PDF
-          </Button>
+    <div className="min-h-screen bg-muted/30 flex flex-col">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-background">
+        <div className="inline-flex rounded-md border bg-background p-0.5">
+          <button
+            onClick={() => setView("invoice")}
+            className={`text-xs sm:text-sm px-3 py-1.5 rounded gap-1 inline-flex items-center ${view === "invoice" ? "bg-primary text-primary-foreground" : ""}`}
+          ><FileText className="h-3.5 w-3.5" /> Invoice</button>
+          <button
+            onClick={() => setView("pos")}
+            className={`text-xs sm:text-sm px-3 py-1.5 rounded gap-1 inline-flex items-center ${view === "pos" ? "bg-primary text-primary-foreground" : ""}`}
+          ><Receipt className="h-3.5 w-3.5" /> POS Receipt</button>
         </div>
+        <Button size="sm" variant="outline" disabled={!pdfUrl} asChild>
+          <a href={pdfUrl ?? "#"} download={pdfName} className="gap-1.5 inline-flex items-center">
+            <Download className="h-4 w-4" /> Download PDF
+          </a>
+        </Button>
+      </div>
 
-        {view === "invoice" ? (
-          <InvoiceView invoice={invoice} items={items} business={business} party={party} />
-        ) : (
-          <PosView invoice={invoice} items={items} business={business} party={party} />
+      <div className="flex-1 relative">
+        {rendering && (
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Rendering…</div>
         )}
-
-        <div className="text-center text-[11px] text-muted-foreground mt-4 print:hidden">
-          Powered by <a href="https://billlook.com" className="hover:underline">Bill Look</a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InvoiceView({ invoice, items, business, party }: any) {
-  return (
-    <div className="bg-background border rounded-md p-5 sm:p-8 print:border-0 print:p-0 shadow-sm">
-      <div className="flex justify-between items-start gap-4 border-b pb-4 mb-4">
-        <div>
-          {business?.logo_url && <img src={business.logo_url} alt="" className="h-12 mb-2 object-contain" />}
-          <h1 className="text-lg sm:text-xl font-semibold">{business?.name}</h1>
-          {business?.address && <div className="text-xs text-muted-foreground whitespace-pre-line">{business.address}</div>}
-          <div className="text-xs text-muted-foreground">
-            {business?.phone && <span>Ph: {business.phone}</span>}
-            {business?.email && <span> · {business.email}</span>}
-          </div>
-          {business?.gstin && <div className="text-xs text-muted-foreground">GSTIN: {business.gstin}</div>}
-        </div>
-        <div className="text-right">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">Tax Invoice</div>
-          <div className="font-semibold">{invoice.invoice_number}</div>
-          <div className="text-xs text-muted-foreground mt-1">{format(new Date(invoice.invoice_date), "dd MMM yyyy")}</div>
-          {invoice.due_date && <div className="text-xs text-muted-foreground">Due: {format(new Date(invoice.due_date), "dd MMM yyyy")}</div>}
-        </div>
+        {pdfUrl && (
+          <iframe
+            key={pdfUrl}
+            title={pdfName}
+            src={pdfUrl}
+            className="w-full h-full min-h-[calc(100vh-50px)] bg-white"
+          />
+        )}
       </div>
 
-      {party && (
-        <div className="mb-4">
-          <div className="text-[11px] uppercase text-muted-foreground tracking-wide">Bill To</div>
-          <div className="font-medium">{party.name}</div>
-          {party.billing_address && <div className="text-xs text-muted-foreground whitespace-pre-line">{party.billing_address}</div>}
-          <div className="text-xs text-muted-foreground">
-            {party.phone && <span>{party.phone}</span>}
-            {party.email && <span> · {party.email}</span>}
-          </div>
-          {party.gstin && <div className="text-xs text-muted-foreground">GSTIN: {party.gstin}</div>}
-        </div>
-      )}
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b text-left text-xs text-muted-foreground">
-              <th className="py-2">#</th>
-              <th>Item</th>
-              <th className="text-right">Qty</th>
-              <th className="text-right">Rate</th>
-              <th className="text-right">Tax</th>
-              <th className="text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it: any, i: number) => (
-              <tr key={it.id} className="border-b">
-                <td className="py-2 text-muted-foreground">{i + 1}</td>
-                <td>{it.item_name}{it.hsn_code ? <span className="text-[10px] text-muted-foreground ml-1">({it.hsn_code})</span> : null}</td>
-                <td className="text-right num">{Number(it.quantity)}{it.unit ? ` ${it.unit}` : ""}</td>
-                <td className="text-right num">{formatINR(Number(it.price))}</td>
-                <td className="text-right num">{Number(it.tax_rate || 0)}%</td>
-                <td className="text-right num">{formatINR(Number(it.total_amount))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="text-center text-[11px] text-muted-foreground py-2 bg-background border-t">
+        Powered by <a href="https://billlook.com" className="hover:underline">Bill Look</a>
       </div>
-
-      <div className="flex justify-end mt-4">
-        <div className="w-full sm:w-72 space-y-1 text-sm">
-          <Row label="Subtotal" v={invoice.subtotal} />
-          {Number(invoice.discount_amount) > 0 && <Row label="Discount" v={-invoice.discount_amount} />}
-          {Number(invoice.cgst_amount) > 0 && <Row label="CGST" v={invoice.cgst_amount} />}
-          {Number(invoice.sgst_amount) > 0 && <Row label="SGST" v={invoice.sgst_amount} />}
-          {Number(invoice.igst_amount) > 0 && <Row label="IGST" v={invoice.igst_amount} />}
-          {Number(invoice.round_off) !== 0 && <Row label="Round off" v={invoice.round_off} />}
-          <div className="border-t pt-1.5 mt-1.5">
-            <Row label="Total" v={invoice.total_amount} bold />
-          </div>
-          <Row label="Paid" v={invoice.paid_amount || 0} />
-          {Number(invoice.balance_amount) > 0 && (
-            <Row label="Balance" v={invoice.balance_amount} bold danger />
-          )}
-        </div>
-      </div>
-
-      {invoice.notes && <div className="mt-4 text-xs text-muted-foreground"><b>Notes:</b> {invoice.notes}</div>}
-      {invoice.terms && <div className="mt-1 text-xs text-muted-foreground"><b>Terms:</b> {invoice.terms}</div>}
-    </div>
-  );
-}
-
-function PosView({ invoice, items, business, party }: any) {
-  return (
-    <div className="bg-background border rounded-md p-4 max-w-[360px] mx-auto font-mono text-[12px] shadow-sm print:border-0">
-      <div className="text-center">
-        <div className="font-bold text-sm">{business?.name}</div>
-        {business?.address && <div className="text-[11px] whitespace-pre-line">{business.address}</div>}
-        {business?.phone && <div className="text-[11px]">Ph: {business.phone}</div>}
-        {business?.gstin && <div className="text-[11px]">GSTIN: {business.gstin}</div>}
-      </div>
-      <div className="border-t border-dashed my-2" />
-      <div className="flex justify-between">
-        <span>Bill: {invoice.invoice_number}</span>
-        <span>{format(new Date(invoice.invoice_date), "dd MMM yy")}</span>
-      </div>
-      {party && <div>Customer: {party.name}</div>}
-      <div className="border-t border-dashed my-2" />
-      <div className="flex font-semibold">
-        <span className="flex-1">Item</span>
-        <span className="w-10 text-right">Qty</span>
-        <span className="w-16 text-right">Amt</span>
-      </div>
-      <div className="border-t my-1" />
-      {items.map((it: any) => (
-        <div key={it.id} className="mb-1">
-          <div>{it.item_name}</div>
-          <div className="flex text-[11px]">
-            <span className="flex-1 text-muted-foreground">{Number(it.quantity)} × {formatINR(Number(it.price))}</span>
-            <span className="w-16 text-right">{formatINR(Number(it.total_amount))}</span>
-          </div>
-        </div>
-      ))}
-      <div className="border-t border-dashed my-2" />
-      <PosRow label="Subtotal" v={invoice.subtotal} />
-      {Number(invoice.discount_amount) > 0 && <PosRow label="Discount" v={-invoice.discount_amount} />}
-      {Number(invoice.cgst_amount + invoice.sgst_amount + invoice.igst_amount) > 0 && (
-        <PosRow label="Tax" v={Number(invoice.cgst_amount) + Number(invoice.sgst_amount) + Number(invoice.igst_amount)} />
-      )}
-      {Number(invoice.round_off) !== 0 && <PosRow label="Round off" v={invoice.round_off} />}
-      <PosRow label="TOTAL" v={invoice.total_amount} bold />
-      <PosRow label="Paid" v={invoice.paid_amount || 0} />
-      {Number(invoice.balance_amount) > 0 && <PosRow label="Balance" v={invoice.balance_amount} bold />}
-      <div className="border-t border-dashed my-2" />
-      <div className="text-center text-[11px]">Thank you! Visit again.</div>
-    </div>
-  );
-}
-
-function Row({ label, v, bold, danger }: { label: string; v: number; bold?: boolean; danger?: boolean }) {
-  return (
-    <div className={`flex justify-between ${bold ? "font-semibold" : ""} ${danger ? "text-danger" : ""}`}>
-      <span>{label}</span>
-      <span className="num">{formatINR(Number(v))}</span>
-    </div>
-  );
-}
-function PosRow({ label, v, bold }: { label: string; v: number; bold?: boolean }) {
-  return (
-    <div className={`flex justify-between ${bold ? "font-semibold" : ""}`}>
-      <span>{label}</span>
-      <span>{formatINR(Number(v))}</span>
     </div>
   );
 }
