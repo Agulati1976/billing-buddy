@@ -224,10 +224,16 @@ export default function Items() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {i.type === "product" && (
-                          <Button size="icon" variant="ghost" title="Adjust stock"
-                            onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
-                            <ArrowUpDown className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button size="icon" variant="ghost" title="Adjust stock"
+                              onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                              <ArrowUpDown className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" title="Stock history"
+                              onClick={() => { setHistoryItem(i); setHistoryOpen(true); }}>
+                              <History className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                         <Button size="icon" variant="ghost" onClick={() => { setEditing(i); setDialogOpen(true); }}>
                           <Pencil className="h-4 w-4" />
