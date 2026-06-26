@@ -48,6 +48,7 @@ import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import NotFound from "./pages/NotFound.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DeleteAccount from "./pages/DeleteAccount";
+import PublicInvoiceView from "./pages/PublicInvoiceView";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
+              <Route path="/i/:id" element={<PublicInvoiceView />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverview />} />
