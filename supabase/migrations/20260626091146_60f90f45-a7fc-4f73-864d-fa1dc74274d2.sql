@@ -1,0 +1,1 @@
+ALTER TABLE public.subscription_orders ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'production';

@@ -60,6 +60,7 @@ export default function Billing() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState<string | null>(null);
+  const [testMode, setTestMode] = useState<boolean>(() => localStorage.getItem("cf_test_mode") === "1");
 
   const loadAll = async () => {
     if (!current) return;
@@ -122,6 +123,7 @@ export default function Billing() {
           customer_email: current.email || user?.email,
           customer_phone: current.phone || "9999999999",
           return_url: `${window.location.origin}/billing?order_id={order_id}`,
+          mode: testMode ? "test" : "production",
         },
       });
       if (error) {
@@ -130,7 +132,7 @@ export default function Billing() {
       }
       if (!data?.payment_session_id) throw new Error(data?.error || "Failed to create order");
 
-      const cashfree = await load({ mode: "production" });
+      const cashfree = await load({ mode: testMode ? "sandbox" : "production" });
       await cashfree.checkout({
         paymentSessionId: data.payment_session_id,
         redirectTarget: "_self",
@@ -152,9 +154,22 @@ export default function Billing() {
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-      <div>
-        <h1 className="text-3xl font-bold">Billing & Plans</h1>
-        <p className="text-muted-foreground">Manage your Bill Look subscription</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Billing & Plans</h1>
+          <p className="text-muted-foreground">Manage your Bill Look subscription</p>
+        </div>
+        <label className="flex items-center gap-2 text-sm border rounded-md px-3 py-2 bg-muted/40 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={testMode}
+            onChange={(e) => {
+              setTestMode(e.target.checked);
+              localStorage.setItem("cf_test_mode", e.target.checked ? "1" : "0");
+            }}
+          />
+          <span>Cashfree Test Mode {testMode ? "(Sandbox)" : "(Live)"}</span>
+        </label>
       </div>
 
       {/* Current plan card */}

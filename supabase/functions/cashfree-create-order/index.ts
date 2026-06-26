@@ -7,20 +7,31 @@ const corsHeaders = {
 };
 
 const CF_API_VERSION = "2023-08-01";
-function cfBase(appId: string) {
+function cfBase(mode: "test" | "production", appId: string) {
+  if (mode === "test") return "https://sandbox.cashfree.com/pg";
   return appId.toUpperCase().startsWith("TEST")
     ? "https://sandbox.cashfree.com/pg"
     : "https://api.cashfree.com/pg";
+}
+function getCreds(mode: "test" | "production") {
+  if (mode === "test") {
+    return {
+      appId: env("CASHFREE_TEST_APP_ID") || env("CASHFREE_APP_ID"),
+      secret: env("CASHFREE_TEST_SECRET_KEY") || env("CASHFREE_SECRET_KEY"),
+    };
+  }
+  return { appId: env("CASHFREE_APP_ID"), secret: env("CASHFREE_SECRET_KEY") };
 }
 
 function env(name: string) {
   return Deno.env.get(name)?.trim() || "";
 }
 
-function safeCredentialMeta(appId: string, secretKey: string) {
+function safeCredentialMeta(mode: "test" | "production", appId: string, secretKey: string) {
   const normalizedAppId = appId.trim();
   return {
-    endpoint: cfBase(normalizedAppId),
+    mode,
+    endpoint: cfBase(mode, normalizedAppId),
     app_id_prefix: normalizedAppId.slice(0, 4),
     app_id_suffix: normalizedAppId.slice(-4),
     app_id_length: normalizedAppId.length,
@@ -47,8 +58,9 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub as string;
 
     const body = await req.json().catch(() => ({}));
-    const { business_id, plan_id, customer_name, customer_email, customer_phone, return_url } = body;
+    const { business_id, plan_id, customer_name, customer_email, customer_phone, return_url, mode: modeIn } = body;
     if (!business_id || !plan_id) return json({ error: "business_id and plan_id required" }, 400);
+    const mode: "test" | "production" = modeIn === "test" ? "test" : "production";
 
     // Verify the user is a member of this business
     const { data: member } = await supabase.rpc("is_business_member", {
@@ -67,9 +79,8 @@ Deno.serve(async (req) => {
     if (planErr || !plan) return json({ error: "Plan not found" }, 404);
     if (Number(plan.price_inr) <= 0) return json({ error: "Free plan does not need payment" }, 400);
 
-    const appId = env("CASHFREE_APP_ID");
-    const secretKey = env("CASHFREE_SECRET_KEY");
-    if (!appId || !secretKey) return json({ error: "Cashfree not configured" }, 500);
+    const { appId, secret: secretKey } = getCreds(mode);
+    if (!appId || !secretKey) return json({ error: `Cashfree ${mode} keys not configured` }, 500);
 
     const cfOrderId = `BL_${business_id.slice(0, 8)}_${Date.now()}`;
     const cfPayload = {
@@ -90,7 +101,7 @@ Deno.serve(async (req) => {
       order_tags: { plan_code: plan.code, business_id },
     };
 
-    const cfRes = await fetch(`${cfBase(appId)}/orders`, {
+    const cfRes = await fetch(`${cfBase(mode, appId)}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -105,13 +116,13 @@ Deno.serve(async (req) => {
       console.error("Cashfree create order failed", {
         status: cfRes.status,
         cashfree: cfData,
-        credentials: safeCredentialMeta(appId, secretKey),
+        credentials: safeCredentialMeta(mode, appId, secretKey),
       });
       return json({
         error: cfData.message || "Cashfree error",
         details: cfData,
         hint: cfRes.status === 401
-          ? "Cashfree rejected the production credentials. Re-copy Production App ID and Secret Key exactly; the function now trims hidden spaces/new lines and logs safe key metadata."
+          ? `Cashfree rejected the ${mode} credentials. Re-copy ${mode === "test" ? "Sandbox/Test" : "Production"} App ID and Secret Key.`
           : undefined,
       }, cfRes.status);
     }
@@ -122,6 +133,7 @@ Deno.serve(async (req) => {
       order_amount: Number(plan.price_inr),
       order_currency: "INR",
       status: "CREATED",
+      mode,
       payment_session_id: cfData.payment_session_id,
       raw_response: cfData,
       created_by: userId,
@@ -131,6 +143,7 @@ Deno.serve(async (req) => {
       order_id: cfOrderId,
       payment_session_id: cfData.payment_session_id,
       order_amount: cfData.order_amount,
+      mode,
     });
   } catch (e: any) {
     console.error("create-order error", e);

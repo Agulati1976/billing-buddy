@@ -5,20 +5,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-function cfBase(appId: string) {
+function cfBase(mode: "test" | "production", appId: string) {
+  if (mode === "test") return "https://sandbox.cashfree.com/pg";
   return appId.toUpperCase().startsWith("TEST")
     ? "https://sandbox.cashfree.com/pg"
     : "https://api.cashfree.com/pg";
+}
+function getCreds(mode: "test" | "production") {
+  if (mode === "test") {
+    return {
+      appId: env("CASHFREE_TEST_APP_ID") || env("CASHFREE_APP_ID"),
+      secret: env("CASHFREE_TEST_SECRET_KEY") || env("CASHFREE_SECRET_KEY"),
+    };
+  }
+  return { appId: env("CASHFREE_APP_ID"), secret: env("CASHFREE_SECRET_KEY") };
 }
 
 function env(name: string) {
   return Deno.env.get(name)?.trim() || "";
 }
 
-function safeCredentialMeta(appId: string, secretKey: string) {
+function safeCredentialMeta(mode: "test" | "production", appId: string, secretKey: string) {
   const normalizedAppId = appId.trim();
   return {
-    endpoint: cfBase(normalizedAppId),
+    mode,
+    endpoint: cfBase(mode, normalizedAppId),
     app_id_prefix: normalizedAppId.slice(0, 4),
     app_id_suffix: normalizedAppId.slice(-4),
     app_id_length: normalizedAppId.length,
@@ -54,11 +65,11 @@ Deno.serve(async (req) => {
       .select("*").eq("cf_order_id", cf_order_id).maybeSingle();
     if (!order) return json({ error: "Order not found" }, 404);
 
-    const appId = env("CASHFREE_APP_ID");
-    const secretKey = env("CASHFREE_SECRET_KEY");
-    if (!appId || !secretKey) return json({ error: "Cashfree not configured" }, 500);
+    const mode: "test" | "production" = (order as any).mode === "test" ? "test" : "production";
+    const { appId, secret: secretKey } = getCreds(mode);
+    if (!appId || !secretKey) return json({ error: `Cashfree ${mode} keys not configured` }, 500);
 
-    const cfRes = await fetch(`${cfBase(appId)}/orders/${cf_order_id}`, {
+    const cfRes = await fetch(`${cfBase(mode, appId)}/orders/${cf_order_id}`, {
       headers: {
         "x-api-version": "2023-08-01",
         "x-client-id": appId, "x-client-secret": secretKey,
@@ -69,13 +80,13 @@ Deno.serve(async (req) => {
       console.error("Cashfree verify order failed", {
         status: cfRes.status,
         cashfree: cfData,
-        credentials: safeCredentialMeta(appId, secretKey),
+        credentials: safeCredentialMeta(mode, appId, secretKey),
       });
       return json({
         error: cfData.message || "Cashfree error",
         details: cfData,
         hint: cfRes.status === 401
-          ? "Cashfree rejected the production credentials. Re-copy Production App ID and Secret Key exactly; the function now trims hidden spaces/new lines and logs safe key metadata."
+          ? `Cashfree rejected the ${mode} credentials.`
           : undefined,
       }, cfRes.status);
     }
