@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const appId = Deno.env.get("CASHFREE_APP_ID");
     const secretKey = Deno.env.get("CASHFREE_SECRET_KEY");
-    const cfRes = await fetch(`${CF_BASE}/orders/${cf_order_id}`, {
+    const cfRes = await fetch(`${cfBase(appId!)}/orders/${cf_order_id}`, {
       headers: {
         "x-api-version": "2023-08-01",
         "x-client-id": appId!, "x-client-secret": secretKey!,
