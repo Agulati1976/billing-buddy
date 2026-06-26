@@ -154,9 +154,22 @@ export default function Billing() {
 
   return (
     <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-      <div>
-        <h1 className="text-3xl font-bold">Billing & Plans</h1>
-        <p className="text-muted-foreground">Manage your Bill Look subscription</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Billing & Plans</h1>
+          <p className="text-muted-foreground">Manage your Bill Look subscription</p>
+        </div>
+        <label className="flex items-center gap-2 text-sm border rounded-md px-3 py-2 bg-muted/40 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={testMode}
+            onChange={(e) => {
+              setTestMode(e.target.checked);
+              localStorage.setItem("cf_test_mode", e.target.checked ? "1" : "0");
+            }}
+          />
+          <span>Cashfree Test Mode {testMode ? "(Sandbox)" : "(Live)"}</span>
+        </label>
       </div>
 
       {/* Current plan card */}
