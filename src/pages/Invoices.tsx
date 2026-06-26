@@ -424,6 +424,46 @@ export default function Invoices({ type }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!shareRow} onOpenChange={(o) => !o && setShareRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share {shareRow?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          {shareRow && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">What to share</Label>
+                <div className="inline-flex rounded-md border p-0.5 w-full">
+                  <button
+                    onClick={() => setShareView("invoice")}
+                    className={`flex-1 text-sm px-3 py-1.5 rounded inline-flex items-center justify-center gap-1.5 ${shareView === "invoice" ? "bg-primary text-primary-foreground" : ""}`}
+                  ><FileText className="h-4 w-4" /> Invoice</button>
+                  <button
+                    onClick={() => setShareView("pos")}
+                    className={`flex-1 text-sm px-3 py-1.5 rounded inline-flex items-center justify-center gap-1.5 ${shareView === "pos" ? "bg-primary text-primary-foreground" : ""}`}
+                  ><Receipt className="h-4 w-4" /> POS Receipt</button>
+                </div>
+              </div>
+              <div className="text-xs bg-muted/40 rounded p-2 break-all font-mono">{shareUrl(shareRow)}</div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button variant="outline" onClick={() => openWhatsApp(shareRow)} className="gap-1.5">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </Button>
+                <Button variant="outline" onClick={() => openEmail(shareRow)} className="gap-1.5">
+                  <Mail className="h-4 w-4" /> Email
+                </Button>
+                <Button variant="outline" onClick={() => copyLink(shareRow)} className="gap-1.5">
+                  <Copy className="h-4 w-4" /> Copy
+                </Button>
+              </div>
+              {!shareRow.parties?.phone && (
+                <div className="text-[11px] text-muted-foreground">No phone on customer — WhatsApp will open without a recipient.</div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
