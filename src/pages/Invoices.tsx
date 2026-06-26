@@ -33,7 +33,7 @@ interface InvoiceRow {
   balance_amount: number;
   status: keyof typeof STATUS_META;
   party_id: string | null;
-  parties: { name: string } | null;
+  parties: { name: string; phone?: string | null; email?: string | null } | null;
   deleted_at: string | null;
 }
 
@@ -87,7 +87,7 @@ export default function Invoices({ type }: Props) {
     setLoading(true);
     let query = supabase
       .from("invoices")
-      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name), deleted_at")
+      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name, phone, email), deleted_at")
       .eq("business_id", current.id)
       .eq("type", type);
     if (view === "active") {
