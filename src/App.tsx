@@ -42,6 +42,8 @@ import AdminInvoices from "./pages/admin/AdminInvoices";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPlans from "./pages/admin/AdminPlans";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminCustomerInvoices from "./pages/admin/AdminCustomerInvoices";
+import AdminReminders from "./pages/admin/AdminReminders";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import NotFound from "./pages/NotFound.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -71,6 +73,8 @@ const App = () => (
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="plans" element={<AdminPlans />} />
                 <Route path="subscriptions" element={<AdminSubscriptions />} />
+                <Route path="customer-invoices" element={<AdminCustomerInvoices />} />
+                <Route path="reminders" element={<AdminReminders />} />
                 <Route path="audit" element={<AdminAuditLog />} />
                 <Route path="admins" element={<AdminAdmins />} />
               </Route>

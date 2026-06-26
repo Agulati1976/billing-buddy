@@ -108,11 +108,11 @@ export default function AdminReminders() {
   const fillVars = (text: string, biz: any) => {
     const sub = subMap.get(biz.id);
     return text
-      .replaceAll("{business_name}", biz.name || "")
-      .replaceAll("{plan}", planMap.get(sub?.plan_id) || "Free")
-      .replaceAll("{expiry_date}", sub?.expires_at ? new Date(sub.expires_at).toLocaleDateString() : "—")
-      .replaceAll("{amount}", "")
-      .replaceAll("{pay_link}", `${window.location.origin}/billing`);
+      .split("{business_name}").join(biz.name || "")
+      .split("{plan}").join(planMap.get(sub?.plan_id) || "Free")
+      .split("{expiry_date}").join(sub?.expires_at ? new Date(sub.expires_at).toLocaleDateString() : "—")
+      .split("{amount}").join("")
+      .split("{pay_link}").join(`${window.location.origin}/billing`);
   };
 
   const send = async () => {
