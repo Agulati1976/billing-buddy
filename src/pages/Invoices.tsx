@@ -278,6 +278,13 @@ export default function Invoices({ type }: Props) {
                       {Number(r.balance_amount) > 0 && (
                         <div className="text-[11px] text-danger num">Bal {formatINR(Number(r.balance_amount))}</div>
                       )}
+                      {view === "active" && canShare && (
+                        <div className="flex gap-1 justify-end mt-1">
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setShareRow(r); }} title="Share">
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                       {view === "trash" && (
                         <div className="flex gap-1 justify-end mt-1">
                           <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
