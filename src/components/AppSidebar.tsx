@@ -6,7 +6,7 @@ import {
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
   Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
-  BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown, BookOpen, Building2,
+  BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown, BookOpen, Building2, CreditCard,
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -139,6 +139,14 @@ export function AppSidebar() {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Billing & Plans">
+                  <NavLink to="/billing">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Billing & Plans</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Settings">
                   <NavLink to="/settings">

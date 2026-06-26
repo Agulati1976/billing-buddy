@@ -30,6 +30,7 @@ import Loyalty from "./pages/Loyalty";
 import Pos from "./pages/Pos";
 import PartyLedger from "./pages/PartyLedger";
 import Branches from "./pages/Branches";
+import Billing from "./pages/Billing";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -40,6 +41,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminInvoices from "./pages/admin/AdminInvoices";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPlans from "./pages/admin/AdminPlans";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import NotFound from "./pages/NotFound.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -68,6 +70,7 @@ const App = () => (
                 <Route path="invoices" element={<AdminInvoices />} />
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="plans" element={<AdminPlans />} />
+                <Route path="subscriptions" element={<AdminSubscriptions />} />
                 <Route path="audit" element={<AdminAuditLog />} />
                 <Route path="admins" element={<AdminAdmins />} />
               </Route>
@@ -105,6 +108,7 @@ const App = () => (
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/settings/team" element={<Team />} />
                 <Route path="/settings/invoice" element={<InvoiceDesign />} />
+                <Route path="/billing" element={<Billing />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
