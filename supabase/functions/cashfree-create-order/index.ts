@@ -79,9 +79,8 @@ Deno.serve(async (req) => {
     if (planErr || !plan) return json({ error: "Plan not found" }, 404);
     if (Number(plan.price_inr) <= 0) return json({ error: "Free plan does not need payment" }, 400);
 
-    const appId = env("CASHFREE_APP_ID");
-    const secretKey = env("CASHFREE_SECRET_KEY");
-    if (!appId || !secretKey) return json({ error: "Cashfree not configured" }, 500);
+    const { appId, secret: secretKey } = getCreds(mode);
+    if (!appId || !secretKey) return json({ error: `Cashfree ${mode} keys not configured` }, 500);
 
     const cfOrderId = `BL_${business_id.slice(0, 8)}_${Date.now()}`;
     const cfPayload = {
