@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
-  ArrowUpDown, BarChart3, BookOpen, Boxes, Building2, FileEdit, FileText,
+  ArrowUpDown, BarChart3, BookOpen, Boxes, Building2, CreditCard, FileEdit, FileText,
   Gift, LayoutDashboard, LayoutGrid, Package, Receipt as ReceiptIcon, Settings,
   ShoppingCart, Sparkles, Tags, Truck, Users, Wallet, Warehouse,
 } from "lucide-react";
