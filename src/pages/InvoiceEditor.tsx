@@ -57,6 +57,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
   const [isGst, setIsGst] = useState(true);
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [isOnlineOrder, setIsOnlineOrder] = useState(false);
   const [branchId, setBranchId] = useState<string>("");
   const [extraDiscount, setExtraDiscount] = useState("0");
@@ -312,15 +313,15 @@ export default function InvoiceEditor({ type }: Props) {
     const v = Number(extraDiscount) || 0;
     let manual = v;
     if (extraDiscountMode === "pct") {
-      const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
+      const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0, pricesIncludeTax });
       manual = (baseLines.taxable_total * v) / 100;
     }
     return manual + redeemValue;
-  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst, redeemValue]);
+  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst, pricesIncludeTax, redeemValue]);
 
   const totals = useMemo(
-    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue }),
-    [lines, isInterState, isGst, extraDiscountValue]
+    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue, pricesIncludeTax }),
+    [lines, isInterState, isGst, extraDiscountValue, pricesIncludeTax]
   );
 
   const earnedPoints = useMemo(() => {
@@ -480,6 +481,21 @@ export default function InvoiceEditor({ type }: Props) {
     setLines((ls) => ls.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   };
 
+  // Edit final line amount → back-calculate unit price (clears line discount for clarity)
+  const setLineAmount = (idx: number, newTotal: number) => {
+    setLines((ls) => ls.map((l, i) => {
+      if (i !== idx) return l;
+      const qty = Number(l.quantity) || 0;
+      if (qty <= 0 || !Number.isFinite(newTotal) || newTotal < 0) return l;
+      const rate = isGst ? Number(l.tax_rate) || 0 : 0;
+      // In inclusive mode the entered price already includes tax → price = total / qty
+      // In exclusive mode → price = total / (qty * (1 + rate/100))
+      const denom = qty * (pricesIncludeTax ? 1 : (1 + rate / 100));
+      const newPrice = denom > 0 ? newTotal / denom : 0;
+      return { ...l, price: Math.round(newPrice * 100) / 100, discount_amount: 0, discount_pct: 0, discount_mode: "pct" as const };
+    }));
+  };
+
   const pickItem = (idx: number, itemId: string) => {
     const it = items.find((x) => x.id === itemId);
     if (!it) return;
@@ -509,7 +525,20 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     setSaving(true);
-    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: extraDiscountValue });
+    // If user entered inclusive prices, convert to exclusive so storage stays consistent
+    const linesForSave = pricesIncludeTax && isGst
+      ? validLines.map((l) => {
+          const rate = Number(l.tax_rate) || 0;
+          if (rate <= 0) return l;
+          const factor = 1 + rate / 100;
+          return {
+            ...l,
+            price: (Number(l.price) || 0) / factor,
+            discount_amount: l.discount_amount ? (Number(l.discount_amount) || 0) / factor : l.discount_amount,
+          };
+        })
+      : validLines;
+    const computed = computeInvoice(linesForSave, isInterState, { isGst, extraDiscount: extraDiscountValue });
     const status = type === "quotation" ? "draft"
       : (type === "sale_return" || type === "purchase_return") ? "paid"
       : "unpaid";
@@ -944,11 +973,26 @@ export default function InvoiceEditor({ type }: Props) {
           )}
         </div>
         <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
-          <div className="flex items-center gap-2">
-            <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
-            <Label htmlFor="gst-toggle" className="cursor-pointer">
-              {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
-            </Label>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
+              <Label htmlFor="gst-toggle" className="cursor-pointer">
+                {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
+              </Label>
+            </div>
+            {isGst && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="incl-tax-toggle"
+                  checked={pricesIncludeTax}
+                  onCheckedChange={setPricesIncludeTax}
+                  disabled={readOnly}
+                />
+                <Label htmlFor="incl-tax-toggle" className="cursor-pointer text-sm">
+                  {pricesIncludeTax ? "Prices include GST (inclusive)" : "Prices exclude GST (add tax on top)"}
+                </Label>
+              </div>
+            )}
           </div>
           {type === "sale" && (
             <div className="flex items-center gap-2 flex-wrap">
@@ -1120,7 +1164,21 @@ export default function InvoiceEditor({ type }: Props) {
                     <Input className="h-8 num" type="number" step="0.01" value={l.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: Number(e.target.value) })} />
                   )}
                 </TableCell>
-                <TableCell className="text-right num">{formatINR(l.total_amount)}</TableCell>
+                <TableCell className="text-right num">
+                  {readOnly ? (
+                    formatINR(l.total_amount)
+                  ) : (
+                    <Input
+                      className="h-8 num text-right"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={l.total_amount}
+                      onChange={(e) => setLineAmount(idx, Number(e.target.value))}
+                      title="Edit final amount — unit price recalculates automatically"
+                    />
+                  )}
+                </TableCell>
                 {!readOnly && (
                   <TableCell>
                     <Button size="icon" variant="ghost" onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}>

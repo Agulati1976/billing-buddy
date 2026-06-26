@@ -45,22 +45,30 @@ export interface InvoiceTotals {
 export function computeInvoice(
   lines: InvoiceLineInput[],
   isInterState: boolean,
-  opts: { isGst?: boolean; extraDiscount?: number } = {}
+  opts: { isGst?: boolean; extraDiscount?: number; pricesIncludeTax?: boolean } = {}
 ): InvoiceTotals {
   const isGst = opts.isGst !== false; // default true
   const extraDiscount = Number(opts.extraDiscount) || 0;
+  const pricesIncludeTax = !!opts.pricesIncludeTax;
 
   const computed: ComputedLine[] = lines.map((l) => {
     const qty = Number(l.quantity) || 0;
-    const price = Number(l.price) || 0;
-    const gross = qty * price;
-    // Flat ₹ discount takes precedence when > 0
-    const flat = Number(l.discount_amount) || 0;
+    const enteredPrice = Number(l.price) || 0;
+    const effectiveRate = isGst ? (Number(l.tax_rate) || 0) : 0;
+    // When prices are tax-inclusive, derive net unit price from the entered (gross) price
+    const unitNet = pricesIncludeTax && effectiveRate > 0
+      ? enteredPrice / (1 + effectiveRate / 100)
+      : enteredPrice;
+    const gross = qty * unitNet;
+    // Flat ₹ discount: if user entered it in inclusive mode, convert to net
+    const flatEntered = Number(l.discount_amount) || 0;
+    const flat = pricesIncludeTax && effectiveRate > 0 && flatEntered > 0
+      ? flatEntered / (1 + effectiveRate / 100)
+      : flatEntered;
     const pct = Number(l.discount_pct) || 0;
     const discount = flat > 0 ? Math.min(flat, gross) : (gross * pct) / 100;
     const effectivePct = gross > 0 ? (discount / gross) * 100 : 0;
     const taxable = gross - discount;
-    const effectiveRate = isGst ? (Number(l.tax_rate) || 0) : 0;
     const tax = (taxable * effectiveRate) / 100;
     return {
       ...l,
