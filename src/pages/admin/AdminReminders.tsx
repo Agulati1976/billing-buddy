@@ -112,7 +112,7 @@ export default function AdminReminders() {
       .split("{plan}").join(planMap.get(sub?.plan_id) || "Free")
       .split("{expiry_date}").join(sub?.expires_at ? new Date(sub.expires_at).toLocaleDateString() : "—")
       .split("{amount}").join("")
-      .split("{pay_link}").join(`${window.location.origin}/billing`);
+      .split("{pay_link}").join(`https://billlook.com/billing`);
   };
 
   const send = async () => {
