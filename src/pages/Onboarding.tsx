@@ -17,7 +17,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { refresh, businesses } = useBusiness();
-  const FREE_LIMIT = 2;
+  const FREE_LIMIT = 1;
   const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
   const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
   const blocked = ownedCount >= FREE_LIMIT && !isPremium;
@@ -35,7 +35,7 @@ export default function Onboarding() {
     e.preventDefault();
     if (!user) return;
     if (blocked) {
-      toast.error("Free plan allows up to 2 businesses. Upgrade to premium to add more.");
+      toast.error("Free plan allows only 1 business. Upgrade to premium to add more.");
       return;
     }
     if (pincode && !/^\d{6}$/.test(pincode)) {
