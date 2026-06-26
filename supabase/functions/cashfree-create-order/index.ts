@@ -58,8 +58,9 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub as string;
 
     const body = await req.json().catch(() => ({}));
-    const { business_id, plan_id, customer_name, customer_email, customer_phone, return_url } = body;
+    const { business_id, plan_id, customer_name, customer_email, customer_phone, return_url, mode: modeIn } = body;
     if (!business_id || !plan_id) return json({ error: "business_id and plan_id required" }, 400);
+    const mode: "test" | "production" = modeIn === "test" ? "test" : "production";
 
     // Verify the user is a member of this business
     const { data: member } = await supabase.rpc("is_business_member", {
