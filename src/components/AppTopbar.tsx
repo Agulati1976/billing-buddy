@@ -51,7 +51,7 @@ export function AppTopbar() {
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
   const isHome = location.pathname === "/";
   const title = getTitle(location.pathname);
-  const FREE_LIMIT = 2;
+  const FREE_LIMIT = 1;
   const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
   const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
   const atLimit = ownedCount >= FREE_LIMIT && !isPremium;
