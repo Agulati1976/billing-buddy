@@ -4,7 +4,7 @@ import { usePlatformAdmin } from "@/hooks/usePlatformAdmin";
 import { Button } from "@/components/ui/button";
 import {
   ShieldCheck, Store, Users, LogOut, LayoutDashboard,
-  Receipt, Wallet, Layers, ScrollText, UserCog,
+  Receipt, Wallet, Layers, ScrollText, UserCog, CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const nav = [
   { to: "/admin/invoices", icon: Receipt, label: "Invoices" },
   { to: "/admin/payments", icon: Wallet, label: "Payments" },
   { to: "/admin/plans", icon: Layers, label: "Plans" },
+  { to: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
   { to: "/admin/audit", icon: ScrollText, label: "Audit log" },
   { to: "/admin/admins", icon: UserCog, label: "Admins" },
 ];
