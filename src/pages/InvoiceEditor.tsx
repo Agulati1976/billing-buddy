@@ -1164,7 +1164,21 @@ export default function InvoiceEditor({ type }: Props) {
                     <Input className="h-8 num" type="number" step="0.01" value={l.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: Number(e.target.value) })} />
                   )}
                 </TableCell>
-                <TableCell className="text-right num">{formatINR(l.total_amount)}</TableCell>
+                <TableCell className="text-right num">
+                  {readOnly ? (
+                    formatINR(l.total_amount)
+                  ) : (
+                    <Input
+                      className="h-8 num text-right"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={l.total_amount}
+                      onChange={(e) => setLineAmount(idx, Number(e.target.value))}
+                      title="Edit final amount — unit price recalculates automatically"
+                    />
+                  )}
+                </TableCell>
                 {!readOnly && (
                   <TableCell>
                     <Button size="icon" variant="ghost" onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}>
