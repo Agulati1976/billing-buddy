@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw, Share2, MessageCircle, Mail, Copy, Receipt } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
@@ -33,7 +33,7 @@ interface InvoiceRow {
   balance_amount: number;
   status: keyof typeof STATUS_META;
   party_id: string | null;
-  parties: { name: string } | null;
+  parties: { name: string; phone?: string | null; email?: string | null } | null;
   deleted_at: string | null;
 }
 
@@ -48,8 +48,33 @@ export default function Invoices({ type }: Props) {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<string>("cash");
   const [paySaving, setPaySaving] = useState(false);
+  const [shareRow, setShareRow] = useState<InvoiceRow | null>(null);
+  const [shareView, setShareView] = useState<"invoice" | "pos">("invoice");
 
   const canPay = type === "sale" || type === "purchase" || type === "non_inventory";
+  const canShare = type === "sale" || type === "non_inventory" || type === "quotation";
+
+  const shareUrl = (r: InvoiceRow) =>
+    `${window.location.origin}/i/${r.id}?view=${shareView}`;
+  const shareMessage = (r: InvoiceRow) => {
+    const biz = current?.name ?? "";
+    return `Hi${r.parties?.name ? " " + r.parties.name : ""}, here is your ${shareView === "pos" ? "receipt" : "invoice"} ${r.invoice_number} for ${formatINR(Number(r.total_amount))}${Number(r.balance_amount) > 0 ? ` (Balance ${formatINR(Number(r.balance_amount))})` : ""}.\n\nView: ${shareUrl(r)}\n\n— ${biz}`;
+  };
+  const openWhatsApp = (r: InvoiceRow) => {
+    const phone = (r.parties?.phone ?? "").replace(/[^\d]/g, "");
+    const text = encodeURIComponent(shareMessage(r));
+    window.open(phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`, "_blank");
+  };
+  const openEmail = (r: InvoiceRow) => {
+    const subject = encodeURIComponent(`${shareView === "pos" ? "Receipt" : "Invoice"} ${r.invoice_number}${current?.name ? " — " + current.name : ""}`);
+    const body = encodeURIComponent(shareMessage(r));
+    const to = r.parties?.email ?? "";
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
+  const copyLink = async (r: InvoiceRow) => {
+    try { await navigator.clipboard.writeText(shareUrl(r)); toast.success("Link copied"); }
+    catch { toast.error("Couldn't copy"); }
+  };
 
   const openPay = (r: InvoiceRow, full: boolean) => {
     setPayRow(r);
@@ -87,7 +112,7 @@ export default function Invoices({ type }: Props) {
     setLoading(true);
     let query = supabase
       .from("invoices")
-      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name), deleted_at")
+      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name, phone, email), deleted_at")
       .eq("business_id", current.id)
       .eq("type", type);
     if (view === "active") {
@@ -253,6 +278,13 @@ export default function Invoices({ type }: Props) {
                       {Number(r.balance_amount) > 0 && (
                         <div className="text-[11px] text-danger num">Bal {formatINR(Number(r.balance_amount))}</div>
                       )}
+                      {view === "active" && canShare && (
+                        <div className="flex gap-1 justify-end mt-1">
+                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setShareRow(r); }} title="Share">
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                       {view === "trash" && (
                         <div className="flex gap-1 justify-end mt-1">
                           <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
@@ -318,6 +350,11 @@ export default function Invoices({ type }: Props) {
                                 <Button size="icon" variant="ghost" onClick={() => navigate(`/${meta.route}/${r.id}`)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
+                                {canShare && (
+                                  <Button size="icon" variant="ghost" title="Share" onClick={() => setShareRow(r)}>
+                                    <Share2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 {type === "sale" && (
                                   <Button size="icon" variant="ghost" title="Create sale return"
                                     onClick={() => navigate(`/sale_returns/new?from=${r.id}`)}>
@@ -385,6 +422,46 @@ export default function Invoices({ type }: Props) {
             <Button variant="outline" onClick={() => setPayRow(null)}>Cancel</Button>
             <Button onClick={submitPay} disabled={paySaving}>{paySaving ? "Saving…" : "Record payment"}</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!shareRow} onOpenChange={(o) => !o && setShareRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share {shareRow?.invoice_number}</DialogTitle>
+          </DialogHeader>
+          {shareRow && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">What to share</Label>
+                <div className="inline-flex rounded-md border p-0.5 w-full">
+                  <button
+                    onClick={() => setShareView("invoice")}
+                    className={`flex-1 text-sm px-3 py-1.5 rounded inline-flex items-center justify-center gap-1.5 ${shareView === "invoice" ? "bg-primary text-primary-foreground" : ""}`}
+                  ><FileText className="h-4 w-4" /> Invoice</button>
+                  <button
+                    onClick={() => setShareView("pos")}
+                    className={`flex-1 text-sm px-3 py-1.5 rounded inline-flex items-center justify-center gap-1.5 ${shareView === "pos" ? "bg-primary text-primary-foreground" : ""}`}
+                  ><Receipt className="h-4 w-4" /> POS Receipt</button>
+                </div>
+              </div>
+              <div className="text-xs bg-muted/40 rounded p-2 break-all font-mono">{shareUrl(shareRow)}</div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button variant="outline" onClick={() => openWhatsApp(shareRow)} className="gap-1.5">
+                  <MessageCircle className="h-4 w-4" /> WhatsApp
+                </Button>
+                <Button variant="outline" onClick={() => openEmail(shareRow)} className="gap-1.5">
+                  <Mail className="h-4 w-4" /> Email
+                </Button>
+                <Button variant="outline" onClick={() => copyLink(shareRow)} className="gap-1.5">
+                  <Copy className="h-4 w-4" /> Copy
+                </Button>
+              </div>
+              {!shareRow.parties?.phone && (
+                <div className="text-[11px] text-muted-foreground">No phone on customer — WhatsApp will open without a recipient.</div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
