@@ -15,7 +15,10 @@ export default function AdminAdmins() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+
 
   const load = async () => {
     setLoading(true);
@@ -34,25 +37,26 @@ export default function AdminAdmins() {
   const promote = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("email", email.trim().toLowerCase())
-      .maybeSingle();
-    if (!prof) {
-      setBusy(false);
-      toast.error("No registered user with that email.");
+    const { data, error } = await supabase.functions.invoke("admin-actions", {
+      body: {
+        action: "create_admin_user",
+        metadata: {
+          email: email.trim().toLowerCase(),
+          password,
+          full_name: fullName.trim() || undefined,
+        },
+      },
+    });
+    setBusy(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error ?? error?.message ?? "Failed");
       return;
     }
-    const { error } = await supabase.from("platform_admins").insert({ user_id: prof.user_id, created_by: user?.id });
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Admin added");
-      setEmail("");
-      load();
-    }
+    toast.success("Admin added");
+    setEmail(""); setPassword(""); setFullName("");
+    load();
   };
+
 
   const remove = async (id: string, uid: string) => {
     if (uid === user?.id) {
@@ -73,15 +77,26 @@ export default function AdminAdmins() {
       </div>
 
       <Card className="p-5">
-        <form onSubmit={promote} className="flex items-end gap-3 flex-wrap">
-          <div className="flex-1 min-w-[240px] space-y-2">
-            <Label htmlFor="promote-email">Promote user by email</Label>
-            <Input id="promote-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+        <form onSubmit={promote} className="space-y-3">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="promote-email">Email</Label>
+              <Input id="promote-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promote-name">Full name (optional)</Label>
+              <Input id="promote-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promote-password">Password</Label>
+              <Input id="promote-password" type="text" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Set a password" />
+            </div>
           </div>
           <Button type="submit" disabled={busy}>{busy ? "Adding…" : "Add admin"}</Button>
         </form>
-        <p className="text-xs text-muted-foreground mt-2">User must already have signed up as a regular user.</p>
+        <p className="text-xs text-muted-foreground mt-2">Creates a new auth user (or promotes an existing one) and grants platform-admin access.</p>
       </Card>
+
 
       <Card className="p-5 space-y-3">
         <h3 className="font-medium">Current admins</h3>

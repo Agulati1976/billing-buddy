@@ -143,8 +143,38 @@ Deno.serve(async (req) => {
         }
         return json(200, { users: out });
       }
+      case "create_admin_user": {
+        const email = String(metadata?.email ?? "").trim().toLowerCase();
+        const password = String(metadata?.password ?? "");
+        const full_name = String(metadata?.full_name ?? "").trim() || null;
+        if (!email || !password) return json(400, { error: "email and password required" });
+
+        // Check if user already exists
+        let targetUserId: string | null = null;
+        const { data: existingProf } = await admin
+          .from("profiles").select("user_id").eq("email", email).maybeSingle();
+        if (existingProf?.user_id) {
+          targetUserId = existingProf.user_id;
+        } else {
+          const { data: created, error: cErr } = await admin.auth.admin.createUser({
+            email, password, email_confirm: true,
+            user_metadata: full_name ? { full_name } : {},
+          });
+          if (cErr || !created?.user) return json(500, { error: cErr?.message ?? "Failed to create user" });
+          targetUserId = created.user.id;
+        }
+
+        const { error: paErr } = await admin
+          .from("platform_admins")
+          .insert({ user_id: targetUserId, created_by: userData.user!.id });
+        if (paErr && !paErr.message.includes("duplicate")) return json(500, { error: paErr.message });
+
+        await log("create_admin_user", "user", targetUserId, { email });
+        return json(200, { ok: true, user_id: targetUserId });
+      }
       default:
         return json(400, { error: `Unknown action: ${action}` });
+
     }
   } catch (e: any) {
     return json(500, { error: e?.message ?? "Server error" });
