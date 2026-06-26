@@ -27,6 +27,8 @@ export default function Items() {
   const [presetBarcode, setPresetBarcode] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<ItemRow | null>(null);
   const [adjustItem, setAdjustItem] = useState<ItemRow | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItem, setHistoryItem] = useState<ItemRow | null>(null);
 
   const handleScan = (code: string) => {
     const trimmed = code.trim();
