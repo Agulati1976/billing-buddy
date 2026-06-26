@@ -116,13 +116,13 @@ Deno.serve(async (req) => {
       console.error("Cashfree create order failed", {
         status: cfRes.status,
         cashfree: cfData,
-        credentials: safeCredentialMeta(appId, secretKey),
+        credentials: safeCredentialMeta(mode, appId, secretKey),
       });
       return json({
         error: cfData.message || "Cashfree error",
         details: cfData,
         hint: cfRes.status === 401
-          ? "Cashfree rejected the production credentials. Re-copy Production App ID and Secret Key exactly; the function now trims hidden spaces/new lines and logs safe key metadata."
+          ? `Cashfree rejected the ${mode} credentials. Re-copy ${mode === "test" ? "Sandbox/Test" : "Production"} App ID and Secret Key.`
           : undefined,
       }, cfRes.status);
     }
