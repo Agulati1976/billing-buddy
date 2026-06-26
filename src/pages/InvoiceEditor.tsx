@@ -525,7 +525,20 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     setSaving(true);
-    const computed = computeInvoice(validLines, isInterState, { isGst, extraDiscount: extraDiscountValue });
+    // If user entered inclusive prices, convert to exclusive so storage stays consistent
+    const linesForSave = pricesIncludeTax && isGst
+      ? validLines.map((l) => {
+          const rate = Number(l.tax_rate) || 0;
+          if (rate <= 0) return l;
+          const factor = 1 + rate / 100;
+          return {
+            ...l,
+            price: (Number(l.price) || 0) / factor,
+            discount_amount: l.discount_amount ? (Number(l.discount_amount) || 0) / factor : l.discount_amount,
+          };
+        })
+      : validLines;
+    const computed = computeInvoice(linesForSave, isInterState, { isGst, extraDiscount: extraDiscountValue });
     const status = type === "quotation" ? "draft"
       : (type === "sale_return" || type === "purchase_return") ? "paid"
       : "unpaid";
