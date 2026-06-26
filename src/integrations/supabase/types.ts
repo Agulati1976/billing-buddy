@@ -1247,6 +1247,137 @@ export type Database = {
         }
         Relationships: []
       }
+      saas_invoices: {
+        Row: {
+          business_id: string
+          cf_order_id: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          gst_amount: number
+          gst_percent: number
+          id: string
+          invoice_no: string
+          issue_date: string
+          line_items: Json
+          notes: string | null
+          paid_at: string | null
+          plan_id: string | null
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          cf_order_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          invoice_no: string
+          issue_date?: string
+          line_items?: Json
+          notes?: string | null
+          paid_at?: string | null
+          plan_id?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          cf_order_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          gst_amount?: number
+          gst_percent?: number
+          id?: string
+          invoice_no?: string
+          issue_date?: string
+          line_items?: Json
+          notes?: string | null
+          paid_at?: string | null
+          plan_id?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_invoices_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saas_invoices_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saas_reminders: {
+        Row: {
+          body: string | null
+          business_id: string
+          channel: string
+          error: string | null
+          id: string
+          recipient_email: string | null
+          recipient_phone: string | null
+          reminder_type: string
+          sent_at: string
+          sent_by: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          body?: string | null
+          business_id: string
+          channel: string
+          error?: string | null
+          id?: string
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          reminder_type: string
+          sent_at?: string
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          body?: string | null
+          business_id?: string
+          channel?: string
+          error?: string | null
+          id?: string
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          reminder_type?: string
+          sent_at?: string
+          sent_by?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saas_reminders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_module_access: {
         Row: {
           business_id: string
@@ -1413,9 +1544,11 @@ export type Database = {
           features: Json
           id: string
           is_active: boolean
+          limits: Json
           name: string
           price_inr: number
           sort_order: number
+          tagline: string | null
           updated_at: string
         }
         Insert: {
@@ -1426,9 +1559,11 @@ export type Database = {
           features?: Json
           id?: string
           is_active?: boolean
+          limits?: Json
           name: string
           price_inr?: number
           sort_order?: number
+          tagline?: string | null
           updated_at?: string
         }
         Update: {
@@ -1439,9 +1574,11 @@ export type Database = {
           features?: Json
           id?: string
           is_active?: boolean
+          limits?: Json
           name?: string
           price_inr?: number
           sort_order?: number
+          tagline?: string | null
           updated_at?: string
         }
         Relationships: []
