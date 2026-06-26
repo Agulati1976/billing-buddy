@@ -37,25 +37,26 @@ export default function AdminAdmins() {
   const promote = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .eq("email", email.trim().toLowerCase())
-      .maybeSingle();
-    if (!prof) {
-      setBusy(false);
-      toast.error("No registered user with that email.");
+    const { data, error } = await supabase.functions.invoke("admin-actions", {
+      body: {
+        action: "create_admin_user",
+        metadata: {
+          email: email.trim().toLowerCase(),
+          password,
+          full_name: fullName.trim() || undefined,
+        },
+      },
+    });
+    setBusy(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error ?? error?.message ?? "Failed");
       return;
     }
-    const { error } = await supabase.from("platform_admins").insert({ user_id: prof.user_id, created_by: user?.id });
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Admin added");
-      setEmail("");
-      load();
-    }
+    toast.success("Admin added");
+    setEmail(""); setPassword(""); setFullName("");
+    load();
   };
+
 
   const remove = async (id: string, uid: string) => {
     if (uid === user?.id) {
