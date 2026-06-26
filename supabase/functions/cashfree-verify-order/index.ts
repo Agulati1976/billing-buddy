@@ -5,7 +5,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const CF_BASE = "https://api.cashfree.com/pg";
+function cfBase(appId: string) {
+  return appId.toUpperCase().startsWith("TEST")
+    ? "https://sandbox.cashfree.com/pg"
+    : "https://api.cashfree.com/pg";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
