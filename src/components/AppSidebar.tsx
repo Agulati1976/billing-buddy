@@ -140,6 +140,14 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Billing & Plans">
+                  <NavLink to="/billing">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Billing & Plans</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Settings">
                   <NavLink to="/settings">
                     <Settings className="h-4 w-4" />
