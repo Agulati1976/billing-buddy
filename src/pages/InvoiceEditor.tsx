@@ -973,11 +973,26 @@ export default function InvoiceEditor({ type }: Props) {
           )}
         </div>
         <div className="flex items-center justify-between gap-3 pt-2 border-t flex-wrap">
-          <div className="flex items-center gap-2">
-            <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
-            <Label htmlFor="gst-toggle" className="cursor-pointer">
-              {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
-            </Label>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Switch id="gst-toggle" checked={isGst} onCheckedChange={setIsGst} disabled={readOnly} />
+              <Label htmlFor="gst-toggle" className="cursor-pointer">
+                {isGst ? "GST Invoice" : "Non-GST Invoice (no tax)"}
+              </Label>
+            </div>
+            {isGst && (
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="incl-tax-toggle"
+                  checked={pricesIncludeTax}
+                  onCheckedChange={setPricesIncludeTax}
+                  disabled={readOnly}
+                />
+                <Label htmlFor="incl-tax-toggle" className="cursor-pointer text-sm">
+                  {pricesIncludeTax ? "Prices include GST (inclusive)" : "Prices exclude GST (add tax on top)"}
+                </Label>
+              </div>
+            )}
           </div>
           {type === "sale" && (
             <div className="flex items-center gap-2 flex-wrap">
