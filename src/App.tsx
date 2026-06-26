@@ -70,6 +70,7 @@ const App = () => (
                 <Route path="invoices" element={<AdminInvoices />} />
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="plans" element={<AdminPlans />} />
+                <Route path="subscriptions" element={<AdminSubscriptions />} />
                 <Route path="audit" element={<AdminAuditLog />} />
                 <Route path="admins" element={<AdminAdmins />} />
               </Route>
@@ -107,6 +108,7 @@ const App = () => (
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/settings/team" element={<Team />} />
                 <Route path="/settings/invoice" element={<InvoiceDesign />} />
+                <Route path="/billing" element={<Billing />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
