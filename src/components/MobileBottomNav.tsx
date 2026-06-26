@@ -73,8 +73,9 @@ const MENU_GROUPS: MobileMenuGroup[] = [
     ],
   },
   {
-    label: "Settings",
+    label: "Account",
     items: [
+      { to: "/billing", label: "Billing & Plans", icon: ReceiptIcon, alwaysVisible: true },
       { to: "/settings", label: "Settings", icon: Settings, alwaysVisible: true },
     ],
   },
