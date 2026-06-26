@@ -13,6 +13,21 @@ function cfBase(appId: string) {
     : "https://api.cashfree.com/pg";
 }
 
+function env(name: string) {
+  return Deno.env.get(name)?.trim() || "";
+}
+
+function safeCredentialMeta(appId: string, secretKey: string) {
+  const normalizedAppId = appId.trim();
+  return {
+    endpoint: cfBase(normalizedAppId),
+    app_id_prefix: normalizedAppId.slice(0, 4),
+    app_id_suffix: normalizedAppId.slice(-4),
+    app_id_length: normalizedAppId.length,
+    secret_length: secretKey.trim().length,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -22,8 +37,8 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      env("SUPABASE_URL"),
+      env("SUPABASE_ANON_KEY"),
       { global: { headers: { Authorization: authHeader } } },
     );
     const token = authHeader.replace("Bearer ", "");
@@ -43,8 +58,8 @@ Deno.serve(async (req) => {
 
     // Use service role to read plan + insert order
     const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      env("SUPABASE_URL"),
+      env("SUPABASE_SERVICE_ROLE_KEY"),
     );
     const { data: plan, error: planErr } = await admin
       .from("subscription_plans")
@@ -52,8 +67,8 @@ Deno.serve(async (req) => {
     if (planErr || !plan) return json({ error: "Plan not found" }, 404);
     if (Number(plan.price_inr) <= 0) return json({ error: "Free plan does not need payment" }, 400);
 
-    const appId = Deno.env.get("CASHFREE_APP_ID");
-    const secretKey = Deno.env.get("CASHFREE_SECRET_KEY");
+    const appId = env("CASHFREE_APP_ID");
+    const secretKey = env("CASHFREE_SECRET_KEY");
     if (!appId || !secretKey) return json({ error: "Cashfree not configured" }, 500);
 
     const cfOrderId = `BL_${business_id.slice(0, 8)}_${Date.now()}`;
@@ -69,7 +84,7 @@ Deno.serve(async (req) => {
       },
       order_meta: {
         return_url: return_url || `https://billlook.com/billing?order_id={order_id}`,
-        notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/cashfree-webhook`,
+        notify_url: `${env("SUPABASE_URL")}/functions/v1/cashfree-webhook`,
       },
       order_note: `${plan.name} plan subscription`,
       order_tags: { plan_code: plan.code, business_id },
@@ -87,8 +102,18 @@ Deno.serve(async (req) => {
     });
     const cfData = await cfRes.json();
     if (!cfRes.ok) {
-      console.error("Cashfree create order failed", cfData);
-      return json({ error: cfData.message || "Cashfree error", details: cfData }, cfRes.status);
+      console.error("Cashfree create order failed", {
+        status: cfRes.status,
+        cashfree: cfData,
+        credentials: safeCredentialMeta(appId, secretKey),
+      });
+      return json({
+        error: cfData.message || "Cashfree error",
+        details: cfData,
+        hint: cfRes.status === 401
+          ? "Cashfree rejected the production credentials. Re-copy Production App ID and Secret Key exactly; the function now trims hidden spaces/new lines and logs safe key metadata."
+          : undefined,
+      }, cfRes.status);
     }
 
     await admin.from("subscription_orders").insert({
