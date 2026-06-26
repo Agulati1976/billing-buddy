@@ -1,81 +1,103 @@
-## Cashfree Payment Gateway (Orders API) — SaaS Plan Billing
 
-Since Cashfree Subscriptions isn't activated, we'll use **Cashfree PG Orders API**. Each plan renewal = a fresh "order" the shopkeeper pays. We auto-extend their plan validity on successful payment. For "recurring", we'll send reminders + one-click renew (no auto-debit, since that requires Subscriptions).
+# Proper SaaS Admin Panel Overhaul
 
----
+Transform the admin panel so it behaves like a real SaaS control center — full plan management, customer billing, reminders, invoices, and SaaS-revenue-focused payments view.
 
-### 1. Database (migration)
+## 1. Plans Management (full CRUD + features)
 
-**`subscription_plans`** — admin-configurable plans
-- name, code (FREE / PRO / PREMIUM), price_inr, duration_days, features (jsonb), is_active, sort_order
+Rebuild `src/pages/admin/AdminPlans.tsx`:
+- Table of all plans with: name, price, duration (days), max users, max invoices, max items, features list, active toggle.
+- "New Plan" + "Edit Plan" dialog where admin can change:
+  - Price (₹), billing cycle (days)
+  - Plan name, description, tagline
+  - Feature toggles (POS, multi-branch, barcode, batch tracking, online orders, quick invoices, party ledger, reports export, custom branding, priority support, etc.)
+  - Limits (users, invoices/month, items, branches, storage)
+- "Delete plan" with safety check (only if no active subscribers).
+- All edits saved to `subscription_plans` table (already exists) — extend it with `features jsonb`, `limits jsonb`, `tagline`, `is_active`, `sort_order`.
 
-**`business_subscriptions`** — current plan state per business
-- business_id (unique), plan_id, status (active/expired/cancelled), started_at, expires_at, last_order_id
+## 2. SaaS Payments Tab (rename + repurpose)
 
-**`subscription_orders`** — every Cashfree order created
-- business_id, plan_id, cf_order_id, cf_payment_id, order_amount, order_currency, status (CREATED/PAID/FAILED/DROPPED), payment_method, raw_response (jsonb)
+Currently `AdminPayments.tsx` shows shopkeeper customer payments. Replace it:
+- Rename in sidebar to **"SaaS Revenue"**.
+- New `AdminSaasPayments.tsx` reads from `subscription_orders` + `business_subscriptions`.
+- Shows: every payment shopkeepers made to OUR app (plan purchases/renewals).
+- Columns: Date, Business name, Owner email, Plan, Amount, Cashfree order id, Status, Method.
+- Filters: status (paid/failed/pending), date range, plan.
+- KPIs: Today's revenue, MTD, YTD, MRR, ARR, Active paying customers, Churn this month.
+- CSV export.
 
-**`cashfree_webhook_events`** — raw webhook audit log
-- event_type, cf_order_id, signature_verified, payload (jsonb), processed
+Keep the old shopkeeper-payment view (if useful) only inside per-business drill-down — not as a top-level admin tab.
 
-Seed 3 default plans (Free / Pro ₹499/mo / Premium ₹1499/mo).
+## 3. Customer Invoices (admin issues invoices to shopkeepers)
 
----
+New `src/pages/admin/AdminCustomerInvoices.tsx` + table `saas_invoices`:
+- Admin can generate an invoice for any shopkeeper (auto-numbered `BL-INV-0001`).
+- Fields: business, plan/line items, amount, GST %, due date, notes.
+- Status: draft, sent, paid, overdue, cancelled.
+- Auto-link to a `subscription_order` once paid (via Cashfree link or manual mark-paid).
+- "Download PDF" + "Email to customer" actions.
+- Used for manual deals, custom pricing, enterprise quotes.
 
-### 2. Edge Functions
+## 4. Reminders to Customers
 
-| Function | Purpose |
-|---|---|
-| `cashfree-create-order` | Creates Cashfree order, returns `payment_session_id` for frontend SDK |
-| `cashfree-webhook` | Receives + verifies signature, updates order & extends `expires_at` |
-| `cashfree-verify-order` | Manual fallback: poll order status by `cf_order_id` |
+New `src/pages/admin/AdminReminders.tsx` + edge function `send-saas-reminder`:
+- Admin picks a business (or bulk: "all expiring in 7 days", "all overdue").
+- Choose channel: Email (Resend) and/or WhatsApp link.
+- Template picker: Renewal due, Payment overdue, Trial ending, Custom message.
+- Variables auto-filled: {business_name}, {plan}, {expiry_date}, {amount}, {pay_link}.
+- Log every reminder in `saas_reminders` table (who, when, channel, template, status).
+- "Auto-reminder rules": toggle to auto-send 7/3/1 days before expiry.
 
-Uses secrets already set up: `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_WEBHOOK_SECRET`.
+## 5. Users Tab Enhancements
 
-Webhook URL to register in Cashfree (PG → Developers → Webhooks):
-```
-https://qbxombgwzqqumubpaogo.supabase.co/functions/v1/cashfree-webhook
-```
-Events to subscribe (from your screenshot): **success payment**, **failed payment**, **user dropped payment**, **refund**.
+Polish `AdminUsers.tsx`:
+- Add per-row quick actions: change plan, extend validity (+7/+30/+90 days), send reminder, generate invoice, view ledger, ban/unban.
+- Add bulk select + bulk actions.
+- Show plan badge, expiry countdown, lifetime value, last login.
 
----
+## 6. Overview Polish
 
-### 3. Frontend
+`AdminOverview.tsx`:
+- Add SaaS-specific KPIs: MRR, ARR, Active subscribers, Trial users, Churned this month, ARPU, LTV.
+- Top plans by revenue chart.
+- Recent SaaS payments + recent signups side by side.
+- "Expiring this week" alert card with one-click reminder.
 
-**`src/pages/Billing.tsx`** (shopkeeper)
-- Current plan card with expiry date + days remaining
-- Plan comparison grid (Free / Pro / Premium)
-- "Upgrade" / "Renew" buttons → calls `cashfree-create-order` → opens Cashfree Checkout via SDK (`@cashfreepayments/cashfree-js`)
-- Payment history table
+## 7. Sidebar Reorganisation
 
-**`src/pages/admin/AdminSubscriptions.tsx`**
-- All businesses with plan, expiry, MRR
-- Manually override plan, view all orders
+`src/pages/Admin.tsx` sidebar order:
+1. Overview
+2. Users / Businesses
+3. Plans
+4. SaaS Revenue (was Payments)
+5. Customer Invoices (new)
+6. Reminders (new)
+7. Subscriptions
+8. Audit Log
 
-**Sidebar entry**: "Billing & Plans" for shopkeepers.
+## Technical Details
 
-**Renewal reminder**: small banner inside app when expiry ≤ 7 days.
+**New tables (migration):**
+- `saas_invoices` — admin-issued invoices to shopkeepers (business_id, invoice_no, line_items jsonb, subtotal, gst, total, status, due_date, paid_at, cashfree_order_id, notes).
+- `saas_reminders` — reminder history (business_id, type, channel, template, subject, body, sent_at, sent_by, status, error).
+- `saas_reminder_rules` — auto-reminder config (days_before, template_id, channel, enabled).
 
----
+**Extend `subscription_plans`:**
+- Add `features jsonb default '{}'`, `limits jsonb default '{}'`, `tagline text`, `sort_order int`, `is_active bool default true`.
 
-### 4. Flow
+**New edge functions:**
+- `send-saas-reminder` — sends email via Resend / generates WhatsApp link, logs to `saas_reminders`.
+- `saas-invoice-pdf` — renders invoice PDF (or returns HTML for client-side print).
+- `saas-cron-reminders` — daily cron checks expiring subs and auto-sends per rules.
 
-```
-Shopkeeper clicks "Upgrade to Pro"
-    → edge fn creates Cashfree order, returns payment_session_id
-    → frontend opens Cashfree Checkout
-    → user pays
-    → Cashfree fires webhook → we verify signature, mark order PAID,
-      extend business_subscriptions.expires_at by plan.duration_days
-    → frontend polls verify-order for instant UI update
-```
+**Secrets needed:**
+- `RESEND_API_KEY` (for sending reminder emails) — will request via add_secret.
 
----
+**Frontend files touched/created:**
+- New: `AdminPlans.tsx` (rewrite), `AdminSaasPayments.tsx`, `AdminCustomerInvoices.tsx`, `AdminReminders.tsx`, `AdminInvoiceDialog.tsx`, `ReminderDialog.tsx`, `PlanEditorDialog.tsx`.
+- Update: `Admin.tsx` (routes + sidebar), `AdminOverview.tsx`, `AdminUsers.tsx`.
 
-### Technical notes
-- Production endpoint: `https://api.cashfree.com/pg/orders`
-- API version header: `x-api-version: 2023-08-01`
-- Webhook signature: HMAC-SHA256 of `timestamp + rawBody`, base64, compared to `x-webhook-signature` header
-- No auto-debit — shopkeepers manually renew (with reminders). Future upgrade path: switch to Cashfree Subscriptions once activated, without breaking existing data.
-
-Approve and I'll start the migration + edge functions.
+## Out of scope (ask if needed)
+- Coupon/discount codes
+- Refund processing from admin UI (currently must be done in Cashfree dashboard)
+- Multi-currency
