@@ -48,8 +48,33 @@ export default function Invoices({ type }: Props) {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<string>("cash");
   const [paySaving, setPaySaving] = useState(false);
+  const [shareRow, setShareRow] = useState<InvoiceRow | null>(null);
+  const [shareView, setShareView] = useState<"invoice" | "pos">("invoice");
 
   const canPay = type === "sale" || type === "purchase" || type === "non_inventory";
+  const canShare = type === "sale" || type === "non_inventory" || type === "quotation";
+
+  const shareUrl = (r: InvoiceRow) =>
+    `${window.location.origin}/i/${r.id}?view=${shareView}`;
+  const shareMessage = (r: InvoiceRow) => {
+    const biz = current?.name ?? "";
+    return `Hi${r.parties?.name ? " " + r.parties.name : ""}, here is your ${shareView === "pos" ? "receipt" : "invoice"} ${r.invoice_number} for ${formatINR(Number(r.total_amount))}${Number(r.balance_amount) > 0 ? ` (Balance ${formatINR(Number(r.balance_amount))})` : ""}.\n\nView: ${shareUrl(r)}\n\n— ${biz}`;
+  };
+  const openWhatsApp = (r: InvoiceRow) => {
+    const phone = (r.parties?.phone ?? "").replace(/[^\d]/g, "");
+    const text = encodeURIComponent(shareMessage(r));
+    window.open(phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`, "_blank");
+  };
+  const openEmail = (r: InvoiceRow) => {
+    const subject = encodeURIComponent(`${shareView === "pos" ? "Receipt" : "Invoice"} ${r.invoice_number}${current?.name ? " — " + current.name : ""}`);
+    const body = encodeURIComponent(shareMessage(r));
+    const to = r.parties?.email ?? "";
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  };
+  const copyLink = async (r: InvoiceRow) => {
+    try { await navigator.clipboard.writeText(shareUrl(r)); toast.success("Link copied"); }
+    catch { toast.error("Couldn't copy"); }
+  };
 
   const openPay = (r: InvoiceRow, full: boolean) => {
     setPayRow(r);
