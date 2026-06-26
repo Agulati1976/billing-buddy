@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       order_tags: { plan_code: plan.code, business_id },
     };
 
-    const cfRes = await fetch(`${CF_BASE}/orders`, {
+    const cfRes = await fetch(`${cfBase(appId)}/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
