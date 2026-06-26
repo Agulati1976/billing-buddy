@@ -27,10 +27,11 @@ function env(name: string) {
   return Deno.env.get(name)?.trim() || "";
 }
 
-function safeCredentialMeta(appId: string, secretKey: string) {
+function safeCredentialMeta(mode: "test" | "production", appId: string, secretKey: string) {
   const normalizedAppId = appId.trim();
   return {
-    endpoint: cfBase(normalizedAppId),
+    mode,
+    endpoint: cfBase(mode, normalizedAppId),
     app_id_prefix: normalizedAppId.slice(0, 4),
     app_id_suffix: normalizedAppId.slice(-4),
     app_id_length: normalizedAppId.length,
