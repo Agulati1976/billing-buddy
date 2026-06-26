@@ -149,9 +149,14 @@ export default function Items() {
                 </div>
                 <div className="flex flex-col gap-1">
                   {i.type === "product" && (
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
-                      <ArrowUpDown className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                        <ArrowUpDown className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Stock history" onClick={() => { setHistoryItem(i); setHistoryOpen(true); }}>
+                        <History className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(i); setDialogOpen(true); }}>
                     <Pencil className="h-4 w-4" />
