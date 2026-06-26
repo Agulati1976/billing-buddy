@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     const [{ data: items }, { data: business }, { data: party }, { data: settings }] = await Promise.all([
       supabase.from("invoice_items").select("*").eq("invoice_id", id),
-      supabase.from("businesses").select("name, gstin, phone, email, address_line1, address_line2, city, state, state_code, pincode, logo_url").eq("id", invoice.business_id).maybeSingle(),
+      supabase.from("businesses").select("name, gstin, phone, email, address, state, state_code, pincode, logo_url").eq("id", invoice.business_id).maybeSingle(),
       invoice.party_id
         ? supabase.from("parties").select("name, gstin, phone, email, billing_address, shipping_address, state, state_code").eq("id", invoice.party_id).maybeSingle()
         : Promise.resolve({ data: null }),
