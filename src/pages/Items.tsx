@@ -8,9 +8,10 @@ import { SearchBar } from "@/components/SearchBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown, ScanLine } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown, ScanLine, History } from "lucide-react";
 import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { StockAdjustDialog } from "@/components/StockAdjustDialog";
+import { StockHistoryDialog } from "@/components/StockHistoryDialog";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
@@ -26,6 +27,8 @@ export default function Items() {
   const [presetBarcode, setPresetBarcode] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<ItemRow | null>(null);
   const [adjustItem, setAdjustItem] = useState<ItemRow | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItem, setHistoryItem] = useState<ItemRow | null>(null);
 
   const handleScan = (code: string) => {
     const trimmed = code.trim();
@@ -146,9 +149,14 @@ export default function Items() {
                 </div>
                 <div className="flex flex-col gap-1">
                   {i.type === "product" && (
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
-                      <ArrowUpDown className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                        <ArrowUpDown className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Stock history" onClick={() => { setHistoryItem(i); setHistoryOpen(true); }}>
+                        <History className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(i); setDialogOpen(true); }}>
                     <Pencil className="h-4 w-4" />
@@ -216,10 +224,16 @@ export default function Items() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {i.type === "product" && (
-                          <Button size="icon" variant="ghost" title="Adjust stock"
-                            onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
-                            <ArrowUpDown className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button size="icon" variant="ghost" title="Adjust stock"
+                              onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                              <ArrowUpDown className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" title="Stock history"
+                              onClick={() => { setHistoryItem(i); setHistoryOpen(true); }}>
+                              <History className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                         <Button size="icon" variant="ghost" onClick={() => { setEditing(i); setDialogOpen(true); }}>
                           <Pencil className="h-4 w-4" />
@@ -239,6 +253,7 @@ export default function Items() {
 
       <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} presetBarcode={presetBarcode} />
       <StockAdjustDialog open={adjustOpen} onOpenChange={setAdjustOpen} item={adjustItem} onSaved={load} />
+      <StockHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} item={historyItem} />
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScan} />
     </div>
   );
