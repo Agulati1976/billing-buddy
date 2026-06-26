@@ -313,15 +313,15 @@ export default function InvoiceEditor({ type }: Props) {
     const v = Number(extraDiscount) || 0;
     let manual = v;
     if (extraDiscountMode === "pct") {
-      const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0 });
+      const baseLines = computeInvoice(lines, isInterState, { isGst, extraDiscount: 0, pricesIncludeTax });
       manual = (baseLines.taxable_total * v) / 100;
     }
     return manual + redeemValue;
-  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst, redeemValue]);
+  }, [extraDiscount, extraDiscountMode, lines, isInterState, isGst, pricesIncludeTax, redeemValue]);
 
   const totals = useMemo(
-    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue }),
-    [lines, isInterState, isGst, extraDiscountValue]
+    () => computeInvoice(lines, isInterState, { isGst, extraDiscount: extraDiscountValue, pricesIncludeTax }),
+    [lines, isInterState, isGst, extraDiscountValue, pricesIncludeTax]
   );
 
   const earnedPoints = useMemo(() => {
