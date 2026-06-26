@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "@/components/SearchBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw, Share2, MessageCircle, Mail, Copy, Receipt } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
