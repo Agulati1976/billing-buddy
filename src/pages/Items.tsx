@@ -253,6 +253,7 @@ export default function Items() {
 
       <ItemDialog open={dialogOpen} onOpenChange={setDialogOpen} item={editing} onSaved={load} presetBarcode={presetBarcode} />
       <StockAdjustDialog open={adjustOpen} onOpenChange={setAdjustOpen} item={adjustItem} onSaved={load} />
+      <StockHistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} item={historyItem} />
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScan} />
     </div>
   );
