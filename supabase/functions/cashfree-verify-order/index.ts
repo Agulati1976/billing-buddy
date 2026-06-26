@@ -5,20 +5,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-function cfBase(appId: string) {
+function cfBase(mode: "test" | "production", appId: string) {
+  if (mode === "test") return "https://sandbox.cashfree.com/pg";
   return appId.toUpperCase().startsWith("TEST")
     ? "https://sandbox.cashfree.com/pg"
     : "https://api.cashfree.com/pg";
+}
+function getCreds(mode: "test" | "production") {
+  if (mode === "test") {
+    return {
+      appId: env("CASHFREE_TEST_APP_ID") || env("CASHFREE_APP_ID"),
+      secret: env("CASHFREE_TEST_SECRET_KEY") || env("CASHFREE_SECRET_KEY"),
+    };
+  }
+  return { appId: env("CASHFREE_APP_ID"), secret: env("CASHFREE_SECRET_KEY") };
 }
 
 function env(name: string) {
   return Deno.env.get(name)?.trim() || "";
 }
 
-function safeCredentialMeta(appId: string, secretKey: string) {
+function safeCredentialMeta(mode: "test" | "production", appId: string, secretKey: string) {
   const normalizedAppId = appId.trim();
   return {
-    endpoint: cfBase(normalizedAppId),
+    mode,
+    endpoint: cfBase(mode, normalizedAppId),
     app_id_prefix: normalizedAppId.slice(0, 4),
     app_id_suffix: normalizedAppId.slice(-4),
     app_id_length: normalizedAppId.length,
