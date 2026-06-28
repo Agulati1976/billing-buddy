@@ -58,6 +58,11 @@ export default function Dashboard() {
     [preset, customFrom, customTo]
   );
 
+  // Expiry filter (days window)
+  const [expiryDays, setExpiryDays] = useState<number>(30);
+  const [expiryCustom, setExpiryCustom] = useState<string>("30");
+
+
   useEffect(() => {
     if (!current) return;
     (async () => {
