@@ -70,8 +70,9 @@ export default function Dashboard() {
       const since = range.from ? format(range.from, "yyyy-MM-dd") : null;
       const until = range.to ? format(range.to, "yyyy-MM-dd") : null;
 
-      const in30 = new Date(); in30.setDate(in30.getDate() + 30);
-      const in30Str = in30.toISOString().slice(0, 10);
+      const inN = new Date(); inN.setDate(inN.getDate() + Math.max(0, expiryDays));
+      const inNStr = inN.toISOString().slice(0, 10);
+
 
       let rangeQuery = supabase.from("invoices")
         .select("total_amount, party_id, parties(name)")
