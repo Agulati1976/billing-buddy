@@ -222,23 +222,70 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <Package className="h-5 w-5 text-warning" />
-            <h2 className="font-semibold">Expiring Batches (next 30 days)</h2>
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-warning" />
+              <h2 className="font-semibold">Expiring Batches · next {expiryDays} day{expiryDays === 1 ? "" : "s"}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={[7, 15, 30, 60, 90, 180].includes(expiryDays) ? String(expiryDays) : "custom"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "custom") return;
+                  const n = Number(v);
+                  setExpiryDays(n);
+                  setExpiryCustom(String(n));
+                }}
+              >
+                <option value="7">Next 7 days</option>
+                <option value="15">Next 15 days</option>
+                <option value="30">Next 30 days</option>
+                <option value="60">Next 60 days</option>
+                <option value="90">Next 90 days</option>
+                <option value="180">Next 180 days</option>
+                <option value="custom">Custom…</option>
+              </select>
+              {![7, 15, 30, 60, 90, 180].includes(expiryDays) && (
+                <input
+                  type="number"
+                  min={1}
+                  className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
+                  value={expiryCustom}
+                  onChange={(e) => {
+                    setExpiryCustom(e.target.value);
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n) && n > 0) setExpiryDays(Math.floor(n));
+                  }}
+                  placeholder="Days"
+                />
+              )}
+              {[7, 15, 30, 60, 90, 180].includes(expiryDays) && (
+                <button
+                  type="button"
+                  className="h-9 px-2 text-xs rounded-md border border-input hover:bg-muted"
+                  onClick={() => setExpiryDays(NaN as unknown as number)}
+                  title="Set custom days"
+                  style={{ display: "none" }}
+                />
+              )}
+            </div>
           </div>
           {stats && stats.expiringBatches.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-80 overflow-auto">
               {stats.expiringBatches.map((b) => (
                 <li key={b.id} className="flex justify-between items-center text-sm py-1">
-                  <span>{b.item} <span className="text-muted-foreground">· batch {b.batch_number}</span></span>
-                  <span className="text-warning num">{b.quantity} · exp {b.expiry_date}</span>
+                  <span className="truncate pr-2">{b.item} <span className="text-muted-foreground">· batch {b.batch_number}</span></span>
+                  <span className="text-warning num shrink-0">{b.quantity} · exp {b.expiry_date}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No batches expiring in the next 30 days.</p>
+            <p className="text-sm text-muted-foreground">No batches expiring in the next {expiryDays} day{expiryDays === 1 ? "" : "s"}.</p>
           )}
         </Card>
+
       </div>
     </div>
   );
