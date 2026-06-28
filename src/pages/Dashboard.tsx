@@ -58,6 +58,11 @@ export default function Dashboard() {
     [preset, customFrom, customTo]
   );
 
+  // Expiry filter (days window)
+  const [expiryDays, setExpiryDays] = useState<number>(30);
+  const [expiryCustom, setExpiryCustom] = useState<string>("30");
+
+
   useEffect(() => {
     if (!current) return;
     (async () => {
@@ -65,8 +70,9 @@ export default function Dashboard() {
       const since = range.from ? format(range.from, "yyyy-MM-dd") : null;
       const until = range.to ? format(range.to, "yyyy-MM-dd") : null;
 
-      const in30 = new Date(); in30.setDate(in30.getDate() + 30);
-      const in30Str = in30.toISOString().slice(0, 10);
+      const inN = new Date(); inN.setDate(inN.getDate() + Math.max(0, expiryDays));
+      const inNStr = inN.toISOString().slice(0, 10);
+
 
       let rangeQuery = supabase.from("invoices")
         .select("total_amount, party_id, parties(name)")
@@ -81,7 +87,7 @@ export default function Dashboard() {
         supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0),
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
         supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0),
-        supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", in30Str).order("expiry_date").limit(10),
+        supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
 
       const todaySales = (todayR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
@@ -117,7 +123,7 @@ export default function Dashboard() {
 
       setStats({ todaySales, rangeSales, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id, range.from, range.to]);
+  }, [current?.id, range.from, range.to, expiryDays]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
@@ -216,23 +222,70 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <Package className="h-5 w-5 text-warning" />
-            <h2 className="font-semibold">Expiring Batches (next 30 days)</h2>
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-warning" />
+              <h2 className="font-semibold">Expiring Batches · next {expiryDays} day{expiryDays === 1 ? "" : "s"}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={[7, 15, 30, 60, 90, 180].includes(expiryDays) ? String(expiryDays) : "custom"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "custom") return;
+                  const n = Number(v);
+                  setExpiryDays(n);
+                  setExpiryCustom(String(n));
+                }}
+              >
+                <option value="7">Next 7 days</option>
+                <option value="15">Next 15 days</option>
+                <option value="30">Next 30 days</option>
+                <option value="60">Next 60 days</option>
+                <option value="90">Next 90 days</option>
+                <option value="180">Next 180 days</option>
+                <option value="custom">Custom…</option>
+              </select>
+              {![7, 15, 30, 60, 90, 180].includes(expiryDays) && (
+                <input
+                  type="number"
+                  min={1}
+                  className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
+                  value={expiryCustom}
+                  onChange={(e) => {
+                    setExpiryCustom(e.target.value);
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n) && n > 0) setExpiryDays(Math.floor(n));
+                  }}
+                  placeholder="Days"
+                />
+              )}
+              {[7, 15, 30, 60, 90, 180].includes(expiryDays) && (
+                <button
+                  type="button"
+                  className="h-9 px-2 text-xs rounded-md border border-input hover:bg-muted"
+                  onClick={() => setExpiryDays(NaN as unknown as number)}
+                  title="Set custom days"
+                  style={{ display: "none" }}
+                />
+              )}
+            </div>
           </div>
           {stats && stats.expiringBatches.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-80 overflow-auto">
               {stats.expiringBatches.map((b) => (
                 <li key={b.id} className="flex justify-between items-center text-sm py-1">
-                  <span>{b.item} <span className="text-muted-foreground">· batch {b.batch_number}</span></span>
-                  <span className="text-warning num">{b.quantity} · exp {b.expiry_date}</span>
+                  <span className="truncate pr-2">{b.item} <span className="text-muted-foreground">· batch {b.batch_number}</span></span>
+                  <span className="text-warning num shrink-0">{b.quantity} · exp {b.expiry_date}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No batches expiring in the next 30 days.</p>
+            <p className="text-sm text-muted-foreground">No batches expiring in the next {expiryDays} day{expiryDays === 1 ? "" : "s"}.</p>
           )}
         </Card>
+
       </div>
     </div>
   );
