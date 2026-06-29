@@ -358,7 +358,7 @@ export default function InvoiceEditor({ type }: Props) {
       if (targetIdx !== null) {
         const isPurchase = type === "purchase" || type === "purchase_return";
         updateLine(targetIdx, {
-          item_id: it.id, item_name: it.name, hsn_code: it.hsn_code, unit: it.unit,
+          item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code, unit: it.unit,
           price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
           tax_rate: Number(it.tax_rate), batch_id: null,
         });
