@@ -759,6 +759,28 @@ export default function InvoiceEditor({ type }: Props) {
       });
     }
 
+    // Record payment rows (non-credit splits only) for new sale/purchase
+    if (supportsPayment && newPaid > 0) {
+      let remaining = computed.total_amount;
+      const direction = type === "sale" ? "in" : "out";
+      const payRows = [] as any[];
+      for (const s of paySplits) {
+        if (s.method === "credit") continue;
+        const amt = Math.min(Number(s.amount) || 0, remaining);
+        if (amt <= 0) continue;
+        remaining -= amt;
+        payRows.push({
+          business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
+          direction, method: s.method, amount: amt,
+          payment_date: date,
+          notes: `Recorded with invoice · ${PAY_LABEL[s.method]}`,
+          created_by: user.id,
+        });
+        if (remaining <= 0) break;
+      }
+      if (payRows.length) await omInsertMany("payments", payRows);
+    }
+
     setSaving(false);
     if (liRes.error) { toast.error((liRes.error as any).message ?? "Failed"); return; }
     toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
