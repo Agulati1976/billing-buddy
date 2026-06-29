@@ -226,8 +226,11 @@ export default function Pos() {
         number = `${number}-O${Date.now().toString().slice(-5)}`;
       }
 
-      // POS sale is created as UNPAID — shopkeeper records payment from the Payments page.
-      const status: "unpaid" = "unpaid";
+      // Compute status from actual cash received (credit stays as outstanding balance)
+      const paidNow = Math.min(recordedPaid, totals.total_amount);
+      const balanceDue = Math.max(0, totals.total_amount - paidNow);
+      const status: "paid" | "partial" | "unpaid" =
+        balanceDue <= 0 ? "paid" : paidNow > 0 ? "partial" : "unpaid";
 
       const invoiceId = crypto.randomUUID();
       const invRes = await omInsert("invoices", {
@@ -239,7 +242,7 @@ export default function Pos() {
         extra_discount: totals.extra_discount, tax_amount: totals.tax_amount,
         cgst_amount: totals.cgst_amount, sgst_amount: totals.sgst_amount, igst_amount: totals.igst_amount,
         round_off: totals.round_off, total_amount: totals.total_amount,
-        paid_amount: 0, balance_amount: totals.total_amount, status,
+        paid_amount: paidNow, balance_amount: balanceDue, status,
         party_state_code: party?.state_code ?? null, created_by: user.id,
         pos_session_id: session?.id ?? null,
       });
@@ -255,12 +258,30 @@ export default function Pos() {
       const liRes = await omInsertMany("invoice_items", lineRows);
       if (liRes.error) throw liRes.error;
 
-      // NOTE: Payments are no longer auto-recorded from POS.
-      // Cashier must capture the payment from the Payments module.
+      // Record one payment row per non-credit split, capped at total
+      const paySplits = splits
+        .filter((s) => s.method !== "credit" && Number(s.amount) > 0)
+        .map((s) => ({ ...s, amount: Number(s.amount) }));
+      let remaining = totals.total_amount;
+      const payRows = [] as any[];
+      for (const s of paySplits) {
+        if (remaining <= 0) break;
+        const amt = Math.min(s.amount, remaining);
+        remaining -= amt;
+        payRows.push({
+          business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
+          direction: "in", method: toDbMethod(s.method), amount: amt,
+          payment_date: new Date().toISOString().slice(0, 10),
+          notes: creditAmt > 0 ? `POS · ${PAYMENT_LABEL[s.method]} (credit: Rs.${creditAmt.toFixed(2)})` : `POS · ${PAYMENT_LABEL[s.method]}`,
+          created_by: user.id,
+        });
+      }
+      if (payRows.length) await omInsertMany("payments", payRows);
 
       toast.success(queuedAny || liRes.queued ? `Sale ${number} saved offline — will sync` : `Sale ${number} completed`);
 
       // Print thermal
+      const methodSummary = splits.filter((s) => Number(s.amount) > 0).map((s) => `${PAYMENT_LABEL[s.method]}: Rs.${Number(s.amount).toFixed(2)}`).join(" + ");
       const receipt = await generateThermalReceipt(
         { name: current.name, gstin: current.gstin, phone: current.phone, address: current.address },
         {
@@ -273,8 +294,8 @@ export default function Pos() {
           })),
           subtotal: totals.subtotal, discount_amount: totals.discount_amount,
           tax_amount: totals.tax_amount, round_off: totals.round_off,
-          total_amount: totals.total_amount, paid_amount: 0,
-          balance_amount: totals.total_amount, payment_method: "Unpaid",
+          total_amount: totals.total_amount, paid_amount: paidNow,
+          balance_amount: balanceDue, payment_method: methodSummary || null,
         },
         upiSettings ?? undefined,
       );
