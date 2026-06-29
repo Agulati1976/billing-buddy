@@ -36,7 +36,7 @@ const SERIES_KEYS = ["Sales", "Purchases", "Expenses", "Profit"] as const;
 export function DashboardChart() {
   const { current } = useBusiness();
   const [kind, setKind] = useState<ChartKind>("bar");
-  const [preset, setPreset] = useState<DatePreset>("last_30");
+  const [preset, setPreset] = useState<DatePreset>("today");
   const [customFrom, setCustomFrom] = useState<Date>(startOfDay(subDays(new Date(), 29)));
   const [customTo, setCustomTo] = useState<Date>(new Date());
   const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
