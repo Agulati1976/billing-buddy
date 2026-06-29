@@ -35,9 +35,16 @@ interface Party { id: string; name: string; phone: string | null; state_code: st
 interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; }
 
 
-type PaymentMethod = "cash" | "card" | "upi" | "bank_transfer" | "cheque" | "other";
+type PaymentMethod = "cash" | "card" | "upi" | "bank_transfer" | "cheque" | "other" | "credit";
 
 interface Split { method: PaymentMethod; amount: number; }
+
+const PAYMENT_LABEL: Record<PaymentMethod, string> = {
+  cash: "Cash", upi: "UPI", card: "Card", bank_transfer: "Bank Transfer",
+  cheque: "Cheque", other: "Other", credit: "Credit (Unpaid)",
+};
+const toDbMethod = (m: PaymentMethod): "cash" | "bank" | "upi" | "cheque" | "card" | "other" =>
+  m === "bank_transfer" ? "bank" : m === "credit" ? "other" : m;
 
 const newKey = () => Math.random().toString(36).slice(2);
 
