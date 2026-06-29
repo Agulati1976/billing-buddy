@@ -62,6 +62,11 @@ export default function InvoiceEditor({ type }: Props) {
   const [branchId, setBranchId] = useState<string>("");
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
+
+  // Payment splits (only used when creating a new sale/purchase invoice)
+  type PayMethod = "cash" | "upi" | "card" | "bank" | "cheque" | "other" | "credit";
+  const PAY_LABEL: Record<PayMethod, string> = { cash: "Cash", upi: "UPI", card: "Card", bank: "Bank Transfer", cheque: "Cheque", other: "Other", credit: "Credit (Unpaid)" };
+  const [paySplits, setPaySplits] = useState<Array<{ method: PayMethod; amount: number }>>([{ method: "credit", amount: 0 }]);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [rowScanIdx, setRowScanIdx] = useState<number | null>(null);
   const [billScanOpen, setBillScanOpen] = useState(false);
