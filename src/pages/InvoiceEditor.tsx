@@ -679,13 +679,27 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     // ==== NEW INVOICE PATH ====
+    // Compute payment split totals (only for sale/purchase — returns are auto-paid; quotations have no payment)
+    const supportsPayment = type === "sale" || type === "purchase";
+    const cashSplitTotal = supportsPayment
+      ? paySplits.filter((s) => s.method !== "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0)
+      : 0;
+    const newPaid = isReturn ? computed.total_amount
+      : supportsPayment ? Math.min(cashSplitTotal, computed.total_amount)
+      : 0;
+    const newBalance = isReturn ? 0 : Math.max(0, computed.total_amount - newPaid);
+    let newStatus: any = status;
+    if (supportsPayment) {
+      newStatus = newBalance <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+    }
+
     const invoiceId = crypto.randomUUID();
     const invRes = await omInsert("invoices", {
       id: invoiceId,
       business_id: current.id,
       party_id: partyId || null,
       type,
-      status,
+      status: newStatus,
       invoice_number: number.trim(),
       invoice_date: date,
       due_date: dueDate || null,
@@ -703,12 +717,14 @@ export default function InvoiceEditor({ type }: Props) {
       igst_amount: computed.igst_amount,
       round_off: computed.round_off,
       total_amount: computed.total_amount,
-      paid_amount: isReturn ? computed.total_amount : 0,
-      balance_amount: isReturn ? 0 : computed.total_amount,
+      paid_amount: newPaid,
+      balance_amount: newBalance,
       notes: notes.trim() || null,
       terms: terms.trim() || null,
       created_by: user.id,
     });
+
+
 
     if (invRes.error) { setSaving(false); toast.error((invRes.error as any).message ?? "Failed"); return; }
 
