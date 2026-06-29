@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
   computeInvoice, INVOICE_TYPE_META, nextInvoiceNumber,
-  shopInvoiceBase, pickShopInvoiceNumber,
+  shopInvoiceBase, pickShopInvoiceNumber, composeItemName,
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
