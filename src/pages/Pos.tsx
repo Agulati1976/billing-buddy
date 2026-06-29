@@ -689,6 +689,7 @@ export default function Pos() {
                       <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                       <SelectItem value="cheque">Cheque</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="credit">Credit (Unpaid)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -701,12 +702,22 @@ export default function Pos() {
                 </Button>
               </div>
             ))}
-            <Button variant="outline" size="sm" onClick={() => setSplits((arr) => [...arr, { method: "cash", amount: Math.max(0, totals.total_amount - totalPaid) }])}>
-              <Plus className="h-4 w-4 mr-1" /> Add split
-            </Button>
-            <div className="flex justify-between text-sm border-t pt-2">
-              <span>Tendered</span><span className="font-medium">Rs.{totalPaid.toFixed(2)}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSplits((arr) => [...arr, { method: "cash", amount: Math.max(0, totals.total_amount - totalPaid) }])}>
+                <Plus className="h-4 w-4 mr-1" /> Add split
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setSplits((arr) => [...arr, { method: "credit", amount: Math.max(0, totals.total_amount - totalPaid) }])}>
+                <Plus className="h-4 w-4 mr-1" /> Add credit
+              </Button>
             </div>
+            <div className="flex justify-between text-sm border-t pt-2">
+              <span>Cash / Card / UPI received</span><span className="font-medium">Rs.{cashPaid.toFixed(2)}</span>
+            </div>
+            {creditAmt > 0 && (
+              <div className="flex justify-between text-sm">
+                <span>On credit (unpaid)</span><span className="font-medium text-amber-600">Rs.{creditAmt.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span>{change >= 0 ? "Change" : "Balance due"}</span>
               <span className={`font-semibold ${change >= 0 ? "text-success" : "text-danger"}`}>
