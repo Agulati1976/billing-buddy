@@ -32,7 +32,7 @@ import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; }
-interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
 interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
 
 export default function InvoiceEditor({ type }: Props) {
