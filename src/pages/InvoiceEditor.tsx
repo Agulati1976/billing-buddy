@@ -339,7 +339,7 @@ export default function InvoiceEditor({ type }: Props) {
         return ls.map((l, i) => i === existingIdx ? { ...l, quantity: Number(l.quantity) + 1 } : l);
       }
       const newLine: InvoiceLineInput = {
-        item_id: it.id, item_name: it.name, hsn_code: it.hsn_code,
+        item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
         quantity: 1, unit: it.unit,
         price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
         discount_pct: 0, tax_rate: Number(it.tax_rate),
