@@ -87,11 +87,11 @@ export default function Dashboard() {
       if (since) rangeQuery = rangeQuery.gte("invoice_date", since);
       if (until) rangeQuery = rangeQuery.lte("invoice_date", until);
 
+      // Outstanding "as of" the end of the selected range — include ALL unpaid
+      // invoices issued on or before `until` (ignore lower bound so old dues still show).
       let recvQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gt("balance_amount", 0);
-      if (since) recvQuery = recvQuery.gte("invoice_date", since);
       if (until) recvQuery = recvQuery.lte("invoice_date", until);
       let payQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0);
-      if (since) payQuery = payQuery.gte("invoice_date", since);
       if (until) payQuery = payQuery.lte("invoice_date", until);
 
       const [todayR, rangeR, recvR, payR, recentR, lowR, expR] = await Promise.all([
