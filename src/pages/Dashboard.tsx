@@ -208,9 +208,52 @@ export default function Dashboard() {
         </Card>
 
         <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center gap-2 mb-4">
-            <Package className="h-5 w-5 text-warning" />
-            <h2 className="font-semibold">Low Stock Alerts</h2>
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-warning" />
+              <h2 className="font-semibold">Low Stock Alerts · last {lowDays} day{lowDays === 1 ? "" : "s"}</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={lowIsCustom ? "custom" : String(lowDays)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "custom") {
+                    setLowIsCustom(true);
+                    const n = Number(lowCustom);
+                    if (Number.isFinite(n) && n > 0) setLowDays(Math.floor(n));
+                    return;
+                  }
+                  setLowIsCustom(false);
+                  const n = Number(v);
+                  setLowDays(n);
+                  setLowCustom(String(n));
+                }}
+              >
+                <option value="7">Last 7 days</option>
+                <option value="15">Last 15 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="60">Last 60 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="180">Last 180 days</option>
+                <option value="custom">Custom…</option>
+              </select>
+              {lowIsCustom && (
+                <input
+                  type="number"
+                  min={1}
+                  className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
+                  value={lowCustom}
+                  onChange={(e) => {
+                    setLowCustom(e.target.value);
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n) && n > 0) setLowDays(Math.floor(n));
+                  }}
+                  placeholder="Days"
+                />
+              )}
+            </div>
           </div>
           {stats && stats.lowStock.length > 0 ? (
             <ul className="space-y-2">
@@ -224,7 +267,7 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">All items are above their low-stock threshold.</p>
+            <p className="text-sm text-muted-foreground">No items with recent activity below their low-stock threshold.</p>
           )}
         </Card>
 
@@ -237,10 +280,16 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <select
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                value={[7, 15, 30, 60, 90, 180].includes(expiryDays) ? String(expiryDays) : "custom"}
+                value={expiryIsCustom ? "custom" : String(expiryDays)}
                 onChange={(e) => {
                   const v = e.target.value;
-                  if (v === "custom") return;
+                  if (v === "custom") {
+                    setExpiryIsCustom(true);
+                    const n = Number(expiryCustom);
+                    if (Number.isFinite(n) && n > 0) setExpiryDays(Math.floor(n));
+                    return;
+                  }
+                  setExpiryIsCustom(false);
                   const n = Number(v);
                   setExpiryDays(n);
                   setExpiryCustom(String(n));
@@ -254,7 +303,7 @@ export default function Dashboard() {
                 <option value="180">Next 180 days</option>
                 <option value="custom">Custom…</option>
               </select>
-              {![7, 15, 30, 60, 90, 180].includes(expiryDays) && (
+              {expiryIsCustom && (
                 <input
                   type="number"
                   min={1}
@@ -266,15 +315,6 @@ export default function Dashboard() {
                     if (Number.isFinite(n) && n > 0) setExpiryDays(Math.floor(n));
                   }}
                   placeholder="Days"
-                />
-              )}
-              {[7, 15, 30, 60, 90, 180].includes(expiryDays) && (
-                <button
-                  type="button"
-                  className="h-9 px-2 text-xs rounded-md border border-input hover:bg-muted"
-                  onClick={() => setExpiryDays(NaN as unknown as number)}
-                  title="Set custom days"
-                  style={{ display: "none" }}
                 />
               )}
             </div>
@@ -292,6 +332,7 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground">No batches expiring in the next {expiryDays} day{expiryDays === 1 ? "" : "s"}.</p>
           )}
         </Card>
+
 
       </div>
     </div>
