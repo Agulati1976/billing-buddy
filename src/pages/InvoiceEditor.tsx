@@ -459,7 +459,7 @@ export default function InvoiceEditor({ type }: Props) {
         }
         newLines.push({
           item_id: it!.id,
-          item_name: it!.name,
+          item_name: composeItemName(it!),
           hsn_code: ex.hsn_code || it!.hsn_code,
           quantity: Number(ex.quantity) || 1,
           unit: ex.unit || it!.unit,
