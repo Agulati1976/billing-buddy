@@ -130,7 +130,7 @@ export default function Dashboard() {
 
       setStats({ todaySales, rangeSales, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id, range.from, range.to, expiryDays]);
+  }, [current?.id, range.from, range.to, expiryDays, lowDays]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
