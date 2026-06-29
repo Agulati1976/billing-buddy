@@ -50,8 +50,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   // Date filter
-  const [preset, setPreset] = useState<DatePreset>("this_month");
-  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
+  const [preset, setPreset] = useState<DatePreset>("today");
+  const [customFrom, setCustomFrom] = useState<Date>(new Date());
   const [customTo, setCustomTo] = useState<Date>(new Date());
   const range = useMemo(
     () => rangeFor(preset, { from: customFrom, to: customTo }),
@@ -59,8 +59,15 @@ export default function Dashboard() {
   );
 
   // Expiry filter (days window)
+  const PRESET_DAYS = [7, 15, 30, 60, 90, 180];
   const [expiryDays, setExpiryDays] = useState<number>(30);
   const [expiryCustom, setExpiryCustom] = useState<string>("30");
+  const [expiryIsCustom, setExpiryIsCustom] = useState<boolean>(false);
+
+  // Low stock filter (days window — recent activity)
+  const [lowDays, setLowDays] = useState<number>(30);
+  const [lowCustom, setLowCustom] = useState<string>("30");
+  const [lowIsCustom, setLowIsCustom] = useState<boolean>(false);
 
 
   useEffect(() => {
