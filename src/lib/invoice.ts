@@ -118,6 +118,26 @@ export function computeInvoice(
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Compose a descriptive item label with brand / variant / color / SKU
+ *  so it shows on invoices, POS receipts and PDFs. */
+export function composeItemName(it: {
+  name: string;
+  brand?: string | null;
+  flavour?: string | null;
+  color?: string | null;
+  sku?: string | null;
+}): string {
+  const variant = [it.brand, it.flavour, it.color]
+    .map((v) => (v ?? "").toString().trim())
+    .filter(Boolean)
+    .join(" · ");
+  const sku = (it.sku ?? "").toString().trim();
+  let out = it.name;
+  if (variant) out += ` (${variant})`;
+  if (sku) out += ` [SKU: ${sku}]`;
+  return out;
+}
+
 export const INVOICE_TYPE_META: Record<
   InvoiceType,
   { label: string; prefix: string; color: string; route: string }

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScanLine, Plus, Minus, Trash2, Pause, Play, Printer, Download, ShoppingCart, X, UserPlus, KeyboardIcon, Power, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { computeInvoice, nextInvoiceNumber, shopInvoiceBase, pickShopInvoiceNumber, type InvoiceLineInput } from "@/lib/invoice";
+import { computeInvoice, nextInvoiceNumber, shopInvoiceBase, pickShopInvoiceNumber, composeItemName, type InvoiceLineInput } from "@/lib/invoice";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { savePdf } from "@/lib/pdfDownload";
@@ -29,6 +29,7 @@ interface Item {
   tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
   image_url?: string | null;
   allow_decimal_qty?: boolean;
+  brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
 interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; }
@@ -76,7 +77,7 @@ export default function Pos() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
     ]).then(([it, p, s]) => {
@@ -121,7 +122,7 @@ export default function Pos() {
         return prev.map((l) => l.item_id === it.id ? { ...l, quantity: Number(l.quantity) + 1 } : l);
       }
       return [...prev, {
-        _key: newKey(), item_id: it.id, item_name: it.name, hsn_code: it.hsn_code,
+        _key: newKey(), item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
         quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
         discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: null,
         max_stock: Number(it.current_stock) || 0,
@@ -274,7 +275,7 @@ export default function Pos() {
       setCart([]); setPartyId(""); setExtraDiscount("0");
       setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
       // Refresh items stock
-      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty").eq("business_id", current.id).order("name");
+      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name");
       setItems((it as any) ?? []);
     } catch (e: any) {
       toast.error(e.message || "Failed to save sale");

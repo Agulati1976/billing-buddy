@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import {
   computeInvoice, INVOICE_TYPE_META, nextInvoiceNumber,
-  shopInvoiceBase, pickShopInvoiceNumber,
+  shopInvoiceBase, pickShopInvoiceNumber, composeItemName,
   type InvoiceLineInput, type InvoiceType,
 } from "@/lib/invoice";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
@@ -32,7 +32,7 @@ import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; }
-interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
 interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
 
 export default function InvoiceEditor({ type }: Props) {
@@ -120,7 +120,7 @@ export default function InvoiceEditor({ type }: Props) {
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
       supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name"),
-      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked, allow_decimal_qty").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, is_batch_tracked, allow_decimal_qty, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
       supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
       supabase.from("branches" as any).select("id, name, code").eq("business_id", current.id).order("name"),
     ]).then(([p, it, b, br]) => {
@@ -339,7 +339,7 @@ export default function InvoiceEditor({ type }: Props) {
         return ls.map((l, i) => i === existingIdx ? { ...l, quantity: Number(l.quantity) + 1 } : l);
       }
       const newLine: InvoiceLineInput = {
-        item_id: it.id, item_name: it.name, hsn_code: it.hsn_code,
+        item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
         quantity: 1, unit: it.unit,
         price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
         discount_pct: 0, tax_rate: Number(it.tax_rate),
@@ -358,7 +358,7 @@ export default function InvoiceEditor({ type }: Props) {
       if (targetIdx !== null) {
         const isPurchase = type === "purchase" || type === "purchase_return";
         updateLine(targetIdx, {
-          item_id: it.id, item_name: it.name, hsn_code: it.hsn_code, unit: it.unit,
+          item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code, unit: it.unit,
           price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
           tax_rate: Number(it.tax_rate), batch_id: null,
         });
@@ -459,7 +459,7 @@ export default function InvoiceEditor({ type }: Props) {
         }
         newLines.push({
           item_id: it!.id,
-          item_name: it!.name,
+          item_name: composeItemName(it!),
           hsn_code: ex.hsn_code || it!.hsn_code,
           quantity: Number(ex.quantity) || 1,
           unit: ex.unit || it!.unit,
@@ -502,7 +502,7 @@ export default function InvoiceEditor({ type }: Props) {
     const isPurchase = type === "purchase" || type === "purchase_return";
     updateLine(idx, {
       item_id: it.id,
-      item_name: it.name,
+      item_name: composeItemName(it),
       hsn_code: it.hsn_code,
       unit: it.unit,
       price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
