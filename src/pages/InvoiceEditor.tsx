@@ -62,6 +62,11 @@ export default function InvoiceEditor({ type }: Props) {
   const [branchId, setBranchId] = useState<string>("");
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [extraDiscountMode, setExtraDiscountMode] = useState<"amt" | "pct">("amt");
+
+  // Payment splits (only used when creating a new sale/purchase invoice)
+  type PayMethod = "cash" | "upi" | "card" | "bank" | "cheque" | "other" | "credit";
+  const PAY_LABEL: Record<PayMethod, string> = { cash: "Cash", upi: "UPI", card: "Card", bank: "Bank Transfer", cheque: "Cheque", other: "Other", credit: "Credit (Unpaid)" };
+  const [paySplits, setPaySplits] = useState<Array<{ method: PayMethod; amount: number }>>([{ method: "credit", amount: 0 }]);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [rowScanIdx, setRowScanIdx] = useState<number | null>(null);
   const [billScanOpen, setBillScanOpen] = useState(false);
@@ -674,13 +679,27 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     // ==== NEW INVOICE PATH ====
+    // Compute payment split totals (only for sale/purchase — returns are auto-paid; quotations have no payment)
+    const supportsPayment = type === "sale" || type === "purchase";
+    const cashSplitTotal = supportsPayment
+      ? paySplits.filter((s) => s.method !== "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0)
+      : 0;
+    const newPaid = isReturn ? computed.total_amount
+      : supportsPayment ? Math.min(cashSplitTotal, computed.total_amount)
+      : 0;
+    const newBalance = isReturn ? 0 : Math.max(0, computed.total_amount - newPaid);
+    let newStatus: any = status;
+    if (supportsPayment) {
+      newStatus = newBalance <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
+    }
+
     const invoiceId = crypto.randomUUID();
     const invRes = await omInsert("invoices", {
       id: invoiceId,
       business_id: current.id,
       party_id: partyId || null,
       type,
-      status,
+      status: newStatus,
       invoice_number: number.trim(),
       invoice_date: date,
       due_date: dueDate || null,
@@ -698,12 +717,14 @@ export default function InvoiceEditor({ type }: Props) {
       igst_amount: computed.igst_amount,
       round_off: computed.round_off,
       total_amount: computed.total_amount,
-      paid_amount: isReturn ? computed.total_amount : 0,
-      balance_amount: isReturn ? 0 : computed.total_amount,
+      paid_amount: newPaid,
+      balance_amount: newBalance,
       notes: notes.trim() || null,
       terms: terms.trim() || null,
       created_by: user.id,
     });
+
+
 
     if (invRes.error) { setSaving(false); toast.error((invRes.error as any).message ?? "Failed"); return; }
 
@@ -736,6 +757,28 @@ export default function InvoiceEditor({ type }: Props) {
         redeem_value: redeemValue,
         created_by: user.id,
       });
+    }
+
+    // Record payment rows (non-credit splits only) for new sale/purchase
+    if (supportsPayment && newPaid > 0) {
+      let remaining = computed.total_amount;
+      const direction = type === "sale" ? "in" : "out";
+      const payRows = [] as any[];
+      for (const s of paySplits) {
+        if (s.method === "credit") continue;
+        const amt = Math.min(Number(s.amount) || 0, remaining);
+        if (amt <= 0) continue;
+        remaining -= amt;
+        payRows.push({
+          business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
+          direction, method: s.method, amount: amt,
+          payment_date: date,
+          notes: `Recorded with invoice · ${PAY_LABEL[s.method]}`,
+          created_by: user.id,
+        });
+        if (remaining <= 0) break;
+      }
+      if (payRows.length) await omInsertMany("payments", payRows);
     }
 
     setSaving(false);
@@ -1285,6 +1328,55 @@ export default function InvoiceEditor({ type }: Props) {
             <div className="border-t pt-2 mt-2">
               <Row label="Total" value={formatINR(totals.total_amount)} bold />
             </div>
+
+            {isNew && !readOnly && (type === "sale" || type === "purchase") && (
+              <div className="border-t pt-3 mt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Payment received now</Label>
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => {
+                      const remaining = Math.max(0, totals.total_amount - paySplits.reduce((s, x) => s + (Number(x.amount) || 0), 0));
+                      setPaySplits((arr) => [...arr, { method: "cash", amount: remaining }]);
+                    }}
+                  >+ Add split</button>
+                </div>
+                {paySplits.map((s, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_120px_28px] gap-2 items-center">
+                    <Select value={s.method} onValueChange={(v) => setPaySplits((arr) => arr.map((x, i) => i === idx ? { ...x, method: v as PayMethod } : x))}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="upi">UPI</SelectItem>
+                        <SelectItem value="card">Card</SelectItem>
+                        <SelectItem value="bank">Bank Transfer</SelectItem>
+                        <SelectItem value="cheque">Cheque</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="credit">Credit (Unpaid)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input type="number" className="h-8 text-right num" value={s.amount || ""} placeholder="0"
+                      onChange={(e) => setPaySplits((arr) => arr.map((x, i) => i === idx ? { ...x, amount: Number(e.target.value) || 0 } : x))} />
+                    <button type="button" className="text-muted-foreground hover:text-danger text-xs"
+                      disabled={paySplits.length === 1}
+                      onClick={() => setPaySplits((arr) => arr.filter((_, i) => i !== idx))}>✕</button>
+                  </div>
+                ))}
+                {(() => {
+                  const cashTot = paySplits.filter((x) => x.method !== "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0);
+                  const creditTot = paySplits.filter((x) => x.method === "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0);
+                  const bal = Math.max(0, totals.total_amount - Math.min(cashTot, totals.total_amount));
+                  return (
+                    <div className="text-xs space-y-1 pt-1">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Paid (cash/upi/card/etc.)</span><span className="font-medium">{formatINR(cashTot)}</span></div>
+                      {creditTot > 0 && <div className="flex justify-between"><span className="text-muted-foreground">On credit</span><span className="font-medium text-amber-600">{formatINR(creditTot)}</span></div>}
+                      <div className="flex justify-between"><span className="text-muted-foreground">Outstanding balance</span><span className={`font-semibold ${bal > 0 ? "text-danger" : "text-success"}`}>{formatINR(bal)}</span></div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </dl>
         </Card>
       </div>
