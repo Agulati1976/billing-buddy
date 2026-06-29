@@ -77,7 +77,7 @@ export default function Pos() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
     ]).then(([it, p, s]) => {
@@ -275,7 +275,7 @@ export default function Pos() {
       setCart([]); setPartyId(""); setExtraDiscount("0");
       setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
       // Refresh items stock
-      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty").eq("business_id", current.id).order("name");
+      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name");
       setItems((it as any) ?? []);
     } catch (e: any) {
       toast.error(e.message || "Failed to save sale");
