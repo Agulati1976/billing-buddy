@@ -122,7 +122,7 @@ export default function Pos() {
         return prev.map((l) => l.item_id === it.id ? { ...l, quantity: Number(l.quantity) + 1 } : l);
       }
       return [...prev, {
-        _key: newKey(), item_id: it.id, item_name: it.name, hsn_code: it.hsn_code,
+        _key: newKey(), item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
         quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
         discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: null,
         max_stock: Number(it.current_stock) || 0,
