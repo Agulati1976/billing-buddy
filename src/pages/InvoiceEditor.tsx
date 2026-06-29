@@ -502,7 +502,7 @@ export default function InvoiceEditor({ type }: Props) {
     const isPurchase = type === "purchase" || type === "purchase_return";
     updateLine(idx, {
       item_id: it.id,
-      item_name: it.name,
+      item_name: composeItemName(it),
       hsn_code: it.hsn_code,
       unit: it.unit,
       price: isPurchase ? Number(it.purchase_price) : Number(it.sale_price),
