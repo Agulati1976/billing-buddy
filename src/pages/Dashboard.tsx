@@ -87,11 +87,18 @@ export default function Dashboard() {
       if (since) rangeQuery = rangeQuery.gte("invoice_date", since);
       if (until) rangeQuery = rangeQuery.lte("invoice_date", until);
 
+      let recvQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gt("balance_amount", 0);
+      if (since) recvQuery = recvQuery.gte("invoice_date", since);
+      if (until) recvQuery = recvQuery.lte("invoice_date", until);
+      let payQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0);
+      if (since) payQuery = payQuery.gte("invoice_date", since);
+      if (until) payQuery = payQuery.lte("invoice_date", until);
+
       const [todayR, rangeR, recvR, payR, recentR, lowR, expR] = await Promise.all([
         supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).eq("invoice_date", today),
         rangeQuery,
-        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gt("balance_amount", 0),
-        supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0),
+        recvQuery,
+        payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
         supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).gte("updated_at", new Date(Date.now() - Math.max(1, lowDays) * 86400000).toISOString()),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
