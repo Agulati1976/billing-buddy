@@ -158,8 +158,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Today's Sales" value={formatINR(stats?.todaySales ?? 0)} icon={TrendingUp} tone="primary" />
         <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" />
-        <StatCard label={`To Receive · ${range.label}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
-        <StatCard label={`To Pay · ${range.label}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
+        <StatCard label={`To Receive${range.to ? ` · as of ${format(range.to, "dd MMM")}` : ""}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
+        <StatCard label={`To Pay${range.to ? ` · as of ${format(range.to, "dd MMM")}` : ""}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
+
 
       </div>
 
