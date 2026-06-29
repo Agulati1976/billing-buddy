@@ -184,8 +184,10 @@ export default function Pos() {
     [cart, isInter, isGst, extraDiscount]
   );
 
-  const totalPaid = splits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const change = totalPaid - totals.total_amount;
+  const cashPaid = splits.filter((s) => s.method !== "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const creditAmt = splits.filter((s) => s.method === "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalPaid = cashPaid + creditAmt; // total tendered including credit allocation
+  const change = cashPaid - Math.max(0, totals.total_amount - creditAmt);
 
   const openPayment = () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
@@ -196,7 +198,8 @@ export default function Pos() {
   const completeSale = async () => {
     if (!current || !user) return;
     if (totalPaid <= 0) { toast.error("Enter payment amount"); return; }
-    const recordedPaid = Math.min(totalPaid, totals.total_amount);
+    // Actual money received (excluding credit allocation), capped at total
+    const recordedPaid = Math.min(cashPaid, totals.total_amount);
     try {
       // Suggest invoice number (cached GET works offline; suffix when offline to avoid clashes)
       let number: string;
