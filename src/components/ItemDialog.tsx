@@ -492,6 +492,39 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
               <Switch checked={form.is_batch_tracked} onCheckedChange={(v) => setForm({ ...form, is_batch_tracked: v })} />
             </div>
           )}
+          {form.type === "product" && form.is_batch_tracked && (
+            <div className="col-span-2 rounded-md border p-3 space-y-3 bg-muted/20">
+              <div>
+                <Label className="text-sm">{item ? "Add a new batch" : "Add first batch"} <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <p className="text-xs text-muted-foreground">Fill these to create a batch along with the item. You can add more later from Batches.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Batch No.</Label>
+                  <Input value={form.batch_number} onChange={(e) => setForm({ ...form, batch_number: e.target.value })} placeholder="e.g. B001" />
+                </div>
+                <div>
+                  <Label className="text-xs">Quantity</Label>
+                  <Input
+                    type="number"
+                    step={form.allow_decimal_qty ? "0.01" : "1"}
+                    min="0"
+                    value={form.batch_quantity}
+                    onChange={(e) => setForm({ ...form, batch_quantity: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Mfg Date</Label>
+                  <Input type="date" value={form.batch_mfg_date} onChange={(e) => setForm({ ...form, batch_mfg_date: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Expiry Date</Label>
+                  <Input type="date" value={form.batch_expiry_date} onChange={(e) => setForm({ ...form, batch_expiry_date: e.target.value })} />
+                </div>
+              </div>
+            </div>
+          )}
           {form.type === "product" && (
             <div className="col-span-2 flex items-center justify-between rounded-md border p-3">
               <div>
