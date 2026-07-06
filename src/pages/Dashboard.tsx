@@ -67,9 +67,10 @@ export default function Dashboard() {
   const [expiryCustom, setExpiryCustom] = useState<string>("30");
   const [expiryIsCustom, setExpiryIsCustom] = useState<boolean>(false);
 
-  // Low stock filter (days window — recent activity)
-  const [lowDays, setLowDays] = useState<number>(30);
-  const [lowCustom, setLowCustom] = useState<string>("30");
+  // Low stock filter (how many recent low-stock products to show)
+  const LOW_STOCK_THRESHOLD = 5;
+  const [lowCount, setLowCount] = useState<number>(10);
+  const [lowCustom, setLowCustom] = useState<string>("10");
   const [lowIsCustom, setLowIsCustom] = useState<boolean>(false);
 
 
