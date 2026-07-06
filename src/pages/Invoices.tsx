@@ -112,11 +112,11 @@ export default function Invoices({ type }: Props) {
     setLoading(true);
     let query = supabase
       .from("invoices")
-      .select("id, invoice_number, invoice_date, total_amount, paid_amount, balance_amount, status, party_id, parties(name, phone, email), deleted_at")
+      .select("id, invoice_number, invoice_date, created_at, total_amount, paid_amount, balance_amount, status, party_id, parties(name, phone, email), deleted_at")
       .eq("business_id", current.id)
       .eq("type", type);
     if (view === "active") {
-      query = query.is("deleted_at", null).order("invoice_date", { ascending: false });
+      query = query.is("deleted_at", null).order("invoice_date", { ascending: false }).order("created_at", { ascending: false });
     } else {
       const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
       query = query.not("deleted_at", "is", null).gte("deleted_at", cutoff).order("deleted_at", { ascending: false });

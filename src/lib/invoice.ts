@@ -129,18 +129,11 @@ export function composeItemName(it: {
   unit?: string | null;
   unit_size?: number | null;
 }): string {
-  const packSize = it.unit_size != null && Number(it.unit_size) > 0
-    ? `${Number(it.unit_size)}${(it.unit ?? "").toString().trim().toUpperCase()}`
-    : "";
-  const variant = [it.brand, it.flavour, it.color, packSize]
-    .map((v) => (v ?? "").toString().trim())
-    .filter(Boolean)
-    .join(" · ");
-  const sku = (it.sku ?? "").toString().trim();
-  let out = it.name;
-  if (variant) out += ` (${variant})`;
-  if (sku) out += ` [SKU: ${sku}]`;
-  return out;
+  // Labeled multi-line item description so invoices/POS/PDFs render the
+  // product like a rich card (Brand Name, Product Name, Flavour, Unit, SKU).
+  const rows = composeItemLines(it);
+  if (rows.length === 0) return it.name;
+  return rows.map((r) => `${r.label} - ${r.value}`).join("\n");
 }
 
 /** Return labeled lines describing an item, for rich UI display.
