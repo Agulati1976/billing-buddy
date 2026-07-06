@@ -254,6 +254,22 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         created_by: user.id,
       }).catch(() => {});
     }
+
+    // Add a batch entry if user filled batch fields (only for batch-tracked products)
+    if (form.type === "product" && form.is_batch_tracked && form.batch_number.trim()) {
+      const savedItemId = item ? item.id : (res.data as any)?.id;
+      if (savedItemId) {
+        await omInsert("batches", {
+          business_id: current.id,
+          item_id: savedItemId,
+          batch_number: form.batch_number.trim(),
+          mfg_date: form.batch_mfg_date || null,
+          expiry_date: form.batch_expiry_date || null,
+          quantity: Number(form.batch_quantity) || 0,
+          created_by: user.id,
+        }).catch((e: any) => toast.error(e?.message ?? "Batch save failed"));
+      }
+    }
     toast.success(
       res.queued
         ? (item ? "Item update saved offline — will sync" : "Item saved offline — will sync")
