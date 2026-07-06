@@ -27,6 +27,7 @@ import { Mic, MicOff } from "lucide-react";
 interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
   tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
+  is_batch_tracked?: boolean;
   image_url?: string | null;
   allow_decimal_qty?: boolean;
   brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null;
@@ -84,7 +85,7 @@ export default function Pos() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
     ]).then(([it, p, s]) => {
@@ -125,8 +126,14 @@ export default function Pos() {
   const addToCart = (it: Item) => {
     setCart((prev) => {
       const existing = prev.find((l) => l.item_id === it.id);
+      const available = Number(it.current_stock) || 0;
+      const nextQty = (existing ? Number(existing.quantity) : 0) + 1;
+      if (nextQty > available) {
+        toast.error(`Out of stock: ${it.name} has only ${available} ${it.unit} in stock`);
+        return prev;
+      }
       if (existing) {
-        return prev.map((l) => l.item_id === it.id ? { ...l, quantity: Number(l.quantity) + 1 } : l);
+        return prev.map((l) => l.item_id === it.id ? { ...l, quantity: nextQty } : l);
       }
       return [...prev, {
         _key: newKey(), item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
