@@ -775,6 +775,40 @@ export default function Pos() {
       {/* Scanner */}
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScan} />
 
+      {/* Batch picker */}
+      <Dialog open={!!batchPickerItem} onOpenChange={(v) => { if (!v) setBatchPickerItem(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pick batch · {batchPickerItem?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-auto">
+            {batchPickerItem && batches.filter((b) => b.item_id === batchPickerItem.id && Number(b.quantity) > 0).length === 0 ? (
+              <div className="text-sm text-muted-foreground py-4 text-center">No batches in stock.</div>
+            ) : batchPickerItem && batches.filter((b) => b.item_id === batchPickerItem.id && Number(b.quantity) > 0).map((b) => (
+              <button
+                key={b.id}
+                onClick={() => {
+                  const it = batchPickerItem;
+                  setBatchPickerItem(null);
+                  if (it) addToCart(it, b);
+                }}
+                className="w-full text-left p-3 border rounded-md hover:border-primary hover:bg-accent transition"
+              >
+                <div className="text-sm font-medium">Batch {b.batch_number}</div>
+                <div className="text-xs text-muted-foreground">
+                  Qty {Number(b.quantity)} {batchPickerItem?.unit}
+                  {b.expiry_date ? ` · Expiry ${b.expiry_date}` : ""}
+                </div>
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchPickerItem(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       {/* Payment dialog */}
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
         <DialogContent className="max-w-lg">
