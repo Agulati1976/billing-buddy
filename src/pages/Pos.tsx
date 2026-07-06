@@ -128,31 +128,40 @@ export default function Pos() {
     ).slice(0, 60);
   }, [items, search]);
 
-  const addToCart = (it: Item) => {
-    setCart((prev) => {
-      if (it.is_batch_tracked) {
-        toast.error(`${it.name} is batch-tracked. Use Sales Invoice and select a batch.`);
-        return prev;
+  const addToCart = (it: Item, batch?: Batch) => {
+    if (it.is_batch_tracked && !batch) {
+      const available = batches.filter((b) => b.item_id === it.id && Number(b.quantity) > 0);
+      if (available.length === 0) {
+        toast.error(`${it.name} is batch-tracked but has no batches in stock. Add a batch first.`);
+        return;
       }
-      const existing = prev.find((l) => l.item_id === it.id);
-      const available = Number(it.current_stock) || 0;
+      setBatchPickerItem(it);
+      return;
+    }
+    setCart((prev) => {
+      const keyMatch = (l: CartLine) => l.item_id === it.id && (l.batch_id ?? null) === (batch?.id ?? null);
+      const existing = prev.find(keyMatch);
+      const available = batch ? Number(batch.quantity) || 0 : Number(it.current_stock) || 0;
       const nextQty = (existing ? Number(existing.quantity) : 0) + 1;
       if (nextQty > available) {
-        toast.error(`Out of stock: ${it.name} has only ${available} ${it.unit} in stock`);
+        toast.error(`Out of stock: ${it.name}${batch ? ` (batch ${batch.batch_number})` : ""} has only ${available} ${it.unit} available`);
         return prev;
       }
       if (existing) {
-        return prev.map((l) => l.item_id === it.id ? { ...l, quantity: nextQty } : l);
+        return prev.map((l) => keyMatch(l) ? { ...l, quantity: nextQty } : l);
       }
+      const name = batch ? `${composeItemName(it)}\nBatch - ${batch.batch_number}${batch.expiry_date ? ` (exp ${batch.expiry_date})` : ""}` : composeItemName(it);
       return [...prev, {
-        _key: newKey(), item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
+        _key: newKey(), item_id: it.id, item_name: name, hsn_code: it.hsn_code,
         quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
-        discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: null,
-        max_stock: Number(it.current_stock) || 0,
+        discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: batch?.id ?? null,
+        batch_number: batch?.batch_number ?? null,
+        max_stock: available,
         allow_decimal_qty: !!it.allow_decimal_qty,
       }];
     });
   };
+
 
 
   const onScan = async (code: string) => {
