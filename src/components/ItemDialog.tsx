@@ -380,10 +380,22 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
           </div>
           <div>
             <Label>Unit</Label>
-            <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-24"
+                placeholder="Qty"
+                value={form.unit_size}
+                onChange={(e) => setForm({ ...form, unit_size: e.target.value })}
+              />
+              <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">e.g. 2 + kg = 2 KG pack</p>
           </div>
           <div>
             <Label>GST Tax Rate (%)</Label>
