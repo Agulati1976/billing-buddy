@@ -135,7 +135,7 @@ export default function Items() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{i.name}</div>
+                  <div className="font-medium text-sm truncate">{composeItemName(i)}</div>
                   <div className="text-[11px] text-muted-foreground capitalize">
                     {i.type}{i.sku ? ` · SKU ${i.sku}` : ""}
                   </div>
