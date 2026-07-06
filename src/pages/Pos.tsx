@@ -217,36 +217,59 @@ export default function Pos() {
 
   const validateCartStock = async () => {
     if (!current) return false;
-    const requested = new Map<string, number>();
+    const reqItem = new Map<string, number>();
+    const reqBatch = new Map<string, number>();
     for (const line of cart) {
       const qty = Number(line.quantity) || 0;
       if (!line.item_id || qty <= 0) continue;
-      requested.set(line.item_id, (requested.get(line.item_id) ?? 0) + qty);
-    }
-    if (requested.size === 0) return true;
-
-    const { data, error } = await supabase
-      .from("items")
-      .select("id,name,unit,current_stock,is_batch_tracked")
-      .eq("business_id", current.id)
-      .in("id", Array.from(requested.keys()));
-    if (error) { toast.error(error.message); return false; }
-
-    const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
-    for (const [itemId, need] of requested) {
-      const item = fresh.get(itemId);
-      if (item?.is_batch_tracked) {
-        toast.error(`${item.name} is batch-tracked. Use Sales Invoice and select a batch.`);
-        return false;
+      if (line.batch_id) {
+        reqBatch.set(line.batch_id, (reqBatch.get(line.batch_id) ?? 0) + qty);
+      } else {
+        reqItem.set(line.item_id, (reqItem.get(line.item_id) ?? 0) + qty);
       }
-      const available = Number(item?.current_stock ?? 0);
-      if (need > available) {
-        toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
-        return false;
+    }
+
+    if (reqItem.size > 0) {
+      const { data, error } = await supabase
+        .from("items")
+        .select("id,name,unit,current_stock,is_batch_tracked")
+        .eq("business_id", current.id)
+        .in("id", Array.from(reqItem.keys()));
+      if (error) { toast.error(error.message); return false; }
+      const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
+      for (const [itemId, need] of reqItem) {
+        const item = fresh.get(itemId);
+        if (item?.is_batch_tracked) {
+          toast.error(`${item.name} is batch-tracked. Remove it and re-add by picking a batch.`);
+          return false;
+        }
+        const available = Number(item?.current_stock ?? 0);
+        if (need > available) {
+          toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
+          return false;
+        }
+      }
+    }
+
+    if (reqBatch.size > 0) {
+      const { data, error } = await supabase
+        .from("batches")
+        .select("id,batch_number,quantity,item_id,items(name,unit)")
+        .in("id", Array.from(reqBatch.keys()));
+      if (error) { toast.error(error.message); return false; }
+      const fresh = new Map((data ?? []).map((b: any) => [b.id, b]));
+      for (const [batchId, need] of reqBatch) {
+        const b: any = fresh.get(batchId);
+        const available = Number(b?.quantity ?? 0);
+        if (!b || need > available) {
+          toast.error(`Out of stock: batch ${b?.batch_number ?? ""}${b?.items?.name ? ` of ${b.items.name}` : ""} has only ${available} ${b?.items?.unit ?? ""} available. Pick another batch.`);
+          return false;
+        }
       }
     }
     return true;
   };
+
 
   const openPayment = async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
