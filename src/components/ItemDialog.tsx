@@ -134,7 +134,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         name: f.name || hit.name,
         hsn_code: f.hsn_code || (hit.hsn_code ?? ""),
         unit: hit.unit || f.unit,
-        unit_size: (f.unit_size ?? null) || (hit.unit_size ?? null),
+        unit_size: f.unit_size || (hit.unit_size != null ? String(hit.unit_size) : ""),
         tax_rate: String(hit.tax_rate ?? f.tax_rate),
         brand: f.brand || (hit.brand ?? ""),
         flavour: f.flavour || (hit.flavour ?? ""),
