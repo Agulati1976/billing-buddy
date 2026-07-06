@@ -125,6 +125,10 @@ export default function Pos() {
 
   const addToCart = (it: Item) => {
     setCart((prev) => {
+      if (it.is_batch_tracked) {
+        toast.error(`${it.name} is batch-tracked. Use Sales Invoice and select a batch.`);
+        return prev;
+      }
       const existing = prev.find((l) => l.item_id === it.id);
       const available = Number(it.current_stock) || 0;
       const nextQty = (existing ? Number(existing.quantity) : 0) + 1;
@@ -209,7 +213,7 @@ export default function Pos() {
 
     const { data, error } = await supabase
       .from("items")
-      .select("id,name,unit,current_stock")
+      .select("id,name,unit,current_stock,is_batch_tracked")
       .eq("business_id", current.id)
       .in("id", Array.from(requested.keys()));
     if (error) { toast.error(error.message); return false; }
@@ -217,6 +221,10 @@ export default function Pos() {
     const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
     for (const [itemId, need] of requested) {
       const item = fresh.get(itemId);
+      if (item?.is_batch_tracked) {
+        toast.error(`${item.name} is batch-tracked. Use Sales Invoice and select a batch.`);
+        return false;
+      }
       const available = Number(item?.current_stock ?? 0);
       if (need > available) {
         toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
