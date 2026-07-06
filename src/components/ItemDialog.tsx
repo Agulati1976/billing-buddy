@@ -40,6 +40,7 @@ export interface ItemRow {
   image_url?: string | null;
   catalog_id?: string | null;
   allow_decimal_qty?: boolean;
+  unit_size?: number | null;
 }
 
 
@@ -57,7 +58,7 @@ interface Props {
 
 const emptyForm = {
   name: "", type: "product" as "product" | "service", sku: "", barcode: "", hsn_code: "",
-  unit: "pcs", sale_price: "0", purchase_price: "0", tax_rate: "18",
+  unit: "pcs", unit_size: "", sale_price: "0", purchase_price: "0", tax_rate: "18",
   opening_stock: "0", low_stock_alert: "0", description: "",
   category_id: "", is_batch_tracked: false, allow_decimal_qty: false,
   brand: "", flavour: "", color: "", mrp: "0",
@@ -93,7 +94,9 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         name: item.name, type: item.type, sku: item.sku ?? "",
         barcode: item.barcode ?? "",
         hsn_code: item.hsn_code ?? "",
-        unit: item.unit, sale_price: String(item.sale_price), purchase_price: String(item.purchase_price),
+        unit: item.unit,
+        unit_size: item.unit_size != null ? String(item.unit_size) : "",
+        sale_price: String(item.sale_price), purchase_price: String(item.purchase_price),
         tax_rate: String(item.tax_rate), opening_stock: String(item.opening_stock),
         low_stock_alert: String(item.low_stock_alert), description: item.description ?? "",
         category_id: item.category_id ?? "",
@@ -208,6 +211,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       hsn_code: form.hsn_code.trim() || null,
       barcode: form.barcode.trim() || null,
       unit: form.unit,
+      unit_size: form.unit_size.trim() !== "" ? Number(form.unit_size) : null,
       sale_price: Number(form.sale_price) || 0,
       purchase_price: Number(form.purchase_price) || 0,
       tax_rate: Number(form.tax_rate) || 0,
@@ -376,10 +380,22 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
           </div>
           <div>
             <Label>Unit</Label>
-            <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                className="w-24"
+                placeholder="Qty"
+                value={form.unit_size}
+                onChange={(e) => setForm({ ...form, unit_size: e.target.value })}
+              />
+              <Select value={form.unit} onValueChange={(v) => setForm({ ...form, unit: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">e.g. 2 + kg = 2 KG pack</p>
           </div>
           <div>
             <Label>GST Tax Rate (%)</Label>

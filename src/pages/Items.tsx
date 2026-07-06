@@ -15,6 +15,7 @@ import { StockHistoryDialog } from "@/components/StockHistoryDialog";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
+import { composeItemName } from "@/lib/invoice";
 
 export default function Items() {
   const { current } = useBusiness();
@@ -134,7 +135,7 @@ export default function Items() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{i.name}</div>
+                  <div className="font-medium text-sm truncate">{composeItemName(i)}</div>
                   <div className="text-[11px] text-muted-foreground capitalize">
                     {i.type}{i.sku ? ` · SKU ${i.sku}` : ""}
                   </div>
@@ -201,7 +202,7 @@ export default function Items() {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium">{i.name}</div>
+                          <div className="font-medium">{composeItemName(i)}</div>
                           <div className="text-xs text-muted-foreground capitalize">{i.type}</div>
                         </div>
                       </div>

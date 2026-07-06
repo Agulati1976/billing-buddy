@@ -767,6 +767,7 @@ export type Database = {
           tax_rate: number
           type: Database["public"]["Enums"]["item_type"]
           unit: string
+          unit_size: number | null
           updated_at: string
         }
         Insert: {
@@ -796,6 +797,7 @@ export type Database = {
           tax_rate?: number
           type?: Database["public"]["Enums"]["item_type"]
           unit?: string
+          unit_size?: number | null
           updated_at?: string
         }
         Update: {
@@ -825,6 +827,7 @@ export type Database = {
           tax_rate?: number
           type?: Database["public"]["Enums"]["item_type"]
           unit?: string
+          unit_size?: number | null
           updated_at?: string
         }
         Relationships: [
