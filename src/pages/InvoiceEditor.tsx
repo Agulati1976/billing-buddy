@@ -1285,7 +1285,7 @@ export default function InvoiceEditor({ type }: Props) {
 
         {/* Desktop: table */}
         <div className="hidden sm:block overflow-x-auto">
-        <Table className="min-w-[640px]">
+        <Table className="min-w-[1050px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[24%] min-w-[220px]">Item</TableHead>
