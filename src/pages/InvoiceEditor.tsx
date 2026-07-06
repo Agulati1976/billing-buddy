@@ -1076,7 +1076,150 @@ export default function InvoiceEditor({ type }: Props) {
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile: stacked cards per line */}
+        <div className="sm:hidden divide-y">
+          {totals.lines.map((l, idx) => {
+            const it = l.item_id ? items.find((x: any) => x.id === l.item_id) : null;
+            const allowDec = it ? !!(it as any).allow_decimal_qty : true;
+            const mode = l.discount_mode ?? "pct";
+            const discVal = mode === "amt" ? (l.discount_amount ?? 0) : (l.discount_pct ?? 0);
+            const itemBatches = it?.is_batch_tracked ? batches.filter(b => b.item_id === it.id) : [];
+            return (
+              <div key={idx} className="p-3 space-y-2 bg-card">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-muted-foreground">Item {idx + 1}</div>
+                  {!readOnly && (
+                    <Button size="icon" variant="ghost" className="h-8 w-8"
+                      onClick={() => setLines((ls) => ls.filter((_, i) => i !== idx))}
+                      title="Remove line">
+                      <Trash2 className="h-4 w-4 text-danger" />
+                    </Button>
+                  )}
+                </div>
+
+                {readOnly ? (
+                  <div>
+                    <div className="font-medium">{l.item_name}</div>
+                    {l.batch_id && (
+                      <div className="text-xs text-muted-foreground">Batch: {batches.find(b => b.id === l.batch_id)?.batch_number ?? "—"}</div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-1">
+                      <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
+                        <SelectTrigger className="h-10"><SelectValue placeholder="Pick item" /></SelectTrigger>
+                        <SelectContent>
+                          {items.map((op) => (
+                            <SelectItem key={op.id} value={op.id}>{op.name}{op.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" size="icon" variant="outline" className="h-10 w-10 shrink-0"
+                        onClick={() => { setRowScanIdx(idx); setScannerOpen(true); }} title="Scan barcode">
+                        <ScanLine className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input className="h-10" value={l.item_name}
+                      onChange={(e) => updateLine(idx, { item_name: e.target.value })}
+                      placeholder="Or type item name" />
+                    {it?.is_batch_tracked && (
+                      <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                        <SelectTrigger className="h-10"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
+                        <SelectContent>
+                          {itemBatches.length === 0 ? (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
+                          ) : itemBatches.map(b => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Qty</Label>
+                    {readOnly ? <div className="num h-10 flex items-center">{l.quantity}</div> : (
+                      <Input className="h-10 num text-base" type="number" inputMode="decimal"
+                        step={allowDec ? "0.01" : "1"} min="0" value={l.quantity}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          updateLine(idx, { quantity: allowDec ? n : Math.max(0, Math.floor(n)) });
+                        }} />
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Price</Label>
+                    {readOnly ? <div className="num h-10 flex items-center">{formatINR(l.price)}</div> : (
+                      <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
+                        value={l.price} onChange={(e) => updateLine(idx, { price: Number(e.target.value) })} />
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Discount</Label>
+                    {readOnly ? <div className="num h-10 flex items-center">{l.discount_pct}%</div> : (
+                      <div className="flex gap-1">
+                        <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
+                          value={discVal || ""} onChange={(e) => {
+                            const n = Number(e.target.value) || 0;
+                            if (mode === "amt") updateLine(idx, { discount_amount: n, discount_pct: 0 });
+                            else updateLine(idx, { discount_pct: n, discount_amount: 0 });
+                          }} />
+                        <Select value={mode}
+                          onValueChange={(v: "pct" | "amt") => updateLine(idx, { discount_mode: v, discount_amount: 0, discount_pct: 0 })}>
+                          <SelectTrigger className="h-10 w-[64px] px-2"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pct">%</SelectItem>
+                            <SelectItem value="amt">₹</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Tax %</Label>
+                    {readOnly ? <div className="num h-10 flex items-center">{l.tax_rate}</div> : (
+                      <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
+                        value={l.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: Number(e.target.value) })} />
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 items-end">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">HSN</Label>
+                    {readOnly ? <div className="h-10 flex items-center">{l.hsn_code ?? "—"}</div> : (
+                      <Input className="h-10" value={l.hsn_code ?? ""}
+                        onChange={(e) => updateLine(idx, { hsn_code: e.target.value })} />
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Amount</Label>
+                    {readOnly ? (
+                      <div className="num h-10 flex items-center justify-end font-semibold">{formatINR(l.total_amount)}</div>
+                    ) : (
+                      <Input className="h-10 num text-right text-base font-semibold" type="number"
+                        inputMode="decimal" step="0.01" min="0" value={l.total_amount}
+                        onChange={(e) => setLineAmount(idx, Number(e.target.value))}
+                        title="Edit final amount" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="hidden sm:block overflow-x-auto">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
