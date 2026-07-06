@@ -62,6 +62,7 @@ const emptyForm = {
   opening_stock: "0", low_stock_alert: "0", description: "",
   category_id: "", is_batch_tracked: false, allow_decimal_qty: false,
   brand: "", flavour: "", color: "", mrp: "0",
+  batch_number: "", batch_mfg_date: "", batch_expiry_date: "", batch_quantity: "",
 };
 
 
@@ -104,6 +105,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         allow_decimal_qty: !!item.allow_decimal_qty,
         brand: item.brand ?? "", flavour: item.flavour ?? "", color: item.color ?? "",
         mrp: String(item.mrp ?? 0),
+        batch_number: "", batch_mfg_date: "", batch_expiry_date: "", batch_quantity: "",
       });
 
       setCatalogId(item.catalog_id ?? null);
@@ -251,6 +253,22 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         notes: `Opening stock adjusted (${item.opening_stock} → ${newOpening})`,
         created_by: user.id,
       }).catch(() => {});
+    }
+
+    // Add a batch entry if user filled batch fields (only for batch-tracked products)
+    if (form.type === "product" && form.is_batch_tracked && form.batch_number.trim()) {
+      const savedItemId = item ? item.id : (res.data as any)?.id;
+      if (savedItemId) {
+        await omInsert("batches", {
+          business_id: current.id,
+          item_id: savedItemId,
+          batch_number: form.batch_number.trim(),
+          mfg_date: form.batch_mfg_date || null,
+          expiry_date: form.batch_expiry_date || null,
+          quantity: Number(form.batch_quantity) || 0,
+          created_by: user.id,
+        }).catch((e: any) => toast.error(e?.message ?? "Batch save failed"));
+      }
     }
     toast.success(
       res.queued
@@ -472,6 +490,39 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                 <p className="text-xs text-muted-foreground">Track stock per batch (with batch no, mfg & expiry).</p>
               </div>
               <Switch checked={form.is_batch_tracked} onCheckedChange={(v) => setForm({ ...form, is_batch_tracked: v })} />
+            </div>
+          )}
+          {form.type === "product" && form.is_batch_tracked && (
+            <div className="col-span-2 rounded-md border p-3 space-y-3 bg-muted/20">
+              <div>
+                <Label className="text-sm">{item ? "Add a new batch" : "Add first batch"} <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <p className="text-xs text-muted-foreground">Fill these to create a batch along with the item. You can add more later from Batches.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Batch No.</Label>
+                  <Input value={form.batch_number} onChange={(e) => setForm({ ...form, batch_number: e.target.value })} placeholder="e.g. B001" />
+                </div>
+                <div>
+                  <Label className="text-xs">Quantity</Label>
+                  <Input
+                    type="number"
+                    step={form.allow_decimal_qty ? "0.01" : "1"}
+                    min="0"
+                    value={form.batch_quantity}
+                    onChange={(e) => setForm({ ...form, batch_quantity: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Mfg Date</Label>
+                  <Input type="date" value={form.batch_mfg_date} onChange={(e) => setForm({ ...form, batch_mfg_date: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Expiry Date</Label>
+                  <Input type="date" value={form.batch_expiry_date} onChange={(e) => setForm({ ...form, batch_expiry_date: e.target.value })} />
+                </div>
+              </div>
             </div>
           )}
           {form.type === "product" && (
