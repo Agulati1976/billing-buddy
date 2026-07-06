@@ -15,7 +15,22 @@ import { StockHistoryDialog } from "@/components/StockHistoryDialog";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
-import { composeItemName } from "@/lib/invoice";
+import { composeItemName, composeItemLines } from "@/lib/invoice";
+
+function ItemDetails({ item, compact }: { item: ItemRow; compact?: boolean }) {
+  const rows = composeItemLines(item);
+  if (rows.length === 0) return null;
+  return (
+    <div className={`mt-1 space-y-0.5 ${compact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
+      {rows.map((r) => (
+        <div key={r.label} className="flex gap-1">
+          <span className="font-medium text-foreground/70 shrink-0">{r.label} -</span>
+          <span className="truncate">{r.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Items() {
   const { current } = useBusiness();
