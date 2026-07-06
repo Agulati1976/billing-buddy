@@ -105,6 +105,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         allow_decimal_qty: !!item.allow_decimal_qty,
         brand: item.brand ?? "", flavour: item.flavour ?? "", color: item.color ?? "",
         mrp: String(item.mrp ?? 0),
+        batch_number: "", batch_mfg_date: "", batch_expiry_date: "", batch_quantity: "",
       });
 
       setCatalogId(item.catalog_id ?? null);
