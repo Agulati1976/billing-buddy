@@ -126,8 +126,13 @@ export function composeItemName(it: {
   flavour?: string | null;
   color?: string | null;
   sku?: string | null;
+  unit?: string | null;
+  unit_size?: number | null;
 }): string {
-  const variant = [it.brand, it.flavour, it.color]
+  const packSize = it.unit_size != null && Number(it.unit_size) > 0
+    ? `${Number(it.unit_size)}${(it.unit ?? "").toString().trim().toUpperCase()}`
+    : "";
+  const variant = [it.brand, it.flavour, it.color, packSize]
     .map((v) => (v ?? "").toString().trim())
     .filter(Boolean)
     .join(" · ");
