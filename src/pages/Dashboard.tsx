@@ -67,9 +67,10 @@ export default function Dashboard() {
   const [expiryCustom, setExpiryCustom] = useState<string>("30");
   const [expiryIsCustom, setExpiryIsCustom] = useState<boolean>(false);
 
-  // Low stock filter (days window — recent activity)
-  const [lowDays, setLowDays] = useState<number>(30);
-  const [lowCustom, setLowCustom] = useState<string>("30");
+  // Low stock filter (how many recent low-stock products to show)
+  const LOW_STOCK_THRESHOLD = 5;
+  const [lowCount, setLowCount] = useState<number>(10);
+  const [lowCustom, setLowCustom] = useState<string>("10");
   const [lowIsCustom, setLowIsCustom] = useState<boolean>(false);
 
 
@@ -118,7 +119,7 @@ export default function Dashboard() {
         recvQuery,
         payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-        supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).gte("updated_at", new Date(Date.now() - Math.max(1, lowDays) * 86400000).toISOString()),
+        supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("updated_at", { ascending: false }).limit(Math.max(1, lowCount)),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
 
@@ -140,9 +141,7 @@ export default function Dashboard() {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-      const lowStock = ((lowR.data as any[]) ?? [])
-        .filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert))
-        .slice(0, 5);
+      const lowStock = ((lowR.data as any[]) ?? []).slice(0, Math.max(1, lowCount));
 
       const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
         id: r.id, invoice_number: r.invoice_number,
@@ -157,7 +156,7 @@ export default function Dashboard() {
 
       setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id, range.from, range.to, expiryDays, lowDays]);
+  }, [current?.id, range.from, range.to, expiryDays, lowCount]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
@@ -243,32 +242,31 @@ export default function Dashboard() {
           <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-warning" />
-              <h2 className="font-semibold">Low Stock Alerts · last {lowDays} day{lowDays === 1 ? "" : "s"}</h2>
+              <h2 className="font-semibold">Low Stock Alerts · under {LOW_STOCK_THRESHOLD} in stock</h2>
             </div>
             <div className="flex items-center gap-2">
               <select
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                value={lowIsCustom ? "custom" : String(lowDays)}
+                value={lowIsCustom ? "custom" : String(lowCount)}
                 onChange={(e) => {
                   const v = e.target.value;
                   if (v === "custom") {
                     setLowIsCustom(true);
                     const n = Number(lowCustom);
-                    if (Number.isFinite(n) && n > 0) setLowDays(Math.floor(n));
+                    if (Number.isFinite(n) && n > 0) setLowCount(Math.floor(n));
                     return;
                   }
                   setLowIsCustom(false);
                   const n = Number(v);
-                  setLowDays(n);
+                  setLowCount(n);
                   setLowCustom(String(n));
                 }}
               >
-                <option value="7">Last 7 days</option>
-                <option value="15">Last 15 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="60">Last 60 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="180">Last 180 days</option>
+                <option value="5">Recent 5 products</option>
+                <option value="10">Recent 10 products</option>
+                <option value="20">Recent 20 products</option>
+                <option value="50">Recent 50 products</option>
+                <option value="100">Recent 100 products</option>
                 <option value="custom">Custom…</option>
               </select>
               {lowIsCustom && (
@@ -280,9 +278,9 @@ export default function Dashboard() {
                   onChange={(e) => {
                     setLowCustom(e.target.value);
                     const n = Number(e.target.value);
-                    if (Number.isFinite(n) && n > 0) setLowDays(Math.floor(n));
+                    if (Number.isFinite(n) && n > 0) setLowCount(Math.floor(n));
                   }}
-                  placeholder="Days"
+                  placeholder="Products"
                 />
               )}
             </div>
@@ -293,13 +291,13 @@ export default function Dashboard() {
                 <li key={i.name} className="flex justify-between items-center text-sm py-1">
                   <span>{i.name}</span>
                   <span className="text-danger num">
-                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert at {Number(i.low_stock_alert)}</span>
+                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert under {LOW_STOCK_THRESHOLD}</span>
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No items with recent activity below their low-stock threshold.</p>
+            <p className="text-sm text-muted-foreground">No products with stock under {LOW_STOCK_THRESHOLD}.</p>
           )}
         </Card>
 
