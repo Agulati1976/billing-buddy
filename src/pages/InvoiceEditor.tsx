@@ -663,7 +663,10 @@ export default function InvoiceEditor({ type }: Props) {
             total_amount: l.total_amount,
           }))
         );
-        if (liRes.error) throw liRes.error;
+        if (liRes.error) {
+          await supabase.from("invoice_items").insert(oldLines as any);
+          throw liRes.error;
+        }
 
         // 5. Recompute paid/balance/status from existing payments
         const { data: pays } = await supabase.from("payments")
@@ -821,6 +824,12 @@ export default function InvoiceEditor({ type }: Props) {
         total_amount: l.total_amount,
       }))
     );
+    if (liRes.error) {
+      await supabase.from("invoices").delete().eq("id", invoiceId);
+      setSaving(false);
+      toast.error((liRes.error as any).message ?? "Failed");
+      return;
+    }
 
     // Loyalty: record earned + redeemed for sale
     if (type === "sale" && partyId && loyaltyCfg?.enabled && (earnedPoints > 0 || redeemPoints > 0)) {
@@ -858,7 +867,6 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     setSaving(false);
-    if (liRes.error) { toast.error((liRes.error as any).message ?? "Failed"); return; }
     toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
     navigate(`/${meta.route}`);
   };
