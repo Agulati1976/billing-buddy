@@ -11,16 +11,16 @@ import { ModuleGrid } from "@/components/ModuleGrid";
 import { startOfMonth, format } from "date-fns";
 
 const StatCard = ({
-  label, value, icon: Icon, tone = "primary",
-}: { label: string; value: string; icon: any; tone?: "primary" | "success" | "warning" | "danger" }) => {
+  label, value, icon: Icon, tone = "primary", to,
+}: { label: string; value: string; icon: any; tone?: "primary" | "success" | "warning" | "danger"; to?: string }) => {
   const toneMap = {
     primary: "bg-primary-soft text-primary",
     success: "bg-success-soft text-success",
     warning: "bg-warning-soft text-warning",
     danger: "bg-danger-soft text-danger",
   };
-  return (
-    <Card className="p-3 sm:p-5">
+  const inner = (
+    <Card className="p-3 sm:p-5 h-full hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xs sm:text-sm text-muted-foreground truncate">{label}</div>
@@ -32,6 +32,7 @@ const StatCard = ({
       </div>
     </Card>
   );
+  return to ? <Link to={to} className="block">{inner}</Link> : inner;
 };
 
 interface Stats {
