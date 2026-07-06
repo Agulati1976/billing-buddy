@@ -694,12 +694,23 @@ export default function InvoiceEditor({ type }: Props) {
     }
 
     const invoiceId = crypto.randomUUID();
+    // NOTE: We intentionally insert the invoice with paid_amount=0 / balance=total
+    // for sale & purchase. The `apply_payment_to_invoice` trigger will fire when
+    // we insert the payment rows below and correctly compute paid/balance/status.
+    // Setting paid_amount=newPaid here AND inserting payment rows caused the
+    // trigger to double-count (paid_amount = newPaid + payment.amount), which
+    // pushed balance_amount negative and mis-labelled partial-credit invoices
+    // as fully paid — hiding the credit portion from To Receive / Outstanding.
+    const seedPaid = isReturn ? computed.total_amount : 0;
+    const seedBalance = isReturn ? 0 : computed.total_amount;
+    const seedStatus: any = supportsPayment ? "unpaid" : newStatus;
+
     const invRes = await omInsert("invoices", {
       id: invoiceId,
       business_id: current.id,
       party_id: partyId || null,
       type,
-      status: newStatus,
+      status: seedStatus,
       invoice_number: number.trim(),
       invoice_date: date,
       due_date: dueDate || null,
@@ -717,8 +728,8 @@ export default function InvoiceEditor({ type }: Props) {
       igst_amount: computed.igst_amount,
       round_off: computed.round_off,
       total_amount: computed.total_amount,
-      paid_amount: newPaid,
-      balance_amount: newBalance,
+      paid_amount: seedPaid,
+      balance_amount: seedBalance,
       notes: notes.trim() || null,
       terms: terms.trim() || null,
       created_by: user.id,
