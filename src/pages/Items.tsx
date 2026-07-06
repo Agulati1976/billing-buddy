@@ -233,7 +233,7 @@ export default function Items() {
                         <span className="text-muted-foreground">—</span>
                       ) : (
                         <Badge variant={low ? "destructive" : "secondary"}>
-                          {i.current_stock} {i.unit}
+                          {i.current_stock} pcs
                         </Badge>
                       )}
                     </TableCell>
