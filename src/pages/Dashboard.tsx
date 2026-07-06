@@ -141,9 +141,7 @@ export default function Dashboard() {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-      const lowStock = ((lowR.data as any[]) ?? [])
-        .filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert))
-        .slice(0, 5);
+      const lowStock = ((lowR.data as any[]) ?? []).slice(0, Math.max(1, lowCount));
 
       const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
         id: r.id, invoice_number: r.invoice_number,
