@@ -40,6 +40,7 @@ export interface ItemRow {
   image_url?: string | null;
   catalog_id?: string | null;
   allow_decimal_qty?: boolean;
+  unit_size?: number | null;
 }
 
 
