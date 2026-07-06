@@ -240,6 +240,11 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
     let stockDelta = 0;
     if (item && form.type === "product" && !form.is_batch_tracked) {
       stockDelta = newOpening - (Number(item.opening_stock) || 0);
+      if (stockDelta < 0 && Math.abs(stockDelta) > Number(item.current_stock ?? 0)) {
+        toast.error(`Out of stock: only ${Number(item.current_stock ?? 0)} ${item.unit} available`);
+        setSaving(false);
+        return;
+      }
     }
     const res = item
       ? await omUpdate("items", { column: "id", value: item.id }, payload)
