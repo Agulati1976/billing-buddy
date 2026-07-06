@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useBusiness } from "@/hooks/useBusiness";
-import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet, FileText } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Package, Receipt, ShoppingCart, TrendingUp, Users, Wallet, FileText } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -11,16 +11,16 @@ import { ModuleGrid } from "@/components/ModuleGrid";
 import { startOfMonth, format } from "date-fns";
 
 const StatCard = ({
-  label, value, icon: Icon, tone = "primary",
-}: { label: string; value: string; icon: any; tone?: "primary" | "success" | "warning" | "danger" }) => {
+  label, value, icon: Icon, tone = "primary", to,
+}: { label: string; value: string; icon: any; tone?: "primary" | "success" | "warning" | "danger"; to?: string }) => {
   const toneMap = {
     primary: "bg-primary-soft text-primary",
     success: "bg-success-soft text-success",
     warning: "bg-warning-soft text-warning",
     danger: "bg-danger-soft text-danger",
   };
-  return (
-    <Card className="p-3 sm:p-5">
+  const inner = (
+    <Card className="p-3 sm:p-5 h-full hover:shadow-md hover:border-primary/40 transition-all cursor-pointer">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xs sm:text-sm text-muted-foreground truncate">{label}</div>
@@ -32,11 +32,14 @@ const StatCard = ({
       </div>
     </Card>
   );
+  return to ? <Link to={to} className="block">{inner}</Link> : inner;
 };
 
 interface Stats {
   todaySales: number;
   rangeSales: number;
+  rangePurchases: number;
+  rangeExpenses: number;
   toReceive: number;
   toPay: number;
   topCustomers: { name: string; total: number }[];
@@ -87,16 +90,31 @@ export default function Dashboard() {
       if (since) rangeQuery = rangeQuery.gte("invoice_date", since);
       if (until) rangeQuery = rangeQuery.lte("invoice_date", until);
 
-      // Outstanding "as of" the end of the selected range — include ALL unpaid
-      // invoices issued on or before `until` (ignore lower bound so old dues still show).
+      let purchQuery = supabase.from("invoices")
+        .select("total_amount")
+        .eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null);
+      if (since) purchQuery = purchQuery.gte("invoice_date", since);
+      if (until) purchQuery = purchQuery.lte("invoice_date", until);
+
+      let expQuery = supabase.from("expenses")
+        .select("amount")
+        .eq("business_id", current.id);
+      if (since) expQuery = expQuery.gte("expense_date", since);
+      if (until) expQuery = expQuery.lte("expense_date", until);
+
+      // To Receive / To Pay — unpaid balances for invoices issued within the selected date range.
       let recvQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gt("balance_amount", 0);
+      if (since) recvQuery = recvQuery.gte("invoice_date", since);
       if (until) recvQuery = recvQuery.lte("invoice_date", until);
       let payQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0);
+      if (since) payQuery = payQuery.gte("invoice_date", since);
       if (until) payQuery = payQuery.lte("invoice_date", until);
 
-      const [todayR, rangeR, recvR, payR, recentR, lowR, expR] = await Promise.all([
+      const [todayR, rangeR, purchR, expenseR, recvR, payR, recentR, lowR, expR] = await Promise.all([
         supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).eq("invoice_date", today),
         rangeQuery,
+        purchQuery,
+        expQuery,
         recvQuery,
         payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
@@ -106,6 +124,8 @@ export default function Dashboard() {
 
       const todaySales = (todayR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
       const rangeSales = (rangeR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
+      const rangePurchases = (purchR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
+      const rangeExpenses = (expenseR.data ?? []).reduce((s, r: any) => s + Number(r.amount), 0);
       const toReceive = (recvR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
       const toPay = (payR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
 
@@ -135,7 +155,7 @@ export default function Dashboard() {
         quantity: Number(b.quantity), item: b.items?.name ?? "—",
       }));
 
-      setStats({ todaySales, rangeSales, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
+      setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
     })();
   }, [current?.id, range.from, range.to, expiryDays, lowDays]);
 
@@ -156,9 +176,13 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" />
-        <StatCard label={`To Receive${range.to ? ` · as of ${format(range.to, "dd MMM")}` : ""}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
-        <StatCard label={`To Pay${range.to ? ` · as of ${format(range.to, "dd MMM")}` : ""}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
+        <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" to="/sales" />
+        <StatCard label={`Purchases · ${range.label}`} value={formatINR(stats?.rangePurchases ?? 0)} icon={ShoppingCart} tone="primary" to="/purchases" />
+        <StatCard label={`Expenses · ${range.label}`} value={formatINR(stats?.rangeExpenses ?? 0)} icon={Receipt} tone="danger" to="/expenses" />
+        <StatCard label={`Profit · ${range.label}`} value={formatINR((stats?.rangeSales ?? 0) - (stats?.rangePurchases ?? 0) - (stats?.rangeExpenses ?? 0))} icon={TrendingUp} tone="success" to="/reports" />
+        <StatCard label={`To Receive · ${range.label}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" to="/payments" />
+        <StatCard label={`To Pay · ${range.label}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" to="/payments" />
+
 
 
       </div>
