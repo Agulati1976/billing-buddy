@@ -38,6 +38,8 @@ const StatCard = ({
 interface Stats {
   todaySales: number;
   rangeSales: number;
+  rangePurchases: number;
+  rangeExpenses: number;
   toReceive: number;
   toPay: number;
   topCustomers: { name: string; total: number }[];
