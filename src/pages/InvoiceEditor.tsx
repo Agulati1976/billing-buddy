@@ -1192,7 +1192,7 @@ export default function InvoiceEditor({ type }: Props) {
 
                 {readOnly ? (
                   <div>
-                    <div className="font-medium">{l.item_name}</div>
+                    <div className="font-medium whitespace-pre-line leading-snug">{l.item_name}</div>
                     {l.batch_id && (
                       <div className="text-xs text-muted-foreground">Batch: {batches.find(b => b.id === l.batch_id)?.batch_number ?? "—"}</div>
                     )}
