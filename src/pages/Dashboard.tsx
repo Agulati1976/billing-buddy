@@ -176,9 +176,13 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" />
-        <StatCard label={`To Receive${range.to ? ` · as of ${format(range.to, "dd MMM")}` : ""}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" />
-        <StatCard label={`To Pay${range.to ? ` · as of ${format(range.to, "dd MMM")}` : ""}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" />
+        <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" to="/sales" />
+        <StatCard label={`Purchases · ${range.label}`} value={formatINR(stats?.rangePurchases ?? 0)} icon={ShoppingCart} tone="primary" to="/purchases" />
+        <StatCard label={`Expenses · ${range.label}`} value={formatINR(stats?.rangeExpenses ?? 0)} icon={Receipt} tone="danger" to="/expenses" />
+        <StatCard label={`Profit · ${range.label}`} value={formatINR((stats?.rangeSales ?? 0) - (stats?.rangePurchases ?? 0) - (stats?.rangeExpenses ?? 0))} icon={TrendingUp} tone="success" to="/reports" />
+        <StatCard label={`To Receive · ${range.label}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" to="/payments" />
+        <StatCard label={`To Pay · ${range.label}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" to="/payments" />
+
 
 
       </div>
