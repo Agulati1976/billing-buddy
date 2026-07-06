@@ -529,6 +529,71 @@ export default function InvoiceEditor({ type }: Props) {
       }
     }
 
+    // ==== STOCK GUARD: prevent negative stock for stock-consuming invoices ====
+    // sale & purchase_return reduce stock. For edits, add back this invoice's own
+    // previous quantities (they will be reversed before re-applying).
+    if (type === "sale" || type === "purchase_return") {
+      // Fetch fresh stock so we don't rely on stale state
+      const itemIds = Array.from(new Set(validLines.map(l => l.item_id).filter(Boolean))) as string[];
+      const batchIds = Array.from(new Set(validLines.map(l => l.batch_id).filter(Boolean))) as string[];
+      const [freshItems, freshBatches] = await Promise.all([
+        itemIds.length
+          ? supabase.from("items").select("id, name, unit, current_stock, is_batch_tracked").in("id", itemIds)
+          : Promise.resolve({ data: [] as any[] } as any),
+        batchIds.length
+          ? supabase.from("batches").select("id, batch_number, quantity, item_id").in("id", batchIds)
+          : Promise.resolve({ data: [] as any[] } as any),
+      ]);
+      const itemMap = new Map<string, any>(((freshItems.data as any[]) ?? []).map(r => [r.id, r]));
+      const batchMap = new Map<string, any>(((freshBatches.data as any[]) ?? []).map(r => [r.id, r]));
+
+      // Add back own previous quantities on edit
+      const ownBatchBack = new Map<string, number>();
+      const ownItemBack = new Map<string, number>();
+      if (!isNew && originalSnapshot) {
+        for (const ol of originalSnapshot.lines) {
+          const q = Number(ol.quantity) || 0;
+          if (ol.batch_id) ownBatchBack.set(ol.batch_id, (ownBatchBack.get(ol.batch_id) ?? 0) + q);
+          else if (ol.item_id) ownItemBack.set(ol.item_id, (ownItemBack.get(ol.item_id) ?? 0) + q);
+        }
+      }
+
+      // Aggregate requested per batch / per item (non-batch)
+      const reqBatch = new Map<string, number>();
+      const reqItem = new Map<string, number>();
+      for (const l of validLines) {
+        const q = Number(l.quantity) || 0;
+        if (l.batch_id) reqBatch.set(l.batch_id, (reqBatch.get(l.batch_id) ?? 0) + q);
+        else if (l.item_id) {
+          const it = itemMap.get(l.item_id);
+          // Only enforce for products (skip services). is_batch_tracked=false products stored current_stock
+          if (it && it.current_stock !== null && it.current_stock !== undefined) {
+            reqItem.set(l.item_id, (reqItem.get(l.item_id) ?? 0) + q);
+          }
+        }
+      }
+
+      for (const [batchId, need] of reqBatch) {
+        const b = batchMap.get(batchId);
+        if (!b) continue;
+        const available = Number(b.quantity) + (ownBatchBack.get(batchId) ?? 0);
+        if (need > available) {
+          const it = items.find(x => x.id === b.item_id);
+          toast.error(`Out of stock: batch "${b.batch_number}"${it ? ` of ${it.name}` : ""} has only ${available} ${it?.unit ?? ""} — please pick another batch.`);
+          return;
+        }
+      }
+      for (const [itemId, need] of reqItem) {
+        const it = itemMap.get(itemId);
+        if (!it) continue;
+        const available = Number(it.current_stock ?? 0) + (ownItemBack.get(itemId) ?? 0);
+        if (need > available) {
+          toast.error(`Out of stock: ${it.name} — only ${available} ${it.unit ?? ""} in stock.`);
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     // If user entered inclusive prices, convert to exclusive so storage stays consistent
     const linesForSave = pricesIncludeTax && isGst
