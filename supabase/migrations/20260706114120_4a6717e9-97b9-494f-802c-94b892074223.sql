@@ -1,0 +1,1 @@
+ALTER TABLE public.items ADD COLUMN IF NOT EXISTS unit_size NUMERIC;
