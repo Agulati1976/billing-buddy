@@ -56,6 +56,8 @@ export default function Pos() {
   const { canUsePos, posEnabled, hasPosAccess, loading: accessLoading } = usePosAccess();
 
   const [items, setItems] = useState<Item[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batchPickerItem, setBatchPickerItem] = useState<Item | null>(null);
   const [parties, setParties] = useState<Party[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [partyId, setPartyId] = useState<string>("");
