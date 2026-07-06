@@ -33,7 +33,8 @@ interface Item {
   brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
-interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; }
+interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
+interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; batch_number?: string | null; }
 
 
 type PaymentMethod = "cash" | "card" | "upi" | "bank_transfer" | "cheque" | "other" | "credit";
@@ -55,6 +56,8 @@ export default function Pos() {
   const { canUsePos, posEnabled, hasPosAccess, loading: accessLoading } = usePosAccess();
 
   const [items, setItems] = useState<Item[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batchPickerItem, setBatchPickerItem] = useState<Item | null>(null);
   const [parties, setParties] = useState<Party[]>([]);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [partyId, setPartyId] = useState<string>("");
@@ -88,10 +91,12 @@ export default function Pos() {
       supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
-    ]).then(([it, p, s]) => {
+      supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+    ]).then(([it, p, s, b]) => {
       setItems((it.data as any) ?? []);
       setParties((p.data as any) ?? []);
       setUpiSettings((s.data as any) ?? null);
+      setBatches((b.data as any) ?? []);
     });
   }, [current?.id]);
 
@@ -123,31 +128,40 @@ export default function Pos() {
     ).slice(0, 60);
   }, [items, search]);
 
-  const addToCart = (it: Item) => {
-    setCart((prev) => {
-      if (it.is_batch_tracked) {
-        toast.error(`${it.name} is batch-tracked. Use Sales Invoice and select a batch.`);
-        return prev;
+  const addToCart = (it: Item, batch?: Batch) => {
+    if (it.is_batch_tracked && !batch) {
+      const available = batches.filter((b) => b.item_id === it.id && Number(b.quantity) > 0);
+      if (available.length === 0) {
+        toast.error(`${it.name} is batch-tracked but has no batches in stock. Add a batch first.`);
+        return;
       }
-      const existing = prev.find((l) => l.item_id === it.id);
-      const available = Number(it.current_stock) || 0;
+      setBatchPickerItem(it);
+      return;
+    }
+    setCart((prev) => {
+      const keyMatch = (l: CartLine) => l.item_id === it.id && (l.batch_id ?? null) === (batch?.id ?? null);
+      const existing = prev.find(keyMatch);
+      const available = batch ? Number(batch.quantity) || 0 : Number(it.current_stock) || 0;
       const nextQty = (existing ? Number(existing.quantity) : 0) + 1;
       if (nextQty > available) {
-        toast.error(`Out of stock: ${it.name} has only ${available} ${it.unit} in stock`);
+        toast.error(`Out of stock: ${it.name}${batch ? ` (batch ${batch.batch_number})` : ""} has only ${available} ${it.unit} available`);
         return prev;
       }
       if (existing) {
-        return prev.map((l) => l.item_id === it.id ? { ...l, quantity: nextQty } : l);
+        return prev.map((l) => keyMatch(l) ? { ...l, quantity: nextQty } : l);
       }
+      const name = batch ? `${composeItemName(it)}\nBatch - ${batch.batch_number}${batch.expiry_date ? ` (exp ${batch.expiry_date})` : ""}` : composeItemName(it);
       return [...prev, {
-        _key: newKey(), item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
+        _key: newKey(), item_id: it.id, item_name: name, hsn_code: it.hsn_code,
         quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
-        discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: null,
-        max_stock: Number(it.current_stock) || 0,
+        discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: batch?.id ?? null,
+        batch_number: batch?.batch_number ?? null,
+        max_stock: available,
         allow_decimal_qty: !!it.allow_decimal_qty,
       }];
     });
   };
+
 
 
   const onScan = async (code: string) => {
@@ -203,36 +217,59 @@ export default function Pos() {
 
   const validateCartStock = async () => {
     if (!current) return false;
-    const requested = new Map<string, number>();
+    const reqItem = new Map<string, number>();
+    const reqBatch = new Map<string, number>();
     for (const line of cart) {
       const qty = Number(line.quantity) || 0;
       if (!line.item_id || qty <= 0) continue;
-      requested.set(line.item_id, (requested.get(line.item_id) ?? 0) + qty);
-    }
-    if (requested.size === 0) return true;
-
-    const { data, error } = await supabase
-      .from("items")
-      .select("id,name,unit,current_stock,is_batch_tracked")
-      .eq("business_id", current.id)
-      .in("id", Array.from(requested.keys()));
-    if (error) { toast.error(error.message); return false; }
-
-    const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
-    for (const [itemId, need] of requested) {
-      const item = fresh.get(itemId);
-      if (item?.is_batch_tracked) {
-        toast.error(`${item.name} is batch-tracked. Use Sales Invoice and select a batch.`);
-        return false;
+      if (line.batch_id) {
+        reqBatch.set(line.batch_id, (reqBatch.get(line.batch_id) ?? 0) + qty);
+      } else {
+        reqItem.set(line.item_id, (reqItem.get(line.item_id) ?? 0) + qty);
       }
-      const available = Number(item?.current_stock ?? 0);
-      if (need > available) {
-        toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
-        return false;
+    }
+
+    if (reqItem.size > 0) {
+      const { data, error } = await supabase
+        .from("items")
+        .select("id,name,unit,current_stock,is_batch_tracked")
+        .eq("business_id", current.id)
+        .in("id", Array.from(reqItem.keys()));
+      if (error) { toast.error(error.message); return false; }
+      const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
+      for (const [itemId, need] of reqItem) {
+        const item = fresh.get(itemId);
+        if (item?.is_batch_tracked) {
+          toast.error(`${item.name} is batch-tracked. Remove it and re-add by picking a batch.`);
+          return false;
+        }
+        const available = Number(item?.current_stock ?? 0);
+        if (need > available) {
+          toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
+          return false;
+        }
+      }
+    }
+
+    if (reqBatch.size > 0) {
+      const { data, error } = await supabase
+        .from("batches")
+        .select("id,batch_number,quantity,item_id,items(name,unit)")
+        .in("id", Array.from(reqBatch.keys()));
+      if (error) { toast.error(error.message); return false; }
+      const fresh = new Map((data ?? []).map((b: any) => [b.id, b]));
+      for (const [batchId, need] of reqBatch) {
+        const b: any = fresh.get(batchId);
+        const available = Number(b?.quantity ?? 0);
+        if (!b || need > available) {
+          toast.error(`Out of stock: batch ${b?.batch_number ?? ""}${b?.items?.name ? ` of ${b.items.name}` : ""} has only ${available} ${b?.items?.unit ?? ""} available. Pick another batch.`);
+          return false;
+        }
       }
     }
     return true;
   };
+
 
   const openPayment = async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
@@ -356,9 +393,13 @@ export default function Pos() {
       // Reset
       setCart([]); setPartyId(""); setExtraDiscount("0");
       setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
-      // Refresh items stock
-      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name");
-      setItems((it as any) ?? []);
+      // Refresh items & batches stock
+      const [itRes, bRes] = await Promise.all([
+        supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
+        supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+      ]);
+      setItems((itRes.data as any) ?? []);
+      setBatches((bRes.data as any) ?? []);
     } catch (e: any) {
       toast.error(e.message || "Failed to save sale");
     }
@@ -733,6 +774,40 @@ export default function Pos() {
 
       {/* Scanner */}
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScan} />
+
+      {/* Batch picker */}
+      <Dialog open={!!batchPickerItem} onOpenChange={(v) => { if (!v) setBatchPickerItem(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pick batch · {batchPickerItem?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-auto">
+            {batchPickerItem && batches.filter((b) => b.item_id === batchPickerItem.id && Number(b.quantity) > 0).length === 0 ? (
+              <div className="text-sm text-muted-foreground py-4 text-center">No batches in stock.</div>
+            ) : batchPickerItem && batches.filter((b) => b.item_id === batchPickerItem.id && Number(b.quantity) > 0).map((b) => (
+              <button
+                key={b.id}
+                onClick={() => {
+                  const it = batchPickerItem;
+                  setBatchPickerItem(null);
+                  if (it) addToCart(it, b);
+                }}
+                className="w-full text-left p-3 border rounded-md hover:border-primary hover:bg-accent transition"
+              >
+                <div className="text-sm font-medium">Batch {b.batch_number}</div>
+                <div className="text-xs text-muted-foreground">
+                  Qty {Number(b.quantity)} {batchPickerItem?.unit}
+                  {b.expiry_date ? ` · Expiry ${b.expiry_date}` : ""}
+                </div>
+              </button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchPickerItem(null)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Payment dialog */}
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
