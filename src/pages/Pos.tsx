@@ -91,10 +91,12 @@ export default function Pos() {
       supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
-    ]).then(([it, p, s]) => {
+      supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+    ]).then(([it, p, s, b]) => {
       setItems((it.data as any) ?? []);
       setParties((p.data as any) ?? []);
       setUpiSettings((s.data as any) ?? null);
+      setBatches((b.data as any) ?? []);
     });
   }, [current?.id]);
 
