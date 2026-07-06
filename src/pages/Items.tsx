@@ -215,9 +215,10 @@ export default function Items() {
                             <span className="text-[10px] text-muted-foreground uppercase">{i.name.slice(0, 2)}</span>
                           )}
                         </div>
-                        <div>
-                          <div className="font-medium">{composeItemName(i)}</div>
+                        <div className="min-w-0">
+                          <div className="font-medium">{i.brand ? `${i.brand} — ${i.name}` : i.name}</div>
                           <div className="text-xs text-muted-foreground capitalize">{i.type}</div>
+                          <ItemDetails item={i} />
                         </div>
                       </div>
                     </TableCell>
