@@ -15,7 +15,22 @@ import { StockHistoryDialog } from "@/components/StockHistoryDialog";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
-import { composeItemName } from "@/lib/invoice";
+import { composeItemName, composeItemLines } from "@/lib/invoice";
+
+function ItemDetails({ item, compact }: { item: ItemRow; compact?: boolean }) {
+  const rows = composeItemLines(item);
+  if (rows.length === 0) return null;
+  return (
+    <div className={`mt-1 space-y-0.5 ${compact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
+      {rows.map((r) => (
+        <div key={r.label} className="flex gap-1">
+          <span className="font-medium text-foreground/70 shrink-0">{r.label} -</span>
+          <span className="truncate">{r.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Items() {
   const { current } = useBusiness();
@@ -135,10 +150,9 @@ export default function Items() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{composeItemName(i)}</div>
-                  <div className="text-[11px] text-muted-foreground capitalize">
-                    {i.type}{i.sku ? ` · SKU ${i.sku}` : ""}
-                  </div>
+                  <div className="font-medium text-sm truncate">{i.brand ? `${i.brand} — ${i.name}` : i.name}</div>
+                  <div className="text-[11px] text-muted-foreground capitalize">{i.type}</div>
+                  <ItemDetails item={i} compact />
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-sm font-semibold num">{formatINR(i.sale_price)}</span>
                     {i.type === "product" ? (
@@ -201,9 +215,10 @@ export default function Items() {
                             <span className="text-[10px] text-muted-foreground uppercase">{i.name.slice(0, 2)}</span>
                           )}
                         </div>
-                        <div>
-                          <div className="font-medium">{composeItemName(i)}</div>
+                        <div className="min-w-0">
+                          <div className="font-medium">{i.brand ? `${i.brand} — ${i.name}` : i.name}</div>
                           <div className="text-xs text-muted-foreground capitalize">{i.type}</div>
+                          <ItemDetails item={i} />
                         </div>
                       </div>
                     </TableCell>
