@@ -150,10 +150,9 @@ export default function Items() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{composeItemName(i)}</div>
-                  <div className="text-[11px] text-muted-foreground capitalize">
-                    {i.type}{i.sku ? ` · SKU ${i.sku}` : ""}
-                  </div>
+                  <div className="font-medium text-sm truncate">{i.brand ? `${i.brand} — ${i.name}` : i.name}</div>
+                  <div className="text-[11px] text-muted-foreground capitalize">{i.type}</div>
+                  <ItemDetails item={i} compact />
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-sm font-semibold num">{formatINR(i.sale_price)}</span>
                     {i.type === "product" ? (
