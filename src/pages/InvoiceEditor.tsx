@@ -1288,14 +1288,14 @@ export default function InvoiceEditor({ type }: Props) {
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[28%]">Item</TableHead>
-              <TableHead>HSN</TableHead>
-              <TableHead className="w-[80px]">Qty</TableHead>
-              <TableHead className="w-[110px]">Price</TableHead>
-              <TableHead className="w-[140px]">Discount</TableHead>
-              <TableHead className="w-[80px]">Tax %</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              {!readOnly && <TableHead className="w-[40px]"></TableHead>}
+              <TableHead className="w-[24%] min-w-[220px]">Item</TableHead>
+              <TableHead className="w-[100px]">HSN</TableHead>
+              <TableHead className="w-[110px]">Qty</TableHead>
+              <TableHead className="w-[130px]">Price</TableHead>
+              <TableHead className="w-[160px]">Discount</TableHead>
+              <TableHead className="w-[90px]">Tax %</TableHead>
+              <TableHead className="w-[130px] text-right">Amount</TableHead>
+              {!readOnly && <TableHead className="w-[48px]"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
