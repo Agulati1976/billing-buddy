@@ -202,7 +202,7 @@ export default function Items() {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium">{i.name}</div>
+                          <div className="font-medium">{composeItemName(i)}</div>
                           <div className="text-xs text-muted-foreground capitalize">{i.type}</div>
                         </div>
                       </div>
