@@ -107,6 +107,7 @@ export async function createItemFromCatalog(
     barcode: entry.barcode,
     hsn_code: entry.hsn_code,
     unit: entry.unit,
+    unit_size: entry.unit_size ?? null,
     tax_rate: entry.tax_rate,
     sale_price: overrides?.sale_price ?? entry.mrp ?? 0,
     purchase_price: overrides?.purchase_price ?? 0,
