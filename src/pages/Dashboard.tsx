@@ -119,7 +119,7 @@ export default function Dashboard() {
         recvQuery,
         payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-        supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).gte("updated_at", new Date(Date.now() - Math.max(1, lowDays) * 86400000).toISOString()),
+        supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("updated_at", { ascending: false }).limit(Math.max(1, lowCount)),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
 
