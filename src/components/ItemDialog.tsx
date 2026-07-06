@@ -62,6 +62,7 @@ const emptyForm = {
   opening_stock: "0", low_stock_alert: "0", description: "",
   category_id: "", is_batch_tracked: false, allow_decimal_qty: false,
   brand: "", flavour: "", color: "", mrp: "0",
+  batch_number: "", batch_mfg_date: "", batch_expiry_date: "", batch_quantity: "",
 };
 
 
