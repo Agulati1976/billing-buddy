@@ -169,6 +169,7 @@ export default function Pos() {
         unit: created.unit,
         hsn_code: created.hsn_code,
         current_stock: Number(created.current_stock) || 0,
+        is_batch_tracked: !!created.is_batch_tracked,
       };
       setItems((prev) => [newItem, ...prev]);
       addToCart(newItem);
@@ -196,8 +197,38 @@ export default function Pos() {
   const totalPaid = cashPaid + creditAmt; // total tendered including credit allocation
   const change = cashPaid - Math.max(0, totals.total_amount - creditAmt);
 
-  const openPayment = () => {
+  const validateCartStock = async () => {
+    if (!current) return false;
+    const requested = new Map<string, number>();
+    for (const line of cart) {
+      const qty = Number(line.quantity) || 0;
+      if (!line.item_id || qty <= 0) continue;
+      requested.set(line.item_id, (requested.get(line.item_id) ?? 0) + qty);
+    }
+    if (requested.size === 0) return true;
+
+    const { data, error } = await supabase
+      .from("items")
+      .select("id,name,unit,current_stock")
+      .eq("business_id", current.id)
+      .in("id", Array.from(requested.keys()));
+    if (error) { toast.error(error.message); return false; }
+
+    const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
+    for (const [itemId, need] of requested) {
+      const item = fresh.get(itemId);
+      const available = Number(item?.current_stock ?? 0);
+      if (need > available) {
+        toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const openPayment = async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    if (!(await validateCartStock())) return;
     setSplits([{ method: "cash", amount: totals.total_amount }]);
     setPaymentOpen(true);
   };
@@ -205,6 +236,7 @@ export default function Pos() {
   const completeSale = async () => {
     if (!current || !user) return;
     if (totalPaid <= 0) { toast.error("Enter payment amount"); return; }
+    if (!(await validateCartStock())) return;
     // Actual money received (excluding credit allocation), capped at total
     const recordedPaid = Math.min(cashPaid, totals.total_amount);
     try {
