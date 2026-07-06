@@ -244,7 +244,8 @@ export default function Invoices({ type }: Props) {
               {filtered.map((r) => {
                 const st = STATUS_META[r.status];
                 return (
-                <div key={r.id} className="mobile-card flex items-center gap-3">
+                <div key={r.id} className="mobile-card">
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={() => navigate(`/${meta.route}/${r.id}`)}
                       className="flex-1 min-w-0 text-left"
@@ -278,25 +279,46 @@ export default function Invoices({ type }: Props) {
                       {Number(r.balance_amount) > 0 && (
                         <div className="text-[11px] text-danger num">Bal {formatINR(Number(r.balance_amount))}</div>
                       )}
-                      {view === "active" && canShare && (
-                        <div className="flex gap-1 justify-end mt-1">
-                          <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setShareRow(r); }} title="Share">
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                      {view === "trash" && (
-                        <div className="flex gap-1 justify-end mt-1">
-                          <Button size="icon" variant="ghost" onClick={() => restore(r.id)} title="Restore">
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => purge(r.id)} title="Delete forever">
-                            <Trash2 className="h-4 w-4 text-danger" />
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
+                  <div className="mt-2 pt-2 border-t flex items-center justify-end gap-1">
+                    {view === "active" ? (
+                      <>
+                        <Button size="icon" variant="ghost" className="h-9 w-9" title="View"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/${meta.route}/${r.id}`); }}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {canShare && (
+                          <Button size="icon" variant="ghost" className="h-9 w-9" title="Share"
+                            onClick={(e) => { e.stopPropagation(); setShareRow(r); }}>
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {type === "sale" && (
+                          <Button size="icon" variant="ghost" className="h-9 w-9" title="Create sale return"
+                            onClick={(e) => { e.stopPropagation(); navigate(`/sale_returns/new?from=${r.id}`); }}>
+                            <Undo2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" className="h-9 w-9" title="Delete"
+                          onClick={(e) => { e.stopPropagation(); remove(r.id); }}>
+                          <Trash2 className="h-4 w-4 text-danger" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="icon" variant="ghost" className="h-9 w-9" title="Restore"
+                          onClick={(e) => { e.stopPropagation(); restore(r.id); }}>
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-9 w-9" title="Delete forever"
+                          onClick={(e) => { e.stopPropagation(); purge(r.id); }}>
+                          <Trash2 className="h-4 w-4 text-danger" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
                 );
               })}
             </div>
