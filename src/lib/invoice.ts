@@ -143,6 +143,31 @@ export function composeItemName(it: {
   return out;
 }
 
+/** Return labeled lines describing an item, for rich UI display.
+ *  Only non-empty fields are included. */
+export function composeItemLines(it: {
+  name: string;
+  brand?: string | null;
+  flavour?: string | null;
+  color?: string | null;
+  sku?: string | null;
+  unit?: string | null;
+  unit_size?: number | null;
+}): { label: string; value: string }[] {
+  const clean = (v: unknown) => (v ?? "").toString().trim();
+  const rows: { label: string; value: string }[] = [];
+  if (clean(it.brand)) rows.push({ label: "Brand Name", value: clean(it.brand) });
+  if (clean(it.name)) rows.push({ label: "Product Name", value: clean(it.name) });
+  if (clean(it.flavour)) rows.push({ label: "Flavour", value: clean(it.flavour) });
+  if (clean(it.color)) rows.push({ label: "Color", value: clean(it.color) });
+  const unit = clean(it.unit).toUpperCase();
+  const size = it.unit_size != null && Number(it.unit_size) > 0 ? Number(it.unit_size) : null;
+  if (size != null && unit) rows.push({ label: "Unit", value: `${size} ${unit}` });
+  else if (unit) rows.push({ label: "Unit", value: unit });
+  if (clean(it.sku)) rows.push({ label: "SKU", value: clean(it.sku) });
+  return rows;
+}
+
 export const INVOICE_TYPE_META: Record<
   InvoiceType,
   { label: string; prefix: string; color: string; route: string }
