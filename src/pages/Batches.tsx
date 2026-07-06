@@ -86,13 +86,15 @@ export default function Batches() {
     if (!current || !user) return;
     if (!itemId) { toast.error("Pick an item"); return; }
     if (!batchNumber.trim()) { toast.error("Batch number is required"); return; }
+    const qty = Number(quantity) || 0;
+    if (qty < 0) { toast.error("Batch quantity cannot be negative"); return; }
     setSaving(true);
     const payload = {
       business_id: current.id, item_id: itemId,
       batch_number: batchNumber.trim(),
       mfg_date: mfgDate || null,
       expiry_date: expiryDate || null,
-      quantity: Number(quantity) || 0,
+      quantity: qty,
       notes: notes.trim() || null,
       created_by: user.id,
     };

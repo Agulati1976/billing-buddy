@@ -27,6 +27,7 @@ import { Mic, MicOff } from "lucide-react";
 interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
   tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
+  is_batch_tracked?: boolean;
   image_url?: string | null;
   allow_decimal_qty?: boolean;
   brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null;
@@ -84,7 +85,7 @@ export default function Pos() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
+      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
     ]).then(([it, p, s]) => {
@@ -124,9 +125,19 @@ export default function Pos() {
 
   const addToCart = (it: Item) => {
     setCart((prev) => {
+      if (it.is_batch_tracked) {
+        toast.error(`${it.name} is batch-tracked. Use Sales Invoice and select a batch.`);
+        return prev;
+      }
       const existing = prev.find((l) => l.item_id === it.id);
+      const available = Number(it.current_stock) || 0;
+      const nextQty = (existing ? Number(existing.quantity) : 0) + 1;
+      if (nextQty > available) {
+        toast.error(`Out of stock: ${it.name} has only ${available} ${it.unit} in stock`);
+        return prev;
+      }
       if (existing) {
-        return prev.map((l) => l.item_id === it.id ? { ...l, quantity: Number(l.quantity) + 1 } : l);
+        return prev.map((l) => l.item_id === it.id ? { ...l, quantity: nextQty } : l);
       }
       return [...prev, {
         _key: newKey(), item_id: it.id, item_name: composeItemName(it), hsn_code: it.hsn_code,
@@ -162,6 +173,7 @@ export default function Pos() {
         unit: created.unit,
         hsn_code: created.hsn_code,
         current_stock: Number(created.current_stock) || 0,
+        is_batch_tracked: !!created.is_batch_tracked,
       };
       setItems((prev) => [newItem, ...prev]);
       addToCart(newItem);
@@ -189,8 +201,42 @@ export default function Pos() {
   const totalPaid = cashPaid + creditAmt; // total tendered including credit allocation
   const change = cashPaid - Math.max(0, totals.total_amount - creditAmt);
 
-  const openPayment = () => {
+  const validateCartStock = async () => {
+    if (!current) return false;
+    const requested = new Map<string, number>();
+    for (const line of cart) {
+      const qty = Number(line.quantity) || 0;
+      if (!line.item_id || qty <= 0) continue;
+      requested.set(line.item_id, (requested.get(line.item_id) ?? 0) + qty);
+    }
+    if (requested.size === 0) return true;
+
+    const { data, error } = await supabase
+      .from("items")
+      .select("id,name,unit,current_stock,is_batch_tracked")
+      .eq("business_id", current.id)
+      .in("id", Array.from(requested.keys()));
+    if (error) { toast.error(error.message); return false; }
+
+    const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
+    for (const [itemId, need] of requested) {
+      const item = fresh.get(itemId);
+      if (item?.is_batch_tracked) {
+        toast.error(`${item.name} is batch-tracked. Use Sales Invoice and select a batch.`);
+        return false;
+      }
+      const available = Number(item?.current_stock ?? 0);
+      if (need > available) {
+        toast.error(`Out of stock: ${item?.name ?? "Item"} has only ${available} ${item?.unit ?? ""} in stock`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const openPayment = async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    if (!(await validateCartStock())) return;
     setSplits([{ method: "cash", amount: totals.total_amount }]);
     setPaymentOpen(true);
   };
@@ -198,6 +244,7 @@ export default function Pos() {
   const completeSale = async () => {
     if (!current || !user) return;
     if (totalPaid <= 0) { toast.error("Enter payment amount"); return; }
+    if (!(await validateCartStock())) return;
     // Actual money received (excluding credit allocation), capped at total
     const recordedPaid = Math.min(cashPaid, totals.total_amount);
     try {
@@ -310,7 +357,7 @@ export default function Pos() {
       setCart([]); setPartyId(""); setExtraDiscount("0");
       setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
       // Refresh items stock
-      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name");
+      const { data: it } = await supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name");
       setItems((it as any) ?? []);
     } catch (e: any) {
       toast.error(e.message || "Failed to save sale");
@@ -631,12 +678,24 @@ export default function Pos() {
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Math.max(1, Number(l.quantity) - 1) })}><Minus className="h-3 w-3" /></Button>
-                      <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} min="0" value={l.quantity} onChange={(e) => {
+                      <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} min="0" max={l.max_stock ?? undefined} value={l.quantity} onChange={(e) => {
                         const n = Number(e.target.value);
                         if (!Number.isFinite(n)) return;
-                        updateLine(l._key, { quantity: (l as any).allow_decimal_qty ? n : Math.max(0, Math.floor(n)) });
+                        const normalized = (l as any).allow_decimal_qty ? Math.max(0, n) : Math.max(0, Math.floor(n));
+                        const max = Number(l.max_stock ?? 0);
+                        if (normalized > max) {
+                          toast.error(`Out of stock: only ${max} ${l.unit} available`);
+                          updateLine(l._key, { quantity: max });
+                          return;
+                        }
+                        updateLine(l._key, { quantity: normalized });
                       }} />
-                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Number(l.quantity) + 1 })}><Plus className="h-3 w-3" /></Button>
+                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => {
+                        const max = Number(l.max_stock ?? 0);
+                        const next = Number(l.quantity) + 1;
+                        if (next > max) { toast.error(`Out of stock: only ${max} ${l.unit} available`); return; }
+                        updateLine(l._key, { quantity: next });
+                      }}><Plus className="h-3 w-3" /></Button>
                       <span className="text-xs text-muted-foreground ml-1">Disc%</span>
                       <Input className="h-6 w-14" value={l.discount_pct} onChange={(e) => updateLine(l._key, { discount_pct: Number(e.target.value) || 0 })} />
                       <span className="ml-auto text-sm font-medium">Rs.{((Number(l.quantity) * Number(l.price)) * (1 - Number(l.discount_pct) / 100)).toFixed(2)}</span>

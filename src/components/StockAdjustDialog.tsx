@@ -31,6 +31,12 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
     if (!current || !user || !item) return;
     const q = Number(qty);
     if (!q || q <= 0) { toast.error("Enter a valid quantity"); return; }
+    const reducesStock = type === "adjustment_out" || type === "damage" || type === "transfer";
+    const available = Number(item.current_stock) || 0;
+    if (reducesStock && q > available) {
+      toast.error(`Out of stock: only ${available} ${item.unit} available`);
+      return;
+    }
     setSaving(true);
     const res = await omInsert("stock_movements", {
       business_id: current.id, item_id: item.id, type, quantity: q,
@@ -75,6 +81,11 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
                 setQty(item?.allow_decimal_qty ? v : v.replace(/[^\d]/g, ""));
               }}
             />
+            {(type === "adjustment_out" || type === "damage" || type === "transfer") && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Max available: <span className="font-semibold tabular-nums">{Number(item?.current_stock ?? 0)} {item?.unit}</span>
+              </p>
+            )}
           </div>
 
           <div>
