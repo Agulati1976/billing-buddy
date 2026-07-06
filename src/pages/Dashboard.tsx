@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useBusiness } from "@/hooks/useBusiness";
-import { ArrowDownRight, ArrowUpRight, Package, TrendingUp, Users, Wallet, FileText } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Package, Receipt, ShoppingCart, TrendingUp, Users, Wallet, FileText } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
