@@ -15,6 +15,7 @@ import { StockHistoryDialog } from "@/components/StockHistoryDialog";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
+import { composeItemName } from "@/lib/invoice";
 
 export default function Items() {
   const { current } = useBusiness();
