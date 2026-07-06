@@ -297,7 +297,7 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No items with recent activity below their low-stock threshold.</p>
+            <p className="text-sm text-muted-foreground">No products with stock under {LOW_STOCK_THRESHOLD}.</p>
           )}
         </Card>
 
