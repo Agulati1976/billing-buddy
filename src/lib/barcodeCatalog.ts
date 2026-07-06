@@ -74,6 +74,7 @@ export async function ensureCatalogEntry(input: CatalogUpsertInput): Promise<Cat
       hsn_code: input.hsn_code ?? null,
       tax_rate: input.tax_rate ?? 0,
       unit: input.unit ?? "pcs",
+      unit_size: input.unit_size ?? null,
       description: input.description ?? null,
       image_url: input.image_url ?? null,
       contributed_by: input.contributed_by,
