@@ -45,6 +45,7 @@ export interface CatalogUpsertInput {
   hsn_code?: string | null;
   tax_rate?: number;
   unit?: string;
+  unit_size?: number | null;
   description?: string | null;
   image_url?: string | null;
   contributed_by: string;
