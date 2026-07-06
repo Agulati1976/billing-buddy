@@ -1,0 +1,1 @@
+ALTER TABLE public.barcode_catalog ADD COLUMN IF NOT EXISTS unit_size NUMERIC;

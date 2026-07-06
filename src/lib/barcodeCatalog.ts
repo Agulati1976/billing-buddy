@@ -11,6 +11,7 @@ export interface CatalogEntry {
   hsn_code: string | null;
   tax_rate: number;
   unit: string;
+  unit_size: number | null;
   description: string | null;
   image_url: string | null;
   contributed_by: string | null;
@@ -44,6 +45,7 @@ export interface CatalogUpsertInput {
   hsn_code?: string | null;
   tax_rate?: number;
   unit?: string;
+  unit_size?: number | null;
   description?: string | null;
   image_url?: string | null;
   contributed_by: string;
@@ -72,6 +74,7 @@ export async function ensureCatalogEntry(input: CatalogUpsertInput): Promise<Cat
       hsn_code: input.hsn_code ?? null,
       tax_rate: input.tax_rate ?? 0,
       unit: input.unit ?? "pcs",
+      unit_size: input.unit_size ?? null,
       description: input.description ?? null,
       image_url: input.image_url ?? null,
       contributed_by: input.contributed_by,
@@ -104,6 +107,7 @@ export async function createItemFromCatalog(
     barcode: entry.barcode,
     hsn_code: entry.hsn_code,
     unit: entry.unit,
+    unit_size: entry.unit_size ?? null,
     tax_rate: entry.tax_rate,
     sale_price: overrides?.sale_price ?? entry.mrp ?? 0,
     purchase_price: overrides?.purchase_price ?? 0,
