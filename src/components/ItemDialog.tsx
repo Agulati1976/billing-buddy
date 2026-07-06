@@ -196,6 +196,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         hsn_code: form.hsn_code.trim() || null,
         tax_rate: Number(form.tax_rate) || 0,
         unit: form.unit,
+        unit_size: form.unit_size ? Number(form.unit_size) : null,
         description: form.description.trim() || null,
         contributed_by: user.id,
         contributor_business_id: current.id,
