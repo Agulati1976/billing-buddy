@@ -33,7 +33,8 @@ interface Item {
   brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
-interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; }
+interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
+interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; batch_number?: string | null; }
 
 
 type PaymentMethod = "cash" | "card" | "upi" | "bank_transfer" | "cheque" | "other" | "credit";
