@@ -233,6 +233,10 @@ export default function Pos() {
         balanceDue <= 0 ? "paid" : paidNow > 0 ? "partial" : "unpaid";
 
       const invoiceId = crypto.randomUUID();
+      // Seed with paid=0/balance=total/status=unpaid — the apply_payment_to_invoice
+      // trigger will update these when the payment rows below are inserted.
+      // Setting paid_amount here as well caused the trigger to double-count and
+      // wiped out the credit portion of partial-cash + partial-credit sales.
       const invRes = await omInsert("invoices", {
         id: invoiceId,
         business_id: current.id, party_id: partyId || null, type: "sale",
@@ -242,7 +246,7 @@ export default function Pos() {
         extra_discount: totals.extra_discount, tax_amount: totals.tax_amount,
         cgst_amount: totals.cgst_amount, sgst_amount: totals.sgst_amount, igst_amount: totals.igst_amount,
         round_off: totals.round_off, total_amount: totals.total_amount,
-        paid_amount: paidNow, balance_amount: balanceDue, status,
+        paid_amount: 0, balance_amount: totals.total_amount, status: "unpaid",
         party_state_code: party?.state_code ?? null, created_by: user.id,
         pos_session_id: session?.id ?? null,
       });
