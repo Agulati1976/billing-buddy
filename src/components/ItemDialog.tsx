@@ -183,6 +183,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
   const submit = async () => {
     if (!current || !user) return;
     if (!form.name.trim()) { toast.error("Name is required"); return; }
+    if (form.type === "product" && Number(form.opening_stock) < 0) { toast.error("Opening stock cannot be negative"); return; }
+    if (form.type === "product" && form.is_batch_tracked && Number(form.batch_quantity) < 0) { toast.error("Batch quantity cannot be negative"); return; }
     setSaving(true);
 
     let resolvedCatalogId = catalogId;
@@ -448,7 +450,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                   value={form.opening_stock}
                   onChange={(e) => {
                     const v = e.target.value;
-                    setForm({ ...form, opening_stock: form.allow_decimal_qty ? v : v.replace(/[^\d-]/g, "") });
+                    setForm({ ...form, opening_stock: form.allow_decimal_qty ? v : v.replace(/[^\d]/g, "") });
                   }}
                 />
                 {form.is_batch_tracked ? (
@@ -466,7 +468,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                   value={form.low_stock_alert}
                   onChange={(e) => {
                     const v = e.target.value;
-                    setForm({ ...form, low_stock_alert: form.allow_decimal_qty ? v : v.replace(/[^\d-]/g, "") });
+                    setForm({ ...form, low_stock_alert: form.allow_decimal_qty ? v : v.replace(/[^\d]/g, "") });
                   }}
                 />
               </div>
