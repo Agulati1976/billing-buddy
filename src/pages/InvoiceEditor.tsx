@@ -622,17 +622,37 @@ export default function InvoiceEditor({ type }: Props) {
 
         // 1. Reverse batch quantities for old batch-tracked lines
         for (const ol of oldLines) {
-          if (!ol.batch_id) continue;
           let delta = 0;
           if (type === "sale") delta = Number(ol.quantity);
           else if (type === "purchase") delta = -Number(ol.quantity);
           else if (type === "sale_return") delta = -Number(ol.quantity);
           else if (type === "purchase_return") delta = Number(ol.quantity);
-          if (delta !== 0) {
-            const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
-            if (b) {
-              await supabase.from("batches").update({ quantity: Number((b as any).quantity) + delta }).eq("id", ol.batch_id);
+          if (!delta) continue;
+
+          if (!ol.batch_id && ol.item_id) {
+            const { data: oldItem } = await supabase
+              .from("items")
+              .select("id, name, unit, type, is_batch_tracked, current_stock")
+              .eq("id", ol.item_id)
+              .maybeSingle();
+            if ((oldItem as any)?.type === "product" && !(oldItem as any)?.is_batch_tracked) {
+              const nextStock = Number((oldItem as any).current_stock ?? 0) + delta;
+              if (nextStock < 0) {
+                throw new Error(`Out of stock: ${(oldItem as any).name} has only ${(oldItem as any).current_stock} ${(oldItem as any).unit ?? ""} in stock.`);
+              }
+              const { error: reverseErr } = await supabase
+                .from("items")
+                .update({ current_stock: nextStock } as any)
+                .eq("id", ol.item_id);
+              if (reverseErr) throw reverseErr;
             }
+            continue;
+          }
+
+          if (!ol.batch_id) continue;
+          const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
+          if (b) {
+            await supabase.from("batches").update({ quantity: Number((b as any).quantity) + delta }).eq("id", ol.batch_id);
           }
         }
 
