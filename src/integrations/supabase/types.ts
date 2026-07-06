@@ -62,6 +62,7 @@ export type Database = {
           scan_count: number
           tax_rate: number
           unit: string
+          unit_size: number | null
           updated_at: string
           verified: boolean
         }
@@ -82,6 +83,7 @@ export type Database = {
           scan_count?: number
           tax_rate?: number
           unit?: string
+          unit_size?: number | null
           updated_at?: string
           verified?: boolean
         }
@@ -102,6 +104,7 @@ export type Database = {
           scan_count?: number
           tax_rate?: number
           unit?: string
+          unit_size?: number | null
           updated_at?: string
           verified?: boolean
         }
