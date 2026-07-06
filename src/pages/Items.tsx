@@ -157,7 +157,7 @@ export default function Items() {
                     <span className="text-sm font-semibold num">{formatINR(i.sale_price)}</span>
                     {i.type === "product" ? (
                       <Badge variant={low ? "destructive" : "secondary"} className="text-[10px] py-0 px-1.5">
-                        {i.current_stock} {i.unit}
+                        {i.current_stock} pcs
                       </Badge>
                     ) : null}
                   </div>
@@ -233,7 +233,7 @@ export default function Items() {
                         <span className="text-muted-foreground">—</span>
                       ) : (
                         <Badge variant={low ? "destructive" : "secondary"}>
-                          {i.current_stock} {i.unit}
+                          {i.current_stock} pcs
                         </Badge>
                       )}
                     </TableCell>
