@@ -1492,14 +1492,9 @@ export default function InvoiceEditor({ type }: Props) {
           </TableBody>
         </Table>
         </div>
-        {!readOnly && (
-          <div className="p-3 border-t flex gap-2 flex-wrap">
-            <Button size="sm" onClick={() => { setPickerReplaceIdx(null); setPickerOpen(true); }} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add items
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add blank line
-            </Button>
+        {!readOnly && totals.lines.length === 0 && (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No items yet. Click <span className="font-medium text-foreground">Add items</span> above to pick products.
           </div>
         )}
       </Card>
