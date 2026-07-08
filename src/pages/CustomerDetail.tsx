@@ -63,11 +63,22 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { current } = useBusiness();
+  const { user } = useAuth();
   const [party, setParty] = useState<Party | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingReminder, setSendingReminder] = useState(false);
+
+  // Record payment dialog
+  const [payOpen, setPayOpen] = useState(false);
+  const [paySaving, setPaySaving] = useState(false);
+  const [payInvoiceId, setPayInvoiceId] = useState<string>("");
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payDate, setPayDate] = useState(todayISO());
+  const [payReference, setPayReference] = useState("");
+  const [payNotes, setPayNotes] = useState("");
 
   const load = async () => {
     if (!current || !id) return;
