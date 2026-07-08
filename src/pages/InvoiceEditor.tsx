@@ -28,6 +28,7 @@ import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { PurchaseInvoiceScanner, type ExtractedInvoice } from "@/components/PurchaseInvoiceScanner";
+import { ItemPickerDialog } from "@/components/ItemPickerDialog";
 import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
