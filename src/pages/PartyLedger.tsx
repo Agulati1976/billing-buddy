@@ -37,6 +37,7 @@ interface InvoiceRow {
   invoice_number: string;
   invoice_date: string;
   total_amount: number;
+  balance_amount: number;
   type: string;
   party_id: string | null;
 }
