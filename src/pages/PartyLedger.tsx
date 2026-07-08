@@ -134,6 +134,7 @@ function computeLedger(party: PartyLite, invoices: InvoiceRow[], payments: Payme
 
 export default function PartyLedger() {
   const { current } = useBusiness();
+  const { user } = useAuth();
   const [search, setSearch] = useSearchParams();
   const [parties, setParties] = useState<PartyLite[]>([]);
   const [allInvoices, setAllInvoices] = useState<InvoiceRow[]>([]);
@@ -143,29 +144,39 @@ export default function PartyLedger() {
   const [partyId, setPartyId] = useState<string>(search.get("party") || "");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Record payment dialog
+  const [payOpen, setPayOpen] = useState(false);
+  const [paySaving, setPaySaving] = useState(false);
+  const [payInvoiceId, setPayInvoiceId] = useState<string>("");
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payDate, setPayDate] = useState(todayISO());
+  const [payReference, setPayReference] = useState("");
+  const [payNotes, setPayNotes] = useState("");
+
+  const load = async () => {
     if (!current) return;
     setLoading(true);
-    (async () => {
-      const [pRes, iRes, payRes] = await Promise.all([
-        supabase.from("parties").select("id,name,type,phone,opening_balance")
-          .eq("business_id", current.id).order("name"),
-        supabase.from("invoices")
-          .select("id,invoice_number,invoice_date,total_amount,balance_amount,type,party_id")
-          .eq("business_id", current.id).is("deleted_at", null)
-          .neq("type", "quotation").not("party_id", "is", null).order("invoice_date"),
-        supabase.from("payments")
-          .select("id,payment_date,amount,method,reference,invoice_id,direction,notes,party_id")
-          .eq("business_id", current.id).is("deleted_at", null)
-          .not("party_id", "is", null).order("payment_date"),
-      ]);
-      if (pRes.error) toast.error(pRes.error.message);
-      setParties((pRes.data as PartyLite[]) ?? []);
-      setAllInvoices((iRes.data as InvoiceRow[]) ?? []);
-      setAllPayments((payRes.data as PaymentRow[]) ?? []);
-      setLoading(false);
-    })();
-  }, [current?.id]);
+    const [pRes, iRes, payRes] = await Promise.all([
+      supabase.from("parties").select("id,name,type,phone,opening_balance")
+        .eq("business_id", current.id).order("name"),
+      supabase.from("invoices")
+        .select("id,invoice_number,invoice_date,total_amount,balance_amount,type,party_id")
+        .eq("business_id", current.id).is("deleted_at", null)
+        .neq("type", "quotation").not("party_id", "is", null).order("invoice_date"),
+      supabase.from("payments")
+        .select("id,payment_date,amount,method,reference,invoice_id,direction,notes,party_id")
+        .eq("business_id", current.id).is("deleted_at", null)
+        .not("party_id", "is", null).order("payment_date"),
+    ]);
+    if (pRes.error) toast.error(pRes.error.message);
+    setParties((pRes.data as PartyLite[]) ?? []);
+    setAllInvoices((iRes.data as InvoiceRow[]) ?? []);
+    setAllPayments((payRes.data as PaymentRow[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [current?.id]);
 
   useEffect(() => {
     setSearch((s) => {
