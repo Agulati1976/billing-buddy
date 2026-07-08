@@ -44,6 +44,7 @@ interface Stats {
   toPay: number;
   topCustomers: { name: string; total: number }[];
   lowStock: { name: string; current_stock: number; unit: string; low_stock_alert: number }[];
+  redStock: { name: string; current_stock: number; unit: string }[];
   expiringBatches: { id: string; batch_number: string; expiry_date: string; quantity: number; item: string }[];
   recentInvoices: { id: string; invoice_number: string; total_amount: number; status: string; party: string | null }[];
 }
@@ -67,11 +68,9 @@ export default function Dashboard() {
   const [expiryCustom, setExpiryCustom] = useState<string>("30");
   const [expiryIsCustom, setExpiryIsCustom] = useState<boolean>(false);
 
-  // Low stock filter (how many recent low-stock products to show)
+  // Low-stock / red-stock alerts (no recent-count filter)
   const LOW_STOCK_THRESHOLD = 5;
-  const [lowCount, setLowCount] = useState<number>(10);
-  const [lowCustom, setLowCustom] = useState<string>("10");
-  const [lowIsCustom, setLowIsCustom] = useState<boolean>(false);
+
 
 
   useEffect(() => {
@@ -111,7 +110,7 @@ export default function Dashboard() {
       if (since) payQuery = payQuery.gte("invoice_date", since);
       if (until) payQuery = payQuery.lte("invoice_date", until);
 
-      const [todayR, rangeR, purchR, expenseR, recvR, payR, recentR, lowR, expR] = await Promise.all([
+      const [todayR, rangeR, purchR, expenseR, recvR, payR, recentR, lowR, redR, expR] = await Promise.all([
         supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).eq("invoice_date", today),
         rangeQuery,
         purchQuery,
@@ -119,7 +118,8 @@ export default function Dashboard() {
         recvQuery,
         payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-        supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("updated_at", { ascending: false }).limit(Math.max(1, lowCount)),
+        supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).order("current_stock", { ascending: true }),
+        supabase.from("items").select("name, current_stock, unit").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("current_stock", { ascending: true }),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
 
@@ -141,7 +141,8 @@ export default function Dashboard() {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-      const lowStock = ((lowR.data as any[]) ?? []).slice(0, Math.max(1, lowCount));
+      const lowStock = ((lowR.data as any[]) ?? []).filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert));
+      const redStock = ((redR.data as any[]) ?? []);
 
       const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
         id: r.id, invoice_number: r.invoice_number,
@@ -154,9 +155,9 @@ export default function Dashboard() {
         quantity: Number(b.quantity), item: b.items?.name ?? "—",
       }));
 
-      setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
+      setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, redStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id, range.from, range.to, expiryDays, lowCount]);
+  }, [current?.id, range.from, range.to, expiryDays]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
@@ -238,60 +239,39 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-warning" />
-              <h2 className="font-semibold">Low Stock Alerts · under {LOW_STOCK_THRESHOLD} in stock</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                value={lowIsCustom ? "custom" : String(lowCount)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "custom") {
-                    setLowIsCustom(true);
-                    const n = Number(lowCustom);
-                    if (Number.isFinite(n) && n > 0) setLowCount(Math.floor(n));
-                    return;
-                  }
-                  setLowIsCustom(false);
-                  const n = Number(v);
-                  setLowCount(n);
-                  setLowCustom(String(n));
-                }}
-              >
-                <option value="5">Recent 5 products</option>
-                <option value="10">Recent 10 products</option>
-                <option value="20">Recent 20 products</option>
-                <option value="50">Recent 50 products</option>
-                <option value="100">Recent 100 products</option>
-                <option value="custom">Custom…</option>
-              </select>
-              {lowIsCustom && (
-                <input
-                  type="number"
-                  min={1}
-                  className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
-                  value={lowCustom}
-                  onChange={(e) => {
-                    setLowCustom(e.target.value);
-                    const n = Number(e.target.value);
-                    if (Number.isFinite(n) && n > 0) setLowCount(Math.floor(n));
-                  }}
-                  placeholder="Products"
-                />
-              )}
-            </div>
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-warning" />
+            <h2 className="font-semibold">Low Stock Alerts</h2>
           </div>
           {stats && stats.lowStock.length > 0 ? (
             <ul className="space-y-2">
               {stats.lowStock.map((i) => (
                 <li key={i.name} className="flex justify-between items-center text-sm py-1">
                   <span>{i.name}</span>
+                  <span className="text-warning num">
+                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert under {Number(i.low_stock_alert)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No items below their configured low-stock alert.</p>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-danger" />
+            <h2 className="font-semibold">Red Stock Alert · under {LOW_STOCK_THRESHOLD}</h2>
+          </div>
+          {stats && stats.redStock.length > 0 ? (
+            <ul className="space-y-2">
+              {stats.redStock.map((i) => (
+                <li key={i.name} className="flex justify-between items-center text-sm py-1">
+                  <span>{i.name}</span>
                   <span className="text-danger num">
-                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert under {LOW_STOCK_THRESHOLD}</span>
+                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ critical under {LOW_STOCK_THRESHOLD}</span>
                   </span>
                 </li>
               ))}
