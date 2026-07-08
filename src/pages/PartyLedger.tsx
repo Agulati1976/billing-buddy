@@ -2,20 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
+import { useAuth } from "@/hooks/useAuth";
+import { omInsert } from "@/lib/offlineMutate";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { BookOpen, Loader2, Search, FileText, Wallet, Download, ArrowLeft } from "lucide-react";
+import { BookOpen, Loader2, Search, FileText, Wallet, Download, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import { downloadCsv } from "@/lib/csv";
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 interface PartyLite {
   id: string;
