@@ -112,15 +112,21 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
           <DialogTitle>{title ?? (mode === "single" ? "Pick item" : "Pick items")}</DialogTitle>
         </DialogHeader>
 
-        <div className="relative">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            className="pl-9"
-            placeholder="Search by name, brand, flavour, SKU, barcode…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              className="pl-9"
+              placeholder="Search by name, brand, flavour, SKU, barcode…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <Button type="button" variant="outline" onClick={() => setScanOpen(true)} className="gap-1.5 shrink-0" title="Scan barcode">
+            <ScanLine className="h-4 w-4" />
+            <span className="hidden sm:inline">Scan</span>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto -mx-1 px-1 divide-y border rounded-md">
