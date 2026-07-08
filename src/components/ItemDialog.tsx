@@ -530,6 +530,42 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                   <Input type="date" value={form.batch_expiry_date} onChange={(e) => setForm({ ...form, batch_expiry_date: e.target.value })} />
                 </div>
               </div>
+              <div className="mt-3">
+                <Label className="text-xs">Best before (days) — auto-calculate expiry</Label>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {[60, 100, 365].map((d) => (
+                    <Button key={d} type="button" variant="outline" size="sm"
+                      onClick={() => {
+                        const base = form.batch_mfg_date ? new Date(form.batch_mfg_date) : new Date();
+                        base.setDate(base.getDate() + d);
+                        setForm({ ...form, batch_expiry_date: base.toISOString().slice(0, 10) });
+                      }}>
+                      {d} days
+                    </Button>
+                  ))}
+                  <Input type="number" min={1} placeholder="Custom days" className="w-32 h-9"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const d = Number((e.target as HTMLInputElement).value);
+                        if (d > 0) {
+                          const base = form.batch_mfg_date ? new Date(form.batch_mfg_date) : new Date();
+                          base.setDate(base.getDate() + d);
+                          setForm({ ...form, batch_expiry_date: base.toISOString().slice(0, 10) });
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const d = Number(e.target.value);
+                      if (d > 0) {
+                        const base = form.batch_mfg_date ? new Date(form.batch_mfg_date) : new Date();
+                        base.setDate(base.getDate() + d);
+                        setForm({ ...form, batch_expiry_date: base.toISOString().slice(0, 10) });
+                      }
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Based on Mfg date (or today if empty).</p>
+              </div>
             </div>
           )}
           {form.type === "product" && (

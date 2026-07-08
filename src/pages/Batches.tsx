@@ -254,6 +254,42 @@ export default function Batches() {
               <div><Label>Mfg Date</Label><Input type="date" value={mfgDate} onChange={(e) => setMfgDate(e.target.value)} /></div>
               <div><Label>Expiry Date</Label><Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} /></div>
             </div>
+            <div>
+              <Label className="text-xs">Best before (days) — auto-calculate expiry</Label>
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                {[60, 100, 365].map((d) => (
+                  <Button key={d} type="button" variant="outline" size="sm"
+                    onClick={() => {
+                      const base = mfgDate ? new Date(mfgDate) : new Date();
+                      base.setDate(base.getDate() + d);
+                      setExpiryDate(base.toISOString().slice(0, 10));
+                    }}>
+                    {d} days
+                  </Button>
+                ))}
+                <Input type="number" min={1} placeholder="Custom days" className="w-32 h-9"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const d = Number((e.target as HTMLInputElement).value);
+                      if (d > 0) {
+                        const base = mfgDate ? new Date(mfgDate) : new Date();
+                        base.setDate(base.getDate() + d);
+                        setExpiryDate(base.toISOString().slice(0, 10));
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const d = Number(e.target.value);
+                    if (d > 0) {
+                      const base = mfgDate ? new Date(mfgDate) : new Date();
+                      base.setDate(base.getDate() + d);
+                      setExpiryDate(base.toISOString().slice(0, 10));
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Based on Mfg date (or today if empty).</p>
+            </div>
             <div><Label>Notes</Label><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
           </div>
           <DialogFooter>
