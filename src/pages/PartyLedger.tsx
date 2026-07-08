@@ -314,9 +314,14 @@ export default function PartyLedger() {
           <Button variant="ghost" size="sm" onClick={() => setPartyId("")} className="gap-1.5 -ml-2">
             <ArrowLeft className="h-4 w-4" /> Back to all parties
           </Button>
-          <Button variant="outline" size="sm" onClick={exportDetailCsv} className="gap-1.5">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={openPaymentDialog} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Record payment
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportDetailCsv} className="gap-1.5">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+          </div>
         </div>
         <Card className="p-4">
           <div className="text-xs uppercase text-muted-foreground tracking-wide">{selected.party.type}</div>
