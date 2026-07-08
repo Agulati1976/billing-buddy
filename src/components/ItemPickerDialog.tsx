@@ -37,6 +37,7 @@ interface Props {
 export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", onPick, title }: Props) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [scanOpen, setScanOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -46,6 +47,24 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
+
+  const handleBarcode = (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    const hit = items.find((i) => (i.barcode || "").trim() === trimmed);
+    if (!hit) {
+      toast.error(`No item with barcode ${trimmed}`);
+      return;
+    }
+    if (mode === "single") {
+      setScanOpen(false);
+      commit([hit]);
+      return;
+    }
+    setSelected((s) => ({ ...s, [hit.id]: true }));
+    toast.success(`Selected: ${hit.name}`);
+    // keep scanner open so user can scan more
+  };
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
