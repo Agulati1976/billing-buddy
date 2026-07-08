@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search } from "lucide-react";
+import { Search, ScanLine } from "lucide-react";
 import { composeItemLines } from "@/lib/invoice";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { toast } from "sonner";
 
 export interface PickerItem {
   id: string;
@@ -35,6 +37,7 @@ interface Props {
 export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", onPick, title }: Props) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [scanOpen, setScanOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,6 +47,24 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
+
+  const handleBarcode = (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    const hit = items.find((i) => (i.barcode || "").trim() === trimmed);
+    if (!hit) {
+      toast.error(`No item with barcode ${trimmed}`);
+      return;
+    }
+    if (mode === "single") {
+      setScanOpen(false);
+      commit([hit]);
+      return;
+    }
+    setSelected((s) => ({ ...s, [hit.id]: true }));
+    toast.success(`Selected: ${hit.name}`);
+    // keep scanner open so user can scan more
+  };
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -91,15 +112,21 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
           <DialogTitle>{title ?? (mode === "single" ? "Pick item" : "Pick items")}</DialogTitle>
         </DialogHeader>
 
-        <div className="relative">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            className="pl-9"
-            placeholder="Search by name, brand, flavour, SKU, barcode…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              className="pl-9"
+              placeholder="Search by name, brand, flavour, SKU, barcode…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <Button type="button" variant="outline" onClick={() => setScanOpen(true)} className="gap-1.5 shrink-0" title="Scan barcode">
+            <ScanLine className="h-4 w-4" />
+            <span className="hidden sm:inline">Scan</span>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto -mx-1 px-1 divide-y border rounded-md">
@@ -160,6 +187,7 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
           </DialogFooter>
         )}
       </DialogContent>
+      <BarcodeScanner open={scanOpen} onOpenChange={setScanOpen} onScanned={handleBarcode} />
     </Dialog>
   );
 }

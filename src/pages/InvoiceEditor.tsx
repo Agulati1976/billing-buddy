@@ -56,7 +56,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
-  const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
+  const [lines, setLines] = useState<InvoiceLineInput[]>([]);
   const [isGst, setIsGst] = useState(true);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [isOnlineOrder, setIsOnlineOrder] = useState(false);
@@ -1171,6 +1171,14 @@ export default function InvoiceEditor({ type }: Props) {
         </div>
       </Card>
 
+      {!readOnly && (
+        <div className="flex justify-end">
+          <Button onClick={() => { setPickerReplaceIdx(null); setPickerOpen(true); }} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Add items
+          </Button>
+        </div>
+      )}
+
       <Card className="p-0 overflow-hidden">
         {/* Mobile: stacked cards per line */}
         <div className="sm:hidden divide-y">
@@ -1484,14 +1492,9 @@ export default function InvoiceEditor({ type }: Props) {
           </TableBody>
         </Table>
         </div>
-        {!readOnly && (
-          <div className="p-3 border-t flex gap-2 flex-wrap">
-            <Button size="sm" onClick={() => { setPickerReplaceIdx(null); setPickerOpen(true); }} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add items
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add blank line
-            </Button>
+        {!readOnly && totals.lines.length === 0 && (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No items yet. Click <span className="font-medium text-foreground">Add items</span> above to pick products.
           </div>
         )}
       </Card>
