@@ -239,60 +239,39 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-warning" />
-              <h2 className="font-semibold">Low Stock Alerts · under {LOW_STOCK_THRESHOLD} in stock</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                value={lowIsCustom ? "custom" : String(lowCount)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "custom") {
-                    setLowIsCustom(true);
-                    const n = Number(lowCustom);
-                    if (Number.isFinite(n) && n > 0) setLowCount(Math.floor(n));
-                    return;
-                  }
-                  setLowIsCustom(false);
-                  const n = Number(v);
-                  setLowCount(n);
-                  setLowCustom(String(n));
-                }}
-              >
-                <option value="5">Recent 5 products</option>
-                <option value="10">Recent 10 products</option>
-                <option value="20">Recent 20 products</option>
-                <option value="50">Recent 50 products</option>
-                <option value="100">Recent 100 products</option>
-                <option value="custom">Custom…</option>
-              </select>
-              {lowIsCustom && (
-                <input
-                  type="number"
-                  min={1}
-                  className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
-                  value={lowCustom}
-                  onChange={(e) => {
-                    setLowCustom(e.target.value);
-                    const n = Number(e.target.value);
-                    if (Number.isFinite(n) && n > 0) setLowCount(Math.floor(n));
-                  }}
-                  placeholder="Products"
-                />
-              )}
-            </div>
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-warning" />
+            <h2 className="font-semibold">Low Stock Alerts</h2>
           </div>
           {stats && stats.lowStock.length > 0 ? (
             <ul className="space-y-2">
               {stats.lowStock.map((i) => (
                 <li key={i.name} className="flex justify-between items-center text-sm py-1">
                   <span>{i.name}</span>
+                  <span className="text-warning num">
+                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert under {Number(i.low_stock_alert)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No items below their configured low-stock alert.</p>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-5 w-5 text-danger" />
+            <h2 className="font-semibold">Red Stock Alert · under {LOW_STOCK_THRESHOLD}</h2>
+          </div>
+          {stats && stats.redStock.length > 0 ? (
+            <ul className="space-y-2">
+              {stats.redStock.map((i) => (
+                <li key={i.name} className="flex justify-between items-center text-sm py-1">
+                  <span>{i.name}</span>
                   <span className="text-danger num">
-                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ alert under {LOW_STOCK_THRESHOLD}</span>
+                    {Number(i.current_stock)} {i.unit} <span className="text-muted-foreground">/ critical under {LOW_STOCK_THRESHOLD}</span>
                   </span>
                 </li>
               ))}
