@@ -118,7 +118,7 @@ export default function Dashboard() {
         recvQuery,
         payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-        supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).lte("current_stock", low_stock_alert).order("current_stock", { ascending: true }),
+        supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).order("current_stock", { ascending: true }),
         supabase.from("items").select("name, current_stock, unit").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("current_stock", { ascending: true }),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
