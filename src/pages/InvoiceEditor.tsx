@@ -28,6 +28,7 @@ import { generateThermalReceipt } from "@/lib/thermalReceipt";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { PurchaseInvoiceScanner, type ExtractedInvoice } from "@/components/PurchaseInvoiceScanner";
+import { ItemPickerDialog } from "@/components/ItemPickerDialog";
 import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
@@ -70,6 +71,8 @@ export default function InvoiceEditor({ type }: Props) {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [rowScanIdx, setRowScanIdx] = useState<number | null>(null);
   const [billScanOpen, setBillScanOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerReplaceIdx, setPickerReplaceIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
@@ -1200,14 +1203,14 @@ export default function InvoiceEditor({ type }: Props) {
                 ) : (
                   <>
                     <div className="flex gap-1">
-                      <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
-                        <SelectTrigger className="h-10"><SelectValue placeholder="Pick item" /></SelectTrigger>
-                        <SelectContent>
-                          {items.map((op) => (
-                            <SelectItem key={op.id} value={op.id}>{op.name}{op.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Button type="button" variant="outline" className="h-10 flex-1 justify-start font-normal"
+                        onClick={() => { setPickerReplaceIdx(idx); setPickerOpen(true); }}>
+                        {l.item_id ? (
+                          <span className="truncate text-left">{(l.item_name || "").split("\n")[0]}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Pick item</span>
+                        )}
+                      </Button>
                       <Button type="button" size="icon" variant="outline" className="h-10 w-10 shrink-0"
                         onClick={() => { setRowScanIdx(idx); setScannerOpen(true); }} title="Scan barcode">
                         <ScanLine className="h-4 w-4" />
@@ -1340,14 +1343,14 @@ export default function InvoiceEditor({ type }: Props) {
                   ) : (
                     <div className="space-y-1">
                       <div className="flex gap-1">
-                        <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
-                          <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
-                          <SelectContent>
-                            {items.map((it) => (
-                              <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Button type="button" variant="outline" className="h-8 flex-1 justify-start font-normal text-xs"
+                          onClick={() => { setPickerReplaceIdx(idx); setPickerOpen(true); }}>
+                          {l.item_id ? (
+                            <span className="truncate text-left">{(l.item_name || "").split("\n")[0]}</span>
+                          ) : (
+                            <span className="text-muted-foreground">Pick item</span>
+                          )}
+                        </Button>
                         <Button
                           type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0"
                           onClick={() => { setRowScanIdx(idx); setScannerOpen(true); }}
@@ -1482,9 +1485,12 @@ export default function InvoiceEditor({ type }: Props) {
         </Table>
         </div>
         {!readOnly && (
-          <div className="p-3 border-t">
-            <Button size="sm" variant="outline" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add line
+          <div className="p-3 border-t flex gap-2 flex-wrap">
+            <Button size="sm" onClick={() => { setPickerReplaceIdx(null); setPickerOpen(true); }} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Add items
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Add blank line
             </Button>
           </div>
         )}
@@ -1627,6 +1633,24 @@ export default function InvoiceEditor({ type }: Props) {
           </dl>
         </Card>
       </div>
+
+      <ItemPickerDialog
+        open={pickerOpen}
+        onOpenChange={(v) => { setPickerOpen(v); if (!v) setPickerReplaceIdx(null); }}
+        items={items as any}
+        mode={pickerReplaceIdx !== null ? "single" : "multi"}
+        onPick={(picks) => {
+          if (pickerReplaceIdx !== null) {
+            const it = picks[0];
+            if (it) pickItem(pickerReplaceIdx, it.id);
+          } else {
+            for (const it of picks) {
+              const real = items.find((x) => x.id === it.id);
+              if (real) addItemToLines(real);
+            }
+          }
+        }}
+      />
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
