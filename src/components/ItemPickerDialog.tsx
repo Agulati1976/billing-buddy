@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search } from "lucide-react";
+import { Search, ScanLine } from "lucide-react";
 import { composeItemLines } from "@/lib/invoice";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { toast } from "sonner";
 
 export interface PickerItem {
   id: string;
