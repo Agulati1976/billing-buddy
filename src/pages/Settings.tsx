@@ -63,13 +63,8 @@ export default function Settings() {
     }
     setSavingProfile(true);
     const payload: any = {
-      name: form.name.trim(),
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
-      gstin: form.gstin ? form.gstin.trim().toUpperCase() : null,
-      pan: form.pan ? form.pan.trim().toUpperCase() : null,
-      state: form.state.trim() || null,
-      state_code: form.state_code.trim() || null,
       address: form.address.trim() || null,
     };
     const { error } = await supabase.from("businesses").update(payload).eq("id", current.id);
@@ -79,6 +74,7 @@ export default function Settings() {
     setEditOpen(false);
     await refresh();
   };
+
 
   const renumberAll = async (pin: string, rank: number) => {
     if (!current) return;
@@ -174,7 +170,8 @@ export default function Settings() {
           <div className="grid gap-3 py-2">
             <div className="space-y-1.5">
               <Label htmlFor="b-name">Business name *</Label>
-              <Input id="b-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input id="b-name" value={form.name} disabled />
+              <p className="text-xs text-muted-foreground">Locked. Contact support to change.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -189,31 +186,32 @@ export default function Settings() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="b-gstin">GSTIN</Label>
-                <Input id="b-gstin" maxLength={15} className="font-mono uppercase"
-                  value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase() })} />
+                <Input id="b-gstin" maxLength={15} className="font-mono uppercase" value={form.gstin} disabled />
+                <p className="text-xs text-muted-foreground">Locked.</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="b-pan">PAN</Label>
-                <Input id="b-pan" maxLength={10} className="font-mono uppercase" placeholder="ABCDE1234F"
-                  value={form.pan} onChange={(e) => setForm({ ...form, pan: e.target.value.toUpperCase() })} />
+                <Input id="b-pan" maxLength={10} className="font-mono uppercase" placeholder="ABCDE1234F" value={form.pan} disabled />
+                <p className="text-xs text-muted-foreground">Locked.</p>
               </div>
             </div>
             <div className="grid grid-cols-[1fr_120px] gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="b-state">State</Label>
-                <Input id="b-state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                <Input id="b-state" value={form.state} disabled />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="b-stcode">State code</Label>
-                <Input id="b-stcode" maxLength={2} className="font-mono"
-                  value={form.state_code} onChange={(e) => setForm({ ...form, state_code: e.target.value.replace(/\D/g, "").slice(0,2) })} />
+                <Input id="b-stcode" maxLength={2} className="font-mono" value={form.state_code} disabled />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">State and state code are locked.</p>
             <div className="space-y-1.5">
               <Label htmlFor="b-addr">Address</Label>
               <Textarea id="b-addr" rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingProfile}>Cancel</Button>
             <Button onClick={saveProfile} disabled={savingProfile}>
