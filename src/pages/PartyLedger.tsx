@@ -151,7 +151,7 @@ export default function PartyLedger() {
         supabase.from("parties").select("id,name,type,phone,opening_balance")
           .eq("business_id", current.id).order("name"),
         supabase.from("invoices")
-          .select("id,invoice_number,invoice_date,total_amount,type,party_id")
+          .select("id,invoice_number,invoice_date,total_amount,balance_amount,type,party_id")
           .eq("business_id", current.id).is("deleted_at", null)
           .neq("type", "quotation").not("party_id", "is", null).order("invoice_date"),
         supabase.from("payments")
