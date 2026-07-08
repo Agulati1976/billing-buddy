@@ -1634,6 +1634,24 @@ export default function InvoiceEditor({ type }: Props) {
         </Card>
       </div>
 
+      <ItemPickerDialog
+        open={pickerOpen}
+        onOpenChange={(v) => { setPickerOpen(v); if (!v) setPickerReplaceIdx(null); }}
+        items={items as any}
+        mode={pickerReplaceIdx !== null ? "single" : "multi"}
+        onPick={(picks) => {
+          if (pickerReplaceIdx !== null) {
+            const it = picks[0];
+            if (it) pickItem(pickerReplaceIdx, it.id);
+          } else {
+            for (const it of picks) {
+              const real = items.find((x) => x.id === it.id);
+              if (real) addItemToLines(real);
+            }
+          }
+        }}
+      />
+
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
 
