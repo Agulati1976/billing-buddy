@@ -384,6 +384,85 @@ export default function PartyLedger() {
             </Table>
           </div>
         </Card>
+
+        <Dialog open={payOpen} onOpenChange={setPayOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Record payment {isCustomer ? "from" : "to"} {selected.party.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Invoice *</Label>
+                <Select value={payInvoiceId} onValueChange={(v) => {
+                  setPayInvoiceId(v);
+                  const inv = allInvoices.find((i) => i.id === v);
+                  if (inv) setPayAmount(String(inv.balance_amount));
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Select an unpaid invoice" /></SelectTrigger>
+                  <SelectContent>
+                    {allInvoices
+                      .filter((i) => i.party_id === selected.party.id
+                        && i.type === (isCustomer ? "sale" : "purchase")
+                        && Number(i.balance_amount) > 0)
+                      .map((i) => (
+                        <SelectItem key={i.id} value={i.id}>
+                          {i.invoice_number} — Bal {formatINR(Number(i.balance_amount))}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {allInvoices.filter((i) => i.party_id === selected.party.id
+                  && i.type === (isCustomer ? "sale" : "purchase")
+                  && Number(i.balance_amount) > 0).length === 0 && (
+                  <p className="text-xs text-muted-foreground">No unpaid invoices for this {isCustomer ? "customer" : "supplier"}.</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Amount *</Label>
+                  <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Method</Label>
+                  <Select value={payMethod} onValueChange={setPayMethod}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="upi">UPI</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Reference</Label>
+                  <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="Txn ID / Cheque #" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea rows={2} value={payNotes} onChange={(e) => setPayNotes(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+              <Button onClick={submitPayment} disabled={paySaving || !payInvoiceId || !Number(payAmount)}>
+                {paySaving ? "Saving…" : "Record payment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
