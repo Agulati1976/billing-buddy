@@ -187,6 +187,7 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
           </DialogFooter>
         )}
       </DialogContent>
+      <BarcodeScanner open={scanOpen} onOpenChange={setScanOpen} onScanned={handleBarcode} />
     </Dialog>
   );
 }
