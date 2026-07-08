@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { omInsert } from "@/lib/offlineMutate";
+import { useAuth } from "@/hooks/useAuth";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft, Mail, Phone, MapPin, FileText, Wallet,
-  AlertTriangle, BellRing, Loader2,
+  AlertTriangle, BellRing, Loader2, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
@@ -56,11 +63,22 @@ export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { current } = useBusiness();
+  const { user } = useAuth();
   const [party, setParty] = useState<Party | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingReminder, setSendingReminder] = useState(false);
+
+  // Record payment dialog
+  const [payOpen, setPayOpen] = useState(false);
+  const [paySaving, setPaySaving] = useState(false);
+  const [payInvoiceId, setPayInvoiceId] = useState<string>("");
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payDate, setPayDate] = useState(todayISO());
+  const [payReference, setPayReference] = useState("");
+  const [payNotes, setPayNotes] = useState("");
 
   const load = async () => {
     if (!current || !id) return;
@@ -136,6 +154,33 @@ export default function CustomerDetail() {
     }
   };
 
+  const submitPayment = async () => {
+    if (!current || !user || !party) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!payInvoiceId) { toast.error("Select an invoice"); return; }
+    setPaySaving(true);
+    const res = await omInsert("payments", {
+      business_id: current.id,
+      direction: party.type === "customer" ? "in" : "out",
+      method: payMethod as any,
+      amount: amt,
+      payment_date: payDate,
+      party_id: party.id,
+      invoice_id: payInvoiceId,
+      reference: payReference.trim() || null,
+      notes: payNotes.trim() || null,
+      created_by: user.id,
+    });
+    setPaySaving(false);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
+    setPayOpen(false);
+    load();
+  };
+
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground">
@@ -194,16 +239,33 @@ export default function CustomerDetail() {
             )}
           </div>
         </div>
-        {isCustomer && stats.overdue.length > 0 && (
-          <Button onClick={handleSendReminder} disabled={sendingReminder} className="gap-1.5">
-            {sendingReminder ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <BellRing className="h-4 w-4" />
-            )}
-            Send payment reminder
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => {
+              const first = invoices.find((i) => i.type === (isCustomer ? "sale" : "purchase") && Number(i.balance_amount) > 0);
+              setPayInvoiceId(first?.id ?? "");
+              setPayAmount(first ? String(first.balance_amount) : "");
+              setPayMethod("cash");
+              setPayDate(todayISO());
+              setPayReference("");
+              setPayNotes("");
+              setPayOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Record payment
           </Button>
-        )}
+          {isCustomer && stats.overdue.length > 0 && (
+            <Button onClick={handleSendReminder} disabled={sendingReminder} variant="outline" className="gap-1.5">
+              {sendingReminder ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <BellRing className="h-4 w-4" />
+              )}
+              Send payment reminder
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -385,6 +447,81 @@ export default function CustomerDetail() {
           </Table>
         </div>
       </Card>
+
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Record payment from {party.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Invoice *</Label>
+              <Select value={payInvoiceId} onValueChange={(v) => {
+                setPayInvoiceId(v);
+                const inv = invoices.find((i) => i.id === v);
+                if (inv) setPayAmount(String(inv.balance_amount));
+              }}>
+                <SelectTrigger><SelectValue placeholder="Select an unpaid invoice" /></SelectTrigger>
+                <SelectContent>
+                  {invoices
+                    .filter((i) => i.type === (isCustomer ? "sale" : "purchase") && Number(i.balance_amount) > 0)
+                    .map((i) => (
+                      <SelectItem key={i.id} value={i.id}>
+                        {i.invoice_number} — Bal {formatINR(Number(i.balance_amount))}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {invoices.filter((i) => i.type === (isCustomer ? "sale" : "purchase") && Number(i.balance_amount) > 0).length === 0 && (
+                <p className="text-xs text-muted-foreground">No unpaid invoices for this {isCustomer ? "customer" : "supplier"}.</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Amount *</Label>
+                <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Method</Label>
+                <Select value={payMethod} onValueChange={setPayMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Reference</Label>
+                <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="Txn ID / Cheque #" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea rows={2} value={payNotes} onChange={(e) => setPayNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+            <Button onClick={submitPayment} disabled={paySaving || !payInvoiceId || !Number(payAmount)}>
+              {paySaving ? "Saving…" : "Record payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
