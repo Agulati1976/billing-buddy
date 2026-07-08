@@ -262,6 +262,46 @@ export default function PartyLedger() {
     downloadCsv(`ledger-${selected.party.name.replace(/\s+/g, "_")}.csv`, rows);
   };
 
+  const openPaymentDialog = () => {
+    if (!selected) return;
+    const targetType = selected.party.type === "customer" ? "sale" : "purchase";
+    const first = allInvoices.find(
+      (i) => i.party_id === selected.party.id && i.type === targetType && Number(i.balance_amount) > 0,
+    );
+    setPayInvoiceId(first?.id ?? "");
+    setPayAmount(first ? String(first.balance_amount) : "");
+    setPayMethod("cash");
+    setPayDate(todayISO());
+    setPayReference("");
+    setPayNotes("");
+    setPayOpen(true);
+  };
+
+  const submitPayment = async () => {
+    if (!current || !user || !selected) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!payInvoiceId) { toast.error("Select an invoice"); return; }
+    setPaySaving(true);
+    const res = await omInsert("payments", {
+      business_id: current.id,
+      direction: selected.party.type === "customer" ? "in" : "out",
+      method: payMethod as any,
+      amount: amt,
+      payment_date: payDate,
+      party_id: selected.party.id,
+      invoice_id: payInvoiceId,
+      reference: payReference.trim() || null,
+      notes: payNotes.trim() || null,
+      created_by: user.id,
+    });
+    setPaySaving(false);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
+    setPayOpen(false);
+    load();
+  };
+
   // ---------------- DETAIL VIEW ----------------
   if (selected) {
     const isCustomer = selected.party.type === "customer";
