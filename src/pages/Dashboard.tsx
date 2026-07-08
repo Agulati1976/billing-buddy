@@ -110,7 +110,7 @@ export default function Dashboard() {
       if (since) payQuery = payQuery.gte("invoice_date", since);
       if (until) payQuery = payQuery.lte("invoice_date", until);
 
-      const [todayR, rangeR, purchR, expenseR, recvR, payR, recentR, lowR, expR] = await Promise.all([
+      const [todayR, rangeR, purchR, expenseR, recvR, payR, recentR, lowR, redR, expR] = await Promise.all([
         supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).eq("invoice_date", today),
         rangeQuery,
         purchQuery,
@@ -118,7 +118,8 @@ export default function Dashboard() {
         recvQuery,
         payQuery,
         supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-        supabase.from("items").select("name, current_stock, unit, low_stock_alert, updated_at").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("updated_at", { ascending: false }).limit(Math.max(1, lowCount)),
+        supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).lte("current_stock", low_stock_alert).order("current_stock", { ascending: true }),
+        supabase.from("items").select("name, current_stock, unit").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("current_stock", { ascending: true }),
         supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
 
@@ -140,7 +141,8 @@ export default function Dashboard() {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-      const lowStock = ((lowR.data as any[]) ?? []).slice(0, Math.max(1, lowCount));
+      const lowStock = ((lowR.data as any[]) ?? []);
+      const redStock = ((redR.data as any[]) ?? []);
 
       const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
         id: r.id, invoice_number: r.invoice_number,
@@ -153,9 +155,9 @@ export default function Dashboard() {
         quantity: Number(b.quantity), item: b.items?.name ?? "—",
       }));
 
-      setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, expiringBatches, recentInvoices });
+      setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, redStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id, range.from, range.to, expiryDays, lowCount]);
+  }, [current?.id, range.from, range.to, expiryDays]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
