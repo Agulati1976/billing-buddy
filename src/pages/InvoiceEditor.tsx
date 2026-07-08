@@ -56,7 +56,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
-  const [lines, setLines] = useState<InvoiceLineInput[]>([emptyLine()]);
+  const [lines, setLines] = useState<InvoiceLineInput[]>([]);
   const [isGst, setIsGst] = useState(true);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [isOnlineOrder, setIsOnlineOrder] = useState(false);
