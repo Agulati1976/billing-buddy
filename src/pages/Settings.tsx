@@ -63,13 +63,8 @@ export default function Settings() {
     }
     setSavingProfile(true);
     const payload: any = {
-      name: form.name.trim(),
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
-      gstin: form.gstin ? form.gstin.trim().toUpperCase() : null,
-      pan: form.pan ? form.pan.trim().toUpperCase() : null,
-      state: form.state.trim() || null,
-      state_code: form.state_code.trim() || null,
       address: form.address.trim() || null,
     };
     const { error } = await supabase.from("businesses").update(payload).eq("id", current.id);
@@ -79,6 +74,7 @@ export default function Settings() {
     setEditOpen(false);
     await refresh();
   };
+
 
   const renumberAll = async (pin: string, rank: number) => {
     if (!current) return;
