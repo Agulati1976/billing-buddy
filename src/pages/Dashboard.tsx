@@ -141,7 +141,7 @@ export default function Dashboard() {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-      const lowStock = ((lowR.data as any[]) ?? []);
+      const lowStock = ((lowR.data as any[]) ?? []).filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert));
       const redStock = ((redR.data as any[]) ?? []);
 
       const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
