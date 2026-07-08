@@ -154,6 +154,33 @@ export default function CustomerDetail() {
     }
   };
 
+  const submitPayment = async () => {
+    if (!current || !user || !party) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!payInvoiceId) { toast.error("Select an invoice"); return; }
+    setPaySaving(true);
+    const res = await omInsert("payments", {
+      business_id: current.id,
+      direction: party.type === "customer" ? "in" : "out",
+      method: payMethod as any,
+      amount: amt,
+      payment_date: payDate,
+      party_id: party.id,
+      invoice_id: payInvoiceId,
+      reference: payReference.trim() || null,
+      notes: payNotes.trim() || null,
+      created_by: user.id,
+    });
+    setPaySaving(false);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
+    setPayOpen(false);
+    load();
+  };
+
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground">
