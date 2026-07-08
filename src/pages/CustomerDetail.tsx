@@ -212,16 +212,33 @@ export default function CustomerDetail() {
             )}
           </div>
         </div>
-        {isCustomer && stats.overdue.length > 0 && (
-          <Button onClick={handleSendReminder} disabled={sendingReminder} className="gap-1.5">
-            {sendingReminder ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <BellRing className="h-4 w-4" />
-            )}
-            Send payment reminder
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => {
+              const first = invoices.find((i) => i.type === (isCustomer ? "sale" : "purchase") && Number(i.balance_amount) > 0);
+              setPayInvoiceId(first?.id ?? "");
+              setPayAmount(first ? String(first.balance_amount) : "");
+              setPayMethod("cash");
+              setPayDate(todayISO());
+              setPayReference("");
+              setPayNotes("");
+              setPayOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Record payment
           </Button>
-        )}
+          {isCustomer && stats.overdue.length > 0 && (
+            <Button onClick={handleSendReminder} disabled={sendingReminder} variant="outline" className="gap-1.5">
+              {sendingReminder ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <BellRing className="h-4 w-4" />
+              )}
+              Send payment reminder
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
