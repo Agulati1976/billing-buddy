@@ -67,11 +67,9 @@ export default function Dashboard() {
   const [expiryCustom, setExpiryCustom] = useState<string>("30");
   const [expiryIsCustom, setExpiryIsCustom] = useState<boolean>(false);
 
-  // Low stock filter (how many recent low-stock products to show)
+  // Low-stock / red-stock alerts (no recent-count filter)
   const LOW_STOCK_THRESHOLD = 5;
-  const [lowCount, setLowCount] = useState<number>(10);
-  const [lowCustom, setLowCustom] = useState<string>("10");
-  const [lowIsCustom, setLowIsCustom] = useState<boolean>(false);
+
 
 
   useEffect(() => {
