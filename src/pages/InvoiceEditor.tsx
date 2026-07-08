@@ -71,6 +71,8 @@ export default function InvoiceEditor({ type }: Props) {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [rowScanIdx, setRowScanIdx] = useState<number | null>(null);
   const [billScanOpen, setBillScanOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerReplaceIdx, setPickerReplaceIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
