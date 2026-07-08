@@ -666,24 +666,37 @@ export default function Pos() {
             <Button variant="outline" onClick={() => setScannerOpen(true)}><ScanLine className="h-4 w-4 mr-1" />Scan</Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[calc(100vh-260px)] overflow-auto">
-            {filtered.map((it) => (
-              <button
-                key={it.id}
-                onClick={() => addToCart(it)}
-                className="text-left p-2 border rounded-md hover:border-primary hover:bg-accent transition flex flex-col"
-              >
-                <div className="aspect-square w-full rounded bg-muted/40 overflow-hidden mb-2 flex items-center justify-center">
-                  {it.image_url ? (
-                    <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
+            {filtered.map((it) => {
+              const rows = composeItemLines(it as any);
+              return (
+                <button
+                  key={it.id}
+                  onClick={() => addToCart(it)}
+                  className="text-left p-2 border rounded-md hover:border-primary hover:bg-accent transition flex flex-col"
+                >
+                  <div className="aspect-square w-full rounded bg-muted/40 overflow-hidden mb-2 flex items-center justify-center">
+                    {it.image_url ? (
+                      <img src={it.image_url} alt={it.name} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <span className="text-xs text-muted-foreground uppercase">{it.name.slice(0, 2)}</span>
+                    )}
+                  </div>
+                  {rows.length > 0 ? (
+                    <div className="text-xs leading-snug space-y-0.5">
+                      {rows.map((r, i) => (
+                        <div key={i} className={i === 0 ? "text-sm font-medium text-foreground line-clamp-1" : "text-muted-foreground line-clamp-1"}>
+                          {i === 0 ? r.value : (<><span className="text-muted-foreground">{r.label} - </span><span className="text-foreground">{r.value}</span></>)}
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground uppercase">{it.name.slice(0, 2)}</span>
+                    <div className="text-sm font-medium line-clamp-2">{it.name}</div>
                   )}
-                </div>
-                <div className="text-sm font-medium line-clamp-2">{it.name}</div>
-                <div className="text-xs text-muted-foreground mt-1">Stock: {it.current_stock} {it.unit}</div>
-                <div className="text-sm font-semibold mt-1">Rs.{Number(it.sale_price).toFixed(2)}</div>
-              </button>
-            ))}
+                  <div className="text-xs text-muted-foreground mt-1">Stock: {it.current_stock} {it.unit}</div>
+                  <div className="text-sm font-semibold mt-1">Rs.{Number(it.sale_price).toFixed(2)}</div>
+                </button>
+              );
+            })}
             {filtered.length === 0 && <div className="text-sm text-muted-foreground col-span-full text-center py-8">No items.</div>}
           </div>
         </Card>
