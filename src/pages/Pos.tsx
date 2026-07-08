@@ -124,7 +124,11 @@ export default function Pos() {
     return items.filter((i) =>
       i.name.toLowerCase().includes(q) ||
       (i.barcode || "").toLowerCase().includes(q) ||
-      (i.hsn_code || "").toLowerCase().includes(q)
+      (i.hsn_code || "").toLowerCase().includes(q) ||
+      (i.brand || "").toLowerCase().includes(q) ||
+      (i.flavour || "").toLowerCase().includes(q) ||
+      (i.color || "").toLowerCase().includes(q) ||
+      (i.sku || "").toLowerCase().includes(q)
     ).slice(0, 60);
   }, [items, search]);
 
