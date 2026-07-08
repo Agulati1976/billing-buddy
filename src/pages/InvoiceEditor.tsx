@@ -1343,14 +1343,14 @@ export default function InvoiceEditor({ type }: Props) {
                   ) : (
                     <div className="space-y-1">
                       <div className="flex gap-1">
-                        <Select value={l.item_id ?? ""} onValueChange={(v) => pickItem(idx, v)}>
-                          <SelectTrigger className="h-8"><SelectValue placeholder="Pick item" /></SelectTrigger>
-                          <SelectContent>
-                            {items.map((it) => (
-                              <SelectItem key={it.id} value={it.id}>{it.name}{it.is_batch_tracked ? " ⓑ" : ""}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Button type="button" variant="outline" className="h-8 flex-1 justify-start font-normal text-xs"
+                          onClick={() => { setPickerReplaceIdx(idx); setPickerOpen(true); }}>
+                          {l.item_id ? (
+                            <span className="truncate text-left">{(l.item_name || "").split("\n")[0]}</span>
+                          ) : (
+                            <span className="text-muted-foreground">Pick item</span>
+                          )}
+                        </Button>
                         <Button
                           type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0"
                           onClick={() => { setRowScanIdx(idx); setScannerOpen(true); }}
