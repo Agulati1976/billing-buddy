@@ -44,6 +44,7 @@ interface Stats {
   toPay: number;
   topCustomers: { name: string; total: number }[];
   lowStock: { name: string; current_stock: number; unit: string; low_stock_alert: number }[];
+  redStock: { name: string; current_stock: number; unit: string }[];
   expiringBatches: { id: string; batch_number: string; expiry_date: string; quantity: number; item: string }[];
   recentInvoices: { id: string; invoice_number: string; total_amount: number; status: string; party: string | null }[];
 }
