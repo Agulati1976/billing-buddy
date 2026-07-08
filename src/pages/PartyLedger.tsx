@@ -2,20 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
+import { useAuth } from "@/hooks/useAuth";
+import { omInsert } from "@/lib/offlineMutate";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { BookOpen, Loader2, Search, FileText, Wallet, Download, ArrowLeft } from "lucide-react";
+import { BookOpen, Loader2, Search, FileText, Wallet, Download, ArrowLeft, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import { downloadCsv } from "@/lib/csv";
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 interface PartyLite {
   id: string;
@@ -30,6 +37,7 @@ interface InvoiceRow {
   invoice_number: string;
   invoice_date: string;
   total_amount: number;
+  balance_amount: number;
   type: string;
   party_id: string | null;
 }
@@ -126,6 +134,7 @@ function computeLedger(party: PartyLite, invoices: InvoiceRow[], payments: Payme
 
 export default function PartyLedger() {
   const { current } = useBusiness();
+  const { user } = useAuth();
   const [search, setSearch] = useSearchParams();
   const [parties, setParties] = useState<PartyLite[]>([]);
   const [allInvoices, setAllInvoices] = useState<InvoiceRow[]>([]);
@@ -135,29 +144,39 @@ export default function PartyLedger() {
   const [partyId, setPartyId] = useState<string>(search.get("party") || "");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Record payment dialog
+  const [payOpen, setPayOpen] = useState(false);
+  const [paySaving, setPaySaving] = useState(false);
+  const [payInvoiceId, setPayInvoiceId] = useState<string>("");
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [payDate, setPayDate] = useState(todayISO());
+  const [payReference, setPayReference] = useState("");
+  const [payNotes, setPayNotes] = useState("");
+
+  const load = async () => {
     if (!current) return;
     setLoading(true);
-    (async () => {
-      const [pRes, iRes, payRes] = await Promise.all([
-        supabase.from("parties").select("id,name,type,phone,opening_balance")
-          .eq("business_id", current.id).order("name"),
-        supabase.from("invoices")
-          .select("id,invoice_number,invoice_date,total_amount,type,party_id")
-          .eq("business_id", current.id).is("deleted_at", null)
-          .neq("type", "quotation").not("party_id", "is", null).order("invoice_date"),
-        supabase.from("payments")
-          .select("id,payment_date,amount,method,reference,invoice_id,direction,notes,party_id")
-          .eq("business_id", current.id).is("deleted_at", null)
-          .not("party_id", "is", null).order("payment_date"),
-      ]);
-      if (pRes.error) toast.error(pRes.error.message);
-      setParties((pRes.data as PartyLite[]) ?? []);
-      setAllInvoices((iRes.data as InvoiceRow[]) ?? []);
-      setAllPayments((payRes.data as PaymentRow[]) ?? []);
-      setLoading(false);
-    })();
-  }, [current?.id]);
+    const [pRes, iRes, payRes] = await Promise.all([
+      supabase.from("parties").select("id,name,type,phone,opening_balance")
+        .eq("business_id", current.id).order("name"),
+      supabase.from("invoices")
+        .select("id,invoice_number,invoice_date,total_amount,balance_amount,type,party_id")
+        .eq("business_id", current.id).is("deleted_at", null)
+        .neq("type", "quotation").not("party_id", "is", null).order("invoice_date"),
+      supabase.from("payments")
+        .select("id,payment_date,amount,method,reference,invoice_id,direction,notes,party_id")
+        .eq("business_id", current.id).is("deleted_at", null)
+        .not("party_id", "is", null).order("payment_date"),
+    ]);
+    if (pRes.error) toast.error(pRes.error.message);
+    setParties((pRes.data as PartyLite[]) ?? []);
+    setAllInvoices((iRes.data as InvoiceRow[]) ?? []);
+    setAllPayments((payRes.data as PaymentRow[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [current?.id]);
 
   useEffect(() => {
     setSearch((s) => {
@@ -243,6 +262,46 @@ export default function PartyLedger() {
     downloadCsv(`ledger-${selected.party.name.replace(/\s+/g, "_")}.csv`, rows);
   };
 
+  const openPaymentDialog = () => {
+    if (!selected) return;
+    const targetType = selected.party.type === "customer" ? "sale" : "purchase";
+    const first = allInvoices.find(
+      (i) => i.party_id === selected.party.id && i.type === targetType && Number(i.balance_amount) > 0,
+    );
+    setPayInvoiceId(first?.id ?? "");
+    setPayAmount(first ? String(first.balance_amount) : "");
+    setPayMethod("cash");
+    setPayDate(todayISO());
+    setPayReference("");
+    setPayNotes("");
+    setPayOpen(true);
+  };
+
+  const submitPayment = async () => {
+    if (!current || !user || !selected) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    if (!payInvoiceId) { toast.error("Select an invoice"); return; }
+    setPaySaving(true);
+    const res = await omInsert("payments", {
+      business_id: current.id,
+      direction: selected.party.type === "customer" ? "in" : "out",
+      method: payMethod as any,
+      amount: amt,
+      payment_date: payDate,
+      party_id: selected.party.id,
+      invoice_id: payInvoiceId,
+      reference: payReference.trim() || null,
+      notes: payNotes.trim() || null,
+      created_by: user.id,
+    });
+    setPaySaving(false);
+    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
+    setPayOpen(false);
+    load();
+  };
+
   // ---------------- DETAIL VIEW ----------------
   if (selected) {
     const isCustomer = selected.party.type === "customer";
@@ -255,9 +314,14 @@ export default function PartyLedger() {
           <Button variant="ghost" size="sm" onClick={() => setPartyId("")} className="gap-1.5 -ml-2">
             <ArrowLeft className="h-4 w-4" /> Back to all parties
           </Button>
-          <Button variant="outline" size="sm" onClick={exportDetailCsv} className="gap-1.5">
-            <Download className="h-4 w-4" /> Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={openPaymentDialog} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Record payment
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportDetailCsv} className="gap-1.5">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+          </div>
         </div>
         <Card className="p-4">
           <div className="text-xs uppercase text-muted-foreground tracking-wide">{selected.party.type}</div>
@@ -320,6 +384,85 @@ export default function PartyLedger() {
             </Table>
           </div>
         </Card>
+
+        <Dialog open={payOpen} onOpenChange={setPayOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Record payment {isCustomer ? "from" : "to"} {selected.party.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Invoice *</Label>
+                <Select value={payInvoiceId} onValueChange={(v) => {
+                  setPayInvoiceId(v);
+                  const inv = allInvoices.find((i) => i.id === v);
+                  if (inv) setPayAmount(String(inv.balance_amount));
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Select an unpaid invoice" /></SelectTrigger>
+                  <SelectContent>
+                    {allInvoices
+                      .filter((i) => i.party_id === selected.party.id
+                        && i.type === (isCustomer ? "sale" : "purchase")
+                        && Number(i.balance_amount) > 0)
+                      .map((i) => (
+                        <SelectItem key={i.id} value={i.id}>
+                          {i.invoice_number} — Bal {formatINR(Number(i.balance_amount))}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {allInvoices.filter((i) => i.party_id === selected.party.id
+                  && i.type === (isCustomer ? "sale" : "purchase")
+                  && Number(i.balance_amount) > 0).length === 0 && (
+                  <p className="text-xs text-muted-foreground">No unpaid invoices for this {isCustomer ? "customer" : "supplier"}.</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Amount *</Label>
+                  <Input type="number" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Method</Label>
+                  <Select value={payMethod} onValueChange={setPayMethod}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="upi">UPI</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Reference</Label>
+                  <Input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="Txn ID / Cheque #" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea rows={2} value={payNotes} onChange={(e) => setPayNotes(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+              <Button onClick={submitPayment} disabled={paySaving || !payInvoiceId || !Number(payAmount)}>
+                {paySaving ? "Saving…" : "Record payment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
