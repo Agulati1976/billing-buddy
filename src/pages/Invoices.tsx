@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "@/components/SearchBar";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw, Share2, MessageCircle, Mail, Copy, Receipt } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw, Share2, MessageCircle, Mail, Copy, Receipt, ScanLine } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
