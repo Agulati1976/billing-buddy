@@ -318,18 +318,19 @@ export async function generateInvoicePdf(
     dy += 5;
   });
 
+  y += 42;
+
   // Barcode of invoice number (for scan-based lookup)
   try {
-    const barcodeUrl = makeBarcodeDataUrl(invoice.invoice_number, { height: 30, fontSize: 10 });
+    const barcodeUrl = makeBarcodeDataUrl(invoice.invoice_number, { height: 34, fontSize: 11 });
     if (barcodeUrl) {
-      const bcW = colW - 6;
+      const bcW = 60;
       const bcH = 14;
-      doc.addImage(barcodeUrl, "PNG", rightX + 3, y + 40, bcW, bcH);
+      doc.addImage(barcodeUrl, "PNG", PAGE_W - MARGIN - bcW, y, bcW, bcH);
       y += bcH + 2;
     }
   } catch {}
 
-  y += 42;
 
   // Line items table
   const showIgst = invoice.is_inter_state;
