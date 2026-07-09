@@ -226,8 +226,11 @@ export default function Invoices({ type }: Props) {
 
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between mb-3 sm:mb-4">
-          <div className="flex-1 min-w-[180px]">
-            <SearchBar value={q} onChange={setQ} placeholder="Search number or party…" />
+          <div className="flex-1 min-w-[180px] flex items-center gap-2">
+            <div className="flex-1"><SearchBar value={q} onChange={setQ} placeholder="Search number, party or scan barcode…" /></div>
+            <Button type="button" variant="outline" size="icon" onClick={() => setScannerOpen(true)} title="Scan invoice barcode">
+              <ScanLine className="h-4 w-4" />
+            </Button>
           </div>
           <DateRangeFilter preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
         </div>
