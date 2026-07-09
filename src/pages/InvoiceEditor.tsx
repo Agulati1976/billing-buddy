@@ -362,6 +362,13 @@ export default function InvoiceEditor({ type }: Props) {
     const trimmed = code.trim();
     const targetIdx = rowScanIdx;
     setRowScanIdx(null);
+    // Sale-return source-invoice barcode
+    if (targetIdx === -1) {
+      const match = sourceList.find((r) => r.invoice_number.trim() === trimmed);
+      if (match) { void applySourceInvoice(match.id); toast.success(`Loaded ${match.invoice_number}`); }
+      else setSourceQ(trimmed);
+      return;
+    }
     const assign = (it: Item) => {
       if (targetIdx !== null) {
         const isPurchase = type === "purchase" || type === "purchase_return";
