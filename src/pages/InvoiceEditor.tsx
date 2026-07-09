@@ -1696,7 +1696,12 @@ export default function InvoiceEditor({ type }: Props) {
       <Dialog open={sourceOpen} onOpenChange={setSourceOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader><DialogTitle>Pick the sale invoice to return</DialogTitle></DialogHeader>
-          <Input placeholder="Search by invoice number or customer…" value={sourceQ} onChange={(e) => setSourceQ(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <Input placeholder="Search by invoice number or customer…" value={sourceQ} onChange={(e) => setSourceQ(e.target.value)} className="flex-1" />
+            <Button type="button" variant="outline" size="icon" onClick={() => { setRowScanIdx(-1); setScannerOpen(true); }} title="Scan invoice barcode">
+              <ScanLine className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="overflow-y-auto border rounded-md divide-y">
             {sourceList.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">No sale invoices found.</div>
