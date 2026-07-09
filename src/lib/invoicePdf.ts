@@ -2,6 +2,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
+import { makeBarcodeDataUrl } from "@/lib/barcodeImage";
 // PDF-safe currency: "Rs." prefix (built-in PDF fonts lack the ₹ glyph)
 const formatINR = (n: number): string => {
   const v = Number(n) || 0;
