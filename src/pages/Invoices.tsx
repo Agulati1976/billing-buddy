@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchBar } from "@/components/SearchBar";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw, Share2, MessageCircle, Mail, Copy, Receipt } from "lucide-react";
+import { Plus, Search, FileText, Trash2, Eye, Undo2, RotateCcw, Share2, MessageCircle, Mail, Copy, Receipt, ScanLine } from "lucide-react";
 import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ export default function Invoices({ type }: Props) {
   const [paySaving, setPaySaving] = useState(false);
   const [shareRow, setShareRow] = useState<InvoiceRow | null>(null);
   const [shareView, setShareView] = useState<"invoice" | "pos">("invoice");
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const canPay = type === "sale" || type === "purchase" || type === "non_inventory";
   const canShare = type === "sale" || type === "non_inventory" || type === "quotation";
@@ -224,8 +226,11 @@ export default function Invoices({ type }: Props) {
 
       <Card className="p-3 sm:p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between mb-3 sm:mb-4">
-          <div className="flex-1 min-w-[180px]">
-            <SearchBar value={q} onChange={setQ} placeholder="Search number or party…" />
+          <div className="flex-1 min-w-[180px] flex items-center gap-2">
+            <div className="flex-1"><SearchBar value={q} onChange={setQ} placeholder="Search number, party or scan barcode…" /></div>
+            <Button type="button" variant="outline" size="icon" onClick={() => setScannerOpen(true)} title="Scan invoice barcode">
+              <ScanLine className="h-4 w-4" />
+            </Button>
           </div>
           <DateRangeFilter preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
         </div>
@@ -486,6 +491,12 @@ export default function Invoices({ type }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      <BarcodeScanner
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScanned={(code) => { setQ(code.trim()); setScannerOpen(false); toast.success(`Searching for ${code.trim()}`); }}
+      />
     </div>
   );
 }

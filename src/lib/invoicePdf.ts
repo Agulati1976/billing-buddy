@@ -2,6 +2,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
+import { makeBarcodeDataUrl } from "@/lib/barcodeImage";
 // PDF-safe currency: "Rs." prefix (built-in PDF fonts lack the ₹ glyph)
 const formatINR = (n: number): string => {
   const v = Number(n) || 0;
@@ -318,6 +319,18 @@ export async function generateInvoicePdf(
   });
 
   y += 42;
+
+  // Barcode of invoice number (for scan-based lookup)
+  try {
+    const barcodeUrl = makeBarcodeDataUrl(invoice.invoice_number, { height: 34, fontSize: 11 });
+    if (barcodeUrl) {
+      const bcW = 60;
+      const bcH = 14;
+      doc.addImage(barcodeUrl, "PNG", PAGE_W - MARGIN - bcW, y, bcW, bcH);
+      y += bcH + 2;
+    }
+  } catch {}
+
 
   // Line items table
   const showIgst = invoice.is_inter_state;
