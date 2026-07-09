@@ -491,6 +491,12 @@ export default function Invoices({ type }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      <BarcodeScanner
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScanned={(code) => { setQ(code.trim()); setScannerOpen(false); toast.success(`Searching for ${code.trim()}`); }}
+      />
     </div>
   );
 }
