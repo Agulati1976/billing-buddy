@@ -318,6 +318,17 @@ export async function generateInvoicePdf(
     dy += 5;
   });
 
+  // Barcode of invoice number (for scan-based lookup)
+  try {
+    const barcodeUrl = makeBarcodeDataUrl(invoice.invoice_number, { height: 30, fontSize: 10 });
+    if (barcodeUrl) {
+      const bcW = colW - 6;
+      const bcH = 14;
+      doc.addImage(barcodeUrl, "PNG", rightX + 3, y + 40, bcW, bcH);
+      y += bcH + 2;
+    }
+  } catch {}
+
   y += 42;
 
   // Line items table
