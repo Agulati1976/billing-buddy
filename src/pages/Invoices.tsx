@@ -51,6 +51,7 @@ export default function Invoices({ type }: Props) {
   const [paySaving, setPaySaving] = useState(false);
   const [shareRow, setShareRow] = useState<InvoiceRow | null>(null);
   const [shareView, setShareView] = useState<"invoice" | "pos">("invoice");
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const canPay = type === "sale" || type === "purchase" || type === "non_inventory";
   const canShare = type === "sale" || type === "non_inventory" || type === "quotation";
