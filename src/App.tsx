@@ -68,6 +68,7 @@ const App = () => (
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/i/:id" element={<PublicInvoiceView />} />
+              <Route path="/support-agent" element={<SupportAgent />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverview />} />
