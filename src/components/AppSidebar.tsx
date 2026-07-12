@@ -149,6 +149,14 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Help & Support">
+                  <NavLink to="/support">
+                    <LifeBuoy className="h-4 w-4" />
+                    <span>Help & Support</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Settings">
                   <NavLink to="/settings">
                     <Settings className="h-4 w-4" />
