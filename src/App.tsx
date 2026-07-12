@@ -49,6 +49,9 @@ import NotFound from "./pages/NotFound.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DeleteAccount from "./pages/DeleteAccount";
 import PublicInvoiceView from "./pages/PublicInvoiceView";
+import Support from "./pages/Support";
+import SupportAgent from "./pages/SupportAgent";
+import AdminTickets from "./pages/admin/AdminTickets";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +68,7 @@ const App = () => (
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/i/:id" element={<PublicInvoiceView />} />
+              <Route path="/support-agent" element={<SupportAgent />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverview />} />
@@ -79,6 +83,7 @@ const App = () => (
                 <Route path="reminders" element={<AdminReminders />} />
                 <Route path="audit" element={<AdminAuditLog />} />
                 <Route path="admins" element={<AdminAdmins />} />
+                <Route path="tickets" element={<AdminTickets />} />
               </Route>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route element={<AppLayout />}>
@@ -112,6 +117,7 @@ const App = () => (
                 <Route path="/loyalty" element={<Loyalty />} />
                 <Route path="/pos" element={<Pos />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/support" element={<Support />} />
                 <Route path="/settings/team" element={<Team />} />
                 <Route path="/settings/invoice" element={<InvoiceDesign />} />
                 <Route path="/billing" element={<Billing />} />

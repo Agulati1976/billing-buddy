@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   ShieldCheck, Store, Users, LogOut, LayoutDashboard,
-  Receipt, Wallet, Layers, ScrollText, UserCog, CreditCard, FileText, Bell, Menu,
+  Receipt, Wallet, Layers, ScrollText, UserCog, CreditCard, FileText, Bell, Menu, LifeBuoy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const nav = [
   { to: "/admin", end: true, icon: LayoutDashboard, label: "Overview" },
   { to: "/admin/shopkeepers", icon: Store, label: "Shopkeepers" },
   { to: "/admin/users", icon: Users, label: "Users" },
+  { to: "/admin/tickets", icon: LifeBuoy, label: "Support Tickets" },
   { to: "/admin/plans", icon: Layers, label: "Plans & Pricing" },
   { to: "/admin/payments", icon: Wallet, label: "SaaS Revenue" },
   { to: "/admin/customer-invoices", icon: FileText, label: "Customer Invoices" },
@@ -28,8 +29,8 @@ const nav = [
 const bottomNav = [
   { to: "/admin", end: true, icon: LayoutDashboard, label: "Home" },
   { to: "/admin/shopkeepers", icon: Store, label: "Shops" },
+  { to: "/admin/tickets", icon: LifeBuoy, label: "Tickets" },
   { to: "/admin/payments", icon: Wallet, label: "Revenue" },
-  { to: "/admin/reminders", icon: Bell, label: "Alerts" },
 ];
 
 export default function AdminLayout() {
