@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import {
   ArrowUpDown, BarChart3, BookOpen, Boxes, Building2, CreditCard, FileEdit, FileText,
   Gift, LayoutDashboard, LayoutGrid, Package, Receipt as ReceiptIcon, Settings,
-  ShoppingCart, Sparkles, Tags, Truck, Users, Wallet, Warehouse,
+  ShoppingCart, Sparkles, Tags, Truck, Users, Wallet, Warehouse, LifeBuoy,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { usePosAccess } from "@/hooks/usePosAccess";
