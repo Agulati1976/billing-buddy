@@ -49,6 +49,9 @@ import NotFound from "./pages/NotFound.tsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DeleteAccount from "./pages/DeleteAccount";
 import PublicInvoiceView from "./pages/PublicInvoiceView";
+import Support from "./pages/Support";
+import SupportAgent from "./pages/SupportAgent";
+import AdminTickets from "./pages/admin/AdminTickets";
 
 const queryClient = new QueryClient();
 
