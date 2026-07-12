@@ -6,13 +6,15 @@ import { MobileBottomNav } from "./MobileBottomNav";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness } from "@/hooks/useBusiness";
 import { usePlatformAdmin } from "@/hooks/usePlatformAdmin";
+import { useSupportStaff } from "@/hooks/useSupportStaff";
 
 export default function AppLayout() {
   const { user, loading: authLoading } = useAuth();
   const { businesses, loading: bizLoading } = useBusiness();
   const { isAdmin, loading: adminLoading } = usePlatformAdmin();
+  const { isSupportStaff, loading: supportLoading } = useSupportStaff();
 
-  if (authLoading || bizLoading || adminLoading) {
+  if (authLoading || bizLoading || adminLoading || supportLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-sm text-muted-foreground">Loading…</div>
@@ -23,6 +25,7 @@ export default function AppLayout() {
   if (!user) return <Navigate to="/auth" replace />;
   if (businesses.length === 0) {
     if (isAdmin) return <Navigate to="/admin" replace />;
+    if (isSupportStaff) return <Navigate to="/support-agent" replace />;
     return <Navigate to="/onboarding" replace />;
   }
 
