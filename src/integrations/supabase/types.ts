@@ -649,6 +649,7 @@ export type Database = {
           party_id: string | null
           party_state_code: string | null
           pos_session_id: string | null
+          received_date: string | null
           round_off: number
           sgst_amount: number
           status: Database["public"]["Enums"]["invoice_status"]
@@ -682,6 +683,7 @@ export type Database = {
           party_id?: string | null
           party_state_code?: string | null
           pos_session_id?: string | null
+          received_date?: string | null
           round_off?: number
           sgst_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -715,6 +717,7 @@ export type Database = {
           party_id?: string | null
           party_state_code?: string | null
           pos_session_id?: string | null
+          received_date?: string | null
           round_off?: number
           sgst_amount?: number
           status?: Database["public"]["Enums"]["invoice_status"]

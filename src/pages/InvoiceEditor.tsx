@@ -54,6 +54,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
+  const [receivedDate, setReceivedDate] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([]);
@@ -210,6 +211,7 @@ export default function InvoiceEditor({ type }: Props) {
       setNumber(i.invoice_number);
       setDate(i.invoice_date);
       setDueDate(i.due_date ?? "");
+      setReceivedDate(i.received_date ?? "");
       setNotes(i.notes ?? "");
       setTerms(i.terms ?? "");
       setIsGst(i.is_gst !== false);
@@ -716,6 +718,7 @@ export default function InvoiceEditor({ type }: Props) {
           invoice_number: number.trim(),
           invoice_date: date,
           due_date: dueDate || null,
+          received_date: (type === "purchase" || type === "purchase_return") ? (receivedDate || null) : null,
           party_state_code: party?.state_code ?? null,
           is_inter_state: isInterState,
           is_gst: isGst,
@@ -812,6 +815,7 @@ export default function InvoiceEditor({ type }: Props) {
       invoice_number: number.trim(),
       invoice_date: date,
       due_date: dueDate || null,
+      received_date: (type === "purchase" || type === "purchase_return") ? (receivedDate || null) : null,
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
       is_gst: isGst,
@@ -1049,6 +1053,7 @@ export default function InvoiceEditor({ type }: Props) {
                 setNumber(i.invoice_number);
                 setDate(i.invoice_date);
                 setDueDate(i.due_date ?? "");
+                setReceivedDate(i.received_date ?? "");
                 setNotes(i.notes ?? "");
                 setTerms(i.terms ?? "");
                 setIsGst(i.is_gst !== false);
@@ -1074,25 +1079,37 @@ export default function InvoiceEditor({ type }: Props) {
       </div>
 
       <Card className="p-5 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {(type === "purchase" || type === "purchase_return") && (
+          <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2 text-xs text-primary">
+            {type === "purchase" ? "Purchase Bill — recording goods bought from a supplier. Stock will increase on save." : "Purchase Return — returning goods to supplier. Stock will decrease on save."}
+          </div>
+        )}
+        <div className={`grid grid-cols-1 gap-4 ${(type === "purchase" || type === "purchase_return") ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
           <div className="space-y-2">
-            <Label>{meta.label} Number *</Label>
-            <Input value={number} onChange={(e) => setNumber(e.target.value)} disabled={readOnly} />
+            <Label>{(type === "purchase" || type === "purchase_return") ? "Bill No" : `${meta.label} Number`} *</Label>
+            <Input value={number} onChange={(e) => setNumber(e.target.value)} disabled={readOnly} placeholder={(type === "purchase" || type === "purchase_return") ? "Supplier's bill number" : ""} />
           </div>
           <div className="space-y-2">
-            <Label>Date *</Label>
+            <Label>{(type === "purchase" || type === "purchase_return") ? "Bill Date" : "Date"} *</Label>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} disabled={readOnly} />
           </div>
+          {(type === "purchase" || type === "purchase_return") && (
+            <div className="space-y-2">
+              <Label>Received Date</Label>
+              <Input type="date" value={receivedDate} onChange={(e) => setReceivedDate(e.target.value)} disabled={readOnly} />
+            </div>
+          )}
           <div className="space-y-2">
-            <Label>Due Date</Label>
+            <Label>{(type === "purchase" || type === "purchase_return") ? "Payment Due" : "Due Date"}</Label>
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={readOnly} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label>{partyKind === "supplier" ? "Supplier" : "Customer"} {type === "quotation" ? "" : "*"}</Label>
+          <Label>{partyKind === "supplier" ? "Bill From (Supplier)" : "Customer"} {type === "quotation" ? "" : "*"}</Label>
           <div className="flex gap-2">
             <Select value={partyId} onValueChange={setPartyId} disabled={readOnly}>
+
               <SelectTrigger className="flex-1"><SelectValue placeholder={`Select ${partyKind}`} /></SelectTrigger>
               <SelectContent>
                 {parties.map((p) => (
@@ -1178,13 +1195,21 @@ export default function InvoiceEditor({ type }: Props) {
         </div>
       </Card>
 
-      {!readOnly && (
+      {(!readOnly || type === "purchase" || type === "purchase_return") && (
         <div className="flex justify-end">
-          <Button onClick={() => { setPickerReplaceIdx(null); setPickerOpen(true); }} className="gap-1.5">
+          <Button
+            onClick={() => {
+              if (readOnly) setReadOnly(false);
+              setPickerReplaceIdx(null);
+              setPickerOpen(true);
+            }}
+            className="gap-1.5"
+          >
             <Plus className="h-4 w-4" /> Add items
           </Button>
         </div>
       )}
+
 
       <Card className="p-0 overflow-hidden">
         {/* Mobile: stacked cards per line */}
@@ -1265,7 +1290,7 @@ export default function InvoiceEditor({ type }: Props) {
                     )}
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground">Price</Label>
+                    <Label className="text-[11px] text-muted-foreground">{(type === "purchase" || type === "purchase_return") ? "Cost" : "Price"}</Label>
                     {readOnly ? <div className="num h-10 flex items-center">{formatINR(l.price)}</div> : (
                       <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
                         value={l.price} onChange={(e) => updateLine(idx, { price: Number(e.target.value) })} />
@@ -1337,7 +1362,7 @@ export default function InvoiceEditor({ type }: Props) {
               <TableHead className="w-[24%] min-w-[220px]">Item</TableHead>
               <TableHead className="w-[100px]">HSN</TableHead>
               <TableHead className="w-[110px]">Qty</TableHead>
-              <TableHead className="w-[130px]">Price</TableHead>
+              <TableHead className="w-[130px]">{(type === "purchase" || type === "purchase_return") ? "Cost" : "Price"}</TableHead>
               <TableHead className="w-[160px]">Discount</TableHead>
               <TableHead className="w-[90px]">Tax %</TableHead>
               <TableHead className="w-[130px] text-right">Amount</TableHead>
