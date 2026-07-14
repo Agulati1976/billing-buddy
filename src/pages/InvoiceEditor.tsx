@@ -1053,6 +1053,7 @@ export default function InvoiceEditor({ type }: Props) {
                 setNumber(i.invoice_number);
                 setDate(i.invoice_date);
                 setDueDate(i.due_date ?? "");
+                setReceivedDate(i.received_date ?? "");
                 setNotes(i.notes ?? "");
                 setTerms(i.terms ?? "");
                 setIsGst(i.is_gst !== false);
