@@ -29,6 +29,7 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { PurchaseInvoiceScanner, type ExtractedInvoice } from "@/components/PurchaseInvoiceScanner";
 import { ItemPickerDialog } from "@/components/ItemPickerDialog";
+import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
