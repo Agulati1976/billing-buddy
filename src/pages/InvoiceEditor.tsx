@@ -54,6 +54,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState("");
+  const [receivedDate, setReceivedDate] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
   const [lines, setLines] = useState<InvoiceLineInput[]>([]);
