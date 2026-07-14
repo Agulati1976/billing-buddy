@@ -75,6 +75,10 @@ export default function InvoiceEditor({ type }: Props) {
   const [billScanOpen, setBillScanOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerReplaceIdx, setPickerReplaceIdx] = useState<number | null>(null);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [itemDialogTarget, setItemDialogTarget] = useState<number | null>(null); // line idx to fill, or null = append
+  const [batchDialogFor, setBatchDialogFor] = useState<{ lineIdx: number; itemId: string } | null>(null);
+  const [newBatch, setNewBatch] = useState({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
