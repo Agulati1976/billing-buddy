@@ -1444,18 +1444,23 @@ export default function InvoiceEditor({ type }: Props) {
                         if (!it?.is_batch_tracked) return null;
                         const itemBatches = batches.filter(b => b.item_id === it.id);
                         return (
-                          <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
-                            <SelectTrigger className="h-8"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
-                            <SelectContent>
-                              {itemBatches.length === 0 ? (
-                                <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
-                              ) : itemBatches.map(b => (
-                                <SelectItem key={b.id} value={b.id}>
-                                  {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                              <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
+                              <SelectContent>
+                                {itemBatches.length === 0 ? (
+                                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
+                                ) : itemBatches.map(b => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => openNewBatchFor(idx, it.id)} title="Add new batch">
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         );
                       })()}
                     </div>
