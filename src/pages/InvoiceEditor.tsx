@@ -125,6 +125,19 @@ export default function InvoiceEditor({ type }: Props) {
   }
 
   // Load parties & items
+  const reloadItemsAndBatches = async () => {
+    if (!current) return { items: [] as Item[], batches: [] as Batch[] };
+    const [it, b] = await Promise.all([
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
+      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+    ]);
+    const nextItems = ((it.data as any) ?? []) as Item[];
+    const nextBatches = ((b.data as any) ?? []) as Batch[];
+    setItems(nextItems);
+    setBatches(nextBatches);
+    return { items: nextItems, batches: nextBatches };
+  };
+
   useEffect(() => {
     if (!current) return;
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
