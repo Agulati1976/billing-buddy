@@ -815,6 +815,7 @@ export default function InvoiceEditor({ type }: Props) {
       invoice_number: number.trim(),
       invoice_date: date,
       due_date: dueDate || null,
+      received_date: (type === "purchase" || type === "purchase_return") ? (receivedDate || null) : null,
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
       is_gst: isGst,
