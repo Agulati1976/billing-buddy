@@ -1214,7 +1214,18 @@ export default function InvoiceEditor({ type }: Props) {
       </Card>
 
       {(!readOnly || type === "purchase" || type === "purchase_return") && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (readOnly) setReadOnly(false);
+              setItemDialogTarget(null);
+              setItemDialogOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> New item
+          </Button>
           <Button
             onClick={() => {
               if (readOnly) setReadOnly(false);
