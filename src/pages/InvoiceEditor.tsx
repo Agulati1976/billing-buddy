@@ -1195,13 +1195,21 @@ export default function InvoiceEditor({ type }: Props) {
         </div>
       </Card>
 
-      {!readOnly && (
+      {(!readOnly || type === "purchase" || type === "purchase_return") && (
         <div className="flex justify-end">
-          <Button onClick={() => { setPickerReplaceIdx(null); setPickerOpen(true); }} className="gap-1.5">
+          <Button
+            onClick={() => {
+              if (readOnly) setReadOnly(false);
+              setPickerReplaceIdx(null);
+              setPickerOpen(true);
+            }}
+            className="gap-1.5"
+          >
             <Plus className="h-4 w-4" /> Add items
           </Button>
         </div>
       )}
+
 
       <Card className="p-0 overflow-hidden">
         {/* Mobile: stacked cards per line */}
