@@ -29,6 +29,7 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { PurchaseInvoiceScanner, type ExtractedInvoice } from "@/components/PurchaseInvoiceScanner";
 import { ItemPickerDialog } from "@/components/ItemPickerDialog";
+import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
@@ -74,6 +75,10 @@ export default function InvoiceEditor({ type }: Props) {
   const [billScanOpen, setBillScanOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerReplaceIdx, setPickerReplaceIdx] = useState<number | null>(null);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [itemDialogTarget, setItemDialogTarget] = useState<number | null>(null); // line idx to fill, or null = append
+  const [batchDialogFor, setBatchDialogFor] = useState<{ lineIdx: number; itemId: string } | null>(null);
+  const [newBatch, setNewBatch] = useState({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
@@ -124,6 +129,19 @@ export default function InvoiceEditor({ type }: Props) {
   }
 
   // Load parties & items
+  const reloadItemsAndBatches = async () => {
+    if (!current) return { items: [] as Item[], batches: [] as Batch[] };
+    const [it, b] = await Promise.all([
+      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
+      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+    ]);
+    const nextItems = ((it.data as any) ?? []) as Item[];
+    const nextBatches = ((b.data as any) ?? []) as Batch[];
+    setItems(nextItems);
+    setBatches(nextBatches);
+    return { items: nextItems, batches: nextBatches };
+  };
+
   useEffect(() => {
     if (!current) return;
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
@@ -359,6 +377,39 @@ export default function InvoiceEditor({ type }: Props) {
     });
     toast.success(`Added: ${it.name}`);
   };
+
+  const openNewBatchFor = (lineIdx: number, itemId: string) => {
+    setBatchDialogFor({ lineIdx, itemId });
+    setNewBatch({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
+  };
+
+  const saveNewBatch = async () => {
+    if (!current || !batchDialogFor) return;
+    const bn = newBatch.batch_number.trim();
+    const qty = Number(newBatch.quantity);
+    if (!bn) { toast.error("Enter batch number"); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { toast.error("Quantity must be greater than zero"); return; }
+    const payload: any = {
+      business_id: current.id,
+      item_id: batchDialogFor.itemId,
+      batch_number: bn,
+      quantity: qty,
+      mfg_date: newBatch.mfg_date || null,
+      expiry_date: newBatch.expiry_date || null,
+      notes: newBatch.notes?.trim() || null,
+      created_by: user?.id ?? null,
+    };
+    const { data, error } = await supabase.from("batches").insert(payload).select("id, item_id, batch_number, expiry_date, quantity").single();
+    if (error) { toast.error(error.message); return; }
+    toast.success("Batch added");
+    const created = data as any as Batch;
+    setBatches((prev) => [created, ...prev]);
+    const lineIdx = batchDialogFor.lineIdx;
+    setBatchDialogFor(null);
+    updateLine(lineIdx, { batch_id: created.id });
+  };
+
+
 
   const handleScanned = async (code: string) => {
     const trimmed = code.trim();
@@ -1196,7 +1247,18 @@ export default function InvoiceEditor({ type }: Props) {
       </Card>
 
       {(!readOnly || type === "purchase" || type === "purchase_return") && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (readOnly) setReadOnly(false);
+              setItemDialogTarget(null);
+              setItemDialogOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> New item
+          </Button>
           <Button
             onClick={() => {
               if (readOnly) setReadOnly(false);
@@ -1260,18 +1322,23 @@ export default function InvoiceEditor({ type }: Props) {
                       onChange={(e) => updateLine(idx, { item_name: e.target.value })}
                       placeholder="Or type item name" />
                     {it?.is_batch_tracked && (
-                      <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
-                        <SelectTrigger className="h-10"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
-                        <SelectContent>
-                          {itemBatches.length === 0 ? (
-                            <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
-                          ) : itemBatches.map(b => (
-                            <SelectItem key={b.id} value={b.id}>
-                              {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-1">
+                        <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                          <SelectTrigger className="h-10 flex-1"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
+                          <SelectContent>
+                            {itemBatches.length === 0 ? (
+                              <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
+                            ) : itemBatches.map(b => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => openNewBatchFor(idx, it.id)}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </>
                 )}
@@ -1410,18 +1477,23 @@ export default function InvoiceEditor({ type }: Props) {
                         if (!it?.is_batch_tracked) return null;
                         const itemBatches = batches.filter(b => b.item_id === it.id);
                         return (
-                          <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
-                            <SelectTrigger className="h-8"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
-                            <SelectContent>
-                              {itemBatches.length === 0 ? (
-                                <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
-                              ) : itemBatches.map(b => (
-                                <SelectItem key={b.id} value={b.id}>
-                                  {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                              <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
+                              <SelectContent>
+                                {itemBatches.length === 0 ? (
+                                  <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
+                                ) : itemBatches.map(b => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => openNewBatchFor(idx, it.id)} title="Add new batch">
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         );
                       })()}
                     </div>
@@ -1688,6 +1760,59 @@ export default function InvoiceEditor({ type }: Props) {
       />
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
+
+      <ItemDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        item={null}
+        onSaved={async () => {
+          const before = new Set(items.map((i) => i.id));
+          const { items: fresh } = await reloadItemsAndBatches();
+          const created = fresh.find((i) => !before.has(i.id));
+          if (created) addItemToLines(created);
+        }}
+      />
+
+      <Dialog open={!!batchDialogFor} onOpenChange={(v) => { if (!v) setBatchDialogFor(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New batch</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            {batchDialogFor && (() => {
+              const it = items.find((x) => x.id === batchDialogFor.itemId);
+              return it ? <div className="text-sm text-muted-foreground">For: <span className="font-medium text-foreground">{it.name}</span></div> : null;
+            })()}
+            <div className="space-y-1.5">
+              <Label>Batch number *</Label>
+              <Input autoFocus value={newBatch.batch_number} onChange={(e) => setNewBatch({ ...newBatch, batch_number: e.target.value })} placeholder="e.g. B-2026-01" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Quantity *</Label>
+                <Input type="number" inputMode="decimal" step="0.01" min="0" value={newBatch.quantity} onChange={(e) => setNewBatch({ ...newBatch, quantity: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Expiry date</Label>
+                <Input type="date" value={newBatch.expiry_date} onChange={(e) => setNewBatch({ ...newBatch, expiry_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Mfg date</Label>
+                <Input type="date" value={newBatch.mfg_date} onChange={(e) => setNewBatch({ ...newBatch, mfg_date: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notes</Label>
+                <Input value={newBatch.notes} onChange={(e) => setNewBatch({ ...newBatch, notes: e.target.value })} placeholder="Optional" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchDialogFor(null)}>Cancel</Button>
+            <Button onClick={saveNewBatch}>Save batch</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
 
       <PartyDialog
