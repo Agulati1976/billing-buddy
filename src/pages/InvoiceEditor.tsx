@@ -1760,6 +1760,59 @@ export default function InvoiceEditor({ type }: Props) {
       />
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleScanned} />
+
+      <ItemDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        item={null}
+        onSaved={async () => {
+          const before = new Set(items.map((i) => i.id));
+          const { items: fresh } = await reloadItemsAndBatches();
+          const created = fresh.find((i) => !before.has(i.id));
+          if (created) addItemToLines(created);
+        }}
+      />
+
+      <Dialog open={!!batchDialogFor} onOpenChange={(v) => { if (!v) setBatchDialogFor(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New batch</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            {batchDialogFor && (() => {
+              const it = items.find((x) => x.id === batchDialogFor.itemId);
+              return it ? <div className="text-sm text-muted-foreground">For: <span className="font-medium text-foreground">{it.name}</span></div> : null;
+            })()}
+            <div className="space-y-1.5">
+              <Label>Batch number *</Label>
+              <Input autoFocus value={newBatch.batch_number} onChange={(e) => setNewBatch({ ...newBatch, batch_number: e.target.value })} placeholder="e.g. B-2026-01" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Quantity *</Label>
+                <Input type="number" inputMode="decimal" step="0.01" min="0" value={newBatch.quantity} onChange={(e) => setNewBatch({ ...newBatch, quantity: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Expiry date</Label>
+                <Input type="date" value={newBatch.expiry_date} onChange={(e) => setNewBatch({ ...newBatch, expiry_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Mfg date</Label>
+                <Input type="date" value={newBatch.mfg_date} onChange={(e) => setNewBatch({ ...newBatch, mfg_date: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notes</Label>
+                <Input value={newBatch.notes} onChange={(e) => setNewBatch({ ...newBatch, notes: e.target.value })} placeholder="Optional" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchDialogFor(null)}>Cancel</Button>
+            <Button onClick={saveNewBatch}>Save batch</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PurchaseInvoiceScanner open={billScanOpen} onOpenChange={setBillScanOpen} onExtracted={applyExtractedBill} />
 
       <PartyDialog
