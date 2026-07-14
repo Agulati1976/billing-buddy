@@ -1290,7 +1290,7 @@ export default function InvoiceEditor({ type }: Props) {
                     )}
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground">Price</Label>
+                    <Label className="text-[11px] text-muted-foreground">{(type === "purchase" || type === "purchase_return") ? "Cost" : "Price"}</Label>
                     {readOnly ? <div className="num h-10 flex items-center">{formatINR(l.price)}</div> : (
                       <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
                         value={l.price} onChange={(e) => updateLine(idx, { price: Number(e.target.value) })} />
