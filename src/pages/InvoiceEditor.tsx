@@ -378,6 +378,39 @@ export default function InvoiceEditor({ type }: Props) {
     toast.success(`Added: ${it.name}`);
   };
 
+  const openNewBatchFor = (lineIdx: number, itemId: string) => {
+    setBatchDialogFor({ lineIdx, itemId });
+    setNewBatch({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
+  };
+
+  const saveNewBatch = async () => {
+    if (!current || !batchDialogFor) return;
+    const bn = newBatch.batch_number.trim();
+    const qty = Number(newBatch.quantity);
+    if (!bn) { toast.error("Enter batch number"); return; }
+    if (!Number.isFinite(qty) || qty <= 0) { toast.error("Quantity must be greater than zero"); return; }
+    const payload: any = {
+      business_id: current.id,
+      item_id: batchDialogFor.itemId,
+      batch_number: bn,
+      quantity: qty,
+      mfg_date: newBatch.mfg_date || null,
+      expiry_date: newBatch.expiry_date || null,
+      notes: newBatch.notes?.trim() || null,
+      created_by: user?.id ?? null,
+    };
+    const { data, error } = await supabase.from("batches").insert(payload).select("id, item_id, batch_number, expiry_date, quantity").single();
+    if (error) { toast.error(error.message); return; }
+    toast.success("Batch added");
+    const created = data as any as Batch;
+    setBatches((prev) => [created, ...prev]);
+    const lineIdx = batchDialogFor.lineIdx;
+    setBatchDialogFor(null);
+    updateLine(lineIdx, { batch_id: created.id });
+  };
+
+
+
   const handleScanned = async (code: string) => {
     const trimmed = code.trim();
     const targetIdx = rowScanIdx;
