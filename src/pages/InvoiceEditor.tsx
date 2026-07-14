@@ -1362,7 +1362,7 @@ export default function InvoiceEditor({ type }: Props) {
               <TableHead className="w-[24%] min-w-[220px]">Item</TableHead>
               <TableHead className="w-[100px]">HSN</TableHead>
               <TableHead className="w-[110px]">Qty</TableHead>
-              <TableHead className="w-[130px]">Price</TableHead>
+              <TableHead className="w-[130px]">{(type === "purchase" || type === "purchase_return") ? "Cost" : "Price"}</TableHead>
               <TableHead className="w-[160px]">Discount</TableHead>
               <TableHead className="w-[90px]">Tax %</TableHead>
               <TableHead className="w-[130px] text-right">Amount</TableHead>
