@@ -103,7 +103,7 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
   doc.setFontSize(8);
   doc.text(`Bill: ${r.invoice_number}`, M, y);
   doc.text(r.invoice_date, W - M, y, { align: "right" }); y += 4;
-  if (r.party_name) { doc.text(`Customer: ${r.party_name}`, M, y); y += 3.5; }
+  if (r.party_name) { doc.text(`Customer: ${r.party_name}${r.party_phone ? ` · ${r.party_phone}` : ""}`, M, y); y += 3.5; }
   if (r.cashier) { doc.text(`Cashier: ${r.cashier}`, M, y); y += 3.5; }
 
   y += 1;
