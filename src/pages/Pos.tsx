@@ -26,7 +26,7 @@ import { Mic, MicOff } from "lucide-react";
 
 interface Item {
   id: string; name: string; barcode: string | null; sale_price: number;
-  tax_rate: number; unit: string; hsn_code: string | null; current_stock: number;
+  tax_rate: number; unit: string; unit_size?: number | null; hsn_code: string | null; current_stock: number;
   is_batch_tracked?: boolean;
   image_url?: string | null;
   allow_decimal_qty?: boolean;
@@ -723,11 +723,16 @@ export default function Pos() {
               <div className="text-sm text-muted-foreground text-center py-10">Cart is empty</div>
             ) : (
               <div className="divide-y">
-                {cart.map((l) => (
+                {cart.map((l) => {
+                  const it = items.find((x) => x.id === l.item_id);
+                  const size = it?.unit_size != null && Number(it.unit_size) > 0 ? Number(it.unit_size) : null;
+                  const sizeLabel = size != null ? `${size} ${(it?.unit || l.unit || "").toString().toUpperCase()}` : null;
+                  return (
                   <div key={l._key} className="p-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{l.item_name}</div>
+                        <div className="text-sm font-medium truncate">{(l.item_name || "").split("\n")[0]}</div>
+                        {sizeLabel && <div className="text-xs text-muted-foreground">{sizeLabel}</div>}
                         <div className="text-xs text-muted-foreground">Rs.{Number(l.price).toFixed(2)} × {l.quantity} {l.unit}</div>
                       </div>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeLine(l._key)}>
@@ -759,7 +764,8 @@ export default function Pos() {
                       <span className="ml-auto text-sm font-medium">Rs.{((Number(l.quantity) * Number(l.price)) * (1 - Number(l.discount_pct) / 100)).toFixed(2)}</span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

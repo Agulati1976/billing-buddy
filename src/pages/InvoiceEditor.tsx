@@ -34,7 +34,7 @@ import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; }
-interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; is_batch_tracked: boolean; current_stock?: number | null; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
+interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; unit_size?: number | null; is_batch_tracked: boolean; allow_decimal_qty?: boolean; current_stock?: number | null; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
 interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
 
 export default function InvoiceEditor({ type }: Props) {
@@ -1318,6 +1318,9 @@ export default function InvoiceEditor({ type }: Props) {
                         <ScanLine className="h-4 w-4" />
                       </Button>
                     </div>
+                    {it?.unit_size != null && Number(it.unit_size) > 0 && (
+                      <div className="text-xs text-muted-foreground">{Number(it.unit_size)} {(it.unit || "").toUpperCase()}</div>
+                    )}
                     <Input className="h-10" value={l.item_name}
                       onChange={(e) => updateLine(idx, { item_name: e.target.value })}
                       placeholder="Or type item name" />
@@ -1466,6 +1469,11 @@ export default function InvoiceEditor({ type }: Props) {
                           <ScanLine className="h-4 w-4" />
                         </Button>
                       </div>
+                      {(() => {
+                        const it = l.item_id ? items.find((x: any) => x.id === l.item_id) : null;
+                        if (it?.unit_size == null || !(Number(it.unit_size) > 0)) return null;
+                        return <div className="text-xs text-muted-foreground">{Number(it.unit_size)} {(it.unit || "").toUpperCase()}</div>;
+                      })()}
                       <Input
                         className="h-8"
                         value={l.item_name}
