@@ -152,9 +152,68 @@ export default function Invoices({ type }: Props) {
     return { total, balance, count: dateFiltered.length };
   }, [dateFiltered]);
 
+  // Soft-deleting/restoring an invoice previously only touched deleted_at on
+  // invoices/payments — the stock it moved (and, for a sale_return, the
+  // balance it credited back to the original sale) stayed applied forever,
+  // permanently mis-counting inventory and overstating receivables. This
+  // mirrors the same reversal deltas InvoiceEditor's edit path already uses.
+  const reverseStock = async (invoiceId: string, mode: "reverse" | "reapply") => {
+    const { data: lines } = await supabase.from("invoice_items")
+      .select("item_id, batch_id, quantity").eq("invoice_id", invoiceId);
+    for (const ol of (lines as any[]) ?? []) {
+      let delta = 0;
+      if (type === "sale") delta = Number(ol.quantity);
+      else if (type === "purchase") delta = -Number(ol.quantity);
+      else if (type === "sale_return") delta = -Number(ol.quantity);
+      else if (type === "purchase_return") delta = Number(ol.quantity);
+      else continue;
+      if (!delta) continue;
+      const applied = mode === "reverse" ? delta : -delta;
+
+      if (!ol.batch_id && ol.item_id) {
+        const { data: item } = await supabase.from("items")
+          .select("id, current_stock, is_batch_tracked, type").eq("id", ol.item_id).maybeSingle();
+        if ((item as any)?.type === "product" && !(item as any)?.is_batch_tracked) {
+          const next = Math.max(0, Number((item as any).current_stock ?? 0) + applied);
+          await supabase.from("items").update({ current_stock: next } as any).eq("id", ol.item_id);
+        }
+        continue;
+      }
+      if (!ol.batch_id) continue;
+      const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
+      if (b) {
+        const next = Math.max(0, Number((b as any).quantity) + applied);
+        await supabase.from("batches").update({ quantity: next }).eq("id", ol.batch_id);
+      }
+    }
+  };
+
+  // Undo/redo a sale_return's netting against the original sale's balance.
+  const reverseReturnNetting = async (invoiceId: string, mode: "reverse" | "reapply") => {
+    if (type !== "sale_return") return;
+    const { data: inv } = await supabase.from("invoices")
+      .select("source_invoice_id, total_amount").eq("id", invoiceId).maybeSingle();
+    const srcId = (inv as any)?.source_invoice_id;
+    if (!srcId) return;
+    const { data: src } = await supabase.from("invoices")
+      .select("total_amount, paid_amount, balance_amount").eq("id", srcId).maybeSingle();
+    if (!src) return;
+    const s = src as any;
+    const returnTotal = Number((inv as any).total_amount) || 0;
+    // "reverse" = deleting the return, give the balance back to the source.
+    // "reapply" = restoring the return, net it against the source again.
+    const newBalance = mode === "reverse"
+      ? Math.min(Number(s.total_amount), Number(s.balance_amount) + returnTotal)
+      : Math.max(0, Number(s.balance_amount) - returnTotal);
+    const newStatus = newBalance <= 0 ? "paid" : Number(s.paid_amount) > 0 ? "partial" : "unpaid";
+    await supabase.from("invoices").update({ balance_amount: newBalance, status: newStatus }).eq("id", srcId);
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Move this invoice to Deleted? You can recover it within 180 days.")) return;
     const now = new Date().toISOString();
+    await reverseStock(id, "reverse");
+    await reverseReturnNetting(id, "reverse");
     const { error: e1 } = await supabase.from("invoices").update({ deleted_at: now }).eq("id", id);
     if (e1) { toast.error(e1.message); return; }
     await supabase.from("payments").update({ deleted_at: now }).eq("invoice_id", id).is("deleted_at", null);
@@ -166,6 +225,8 @@ export default function Invoices({ type }: Props) {
     const { error: e1 } = await supabase.from("invoices").update({ deleted_at: null }).eq("id", id);
     if (e1) { toast.error(e1.message); return; }
     await supabase.from("payments").update({ deleted_at: null }).eq("invoice_id", id);
+    await reverseStock(id, "reapply");
+    await reverseReturnNetting(id, "reapply");
     toast.success("Invoice restored");
     load();
   };

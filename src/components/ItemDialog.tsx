@@ -185,6 +185,9 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
   const submit = async () => {
     if (!current || !user) return;
     if (!form.name.trim()) { toast.error("Name is required"); return; }
+    if (Number(form.sale_price) < 0 || Number(form.purchase_price) < 0 || Number(form.mrp) < 0) {
+      toast.error("Price fields cannot be negative"); return;
+    }
     if (form.type === "product" && Number(form.opening_stock) < 0) { toast.error("Opening stock cannot be negative"); return; }
     if (form.type === "product" && form.is_batch_tracked && Number(form.batch_quantity) < 0) { toast.error("Batch quantity cannot be negative"); return; }
     setSaving(true);
@@ -437,15 +440,15 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
           </div>
           <div>
             <Label>MRP (₹)</Label>
-            <Input type="number" step="0.01" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
+            <Input type="number" step="0.01" min="0" value={form.mrp} onChange={(e) => setForm({ ...form, mrp: e.target.value })} />
           </div>
           <div>
             <Label>Sale Price (₹) — incl. GST</Label>
-            <Input type="number" step="0.01" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value })} />
+            <Input type="number" step="0.01" min="0" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value })} />
           </div>
           <div>
             <Label>Purchase Price (₹)</Label>
-            <Input type="number" step="0.01" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} />
+            <Input type="number" step="0.01" min="0" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} />
           </div>
           {form.type === "product" && (
             <>

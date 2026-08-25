@@ -65,8 +65,11 @@ export function computeInvoice(
     const flat = pricesIncludeTax && effectiveRate > 0 && flatEntered > 0
       ? flatEntered / (1 + effectiveRate / 100)
       : flatEntered;
-    const pct = Number(l.discount_pct) || 0;
-    const discount = flat > 0 ? Math.min(flat, gross) : (gross * pct) / 100;
+    // Clamp to [0, 100] so a bad/negative input can never push a line's
+    // taxable amount negative — the UI also validates this, but the totals
+    // math shouldn't depend on that being the only guard.
+    const pct = Math.min(100, Math.max(0, Number(l.discount_pct) || 0));
+    const discount = flat > 0 ? Math.max(0, Math.min(flat, gross)) : (gross * pct) / 100;
     const effectivePct = gross > 0 ? (discount / gross) * 100 : 0;
     const taxable = gross - discount;
     const tax = (taxable * effectiveRate) / 100;
@@ -91,7 +94,12 @@ export function computeInvoice(
   const discount_amount = lineDiscount + extraDiscount;
   const taxable_after_lines = computed.reduce((s, l) => s + l.taxable_amount, 0);
   const taxable_total = Math.max(0, taxable_after_lines - extraDiscount);
-  const tax_amount = computed.reduce((s, l) => s + l.tax_amount, 0);
+  const taxAfterLines = computed.reduce((s, l) => s + l.tax_amount, 0);
+  // An invoice-level extra discount reduces the taxable base — scale the tax
+  // proportionally so it doesn't stay charged on value that's no longer taxable
+  // (and floors to 0 alongside taxable_total instead of diverging from it).
+  const taxScale = taxable_after_lines > 0 ? taxable_total / taxable_after_lines : 0;
+  const tax_amount = taxAfterLines * taxScale;
 
   const cgst_amount = isInterState ? 0 : tax_amount / 2;
   const sgst_amount = isInterState ? 0 : tax_amount / 2;

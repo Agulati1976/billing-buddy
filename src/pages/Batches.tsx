@@ -111,7 +111,10 @@ export default function Batches() {
       ? await supabase.from("batches").update(payload).eq("id", editing.id)
       : await supabase.from("batches").insert(payload);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.code === "23505" ? "This batch number already exists for this item" : error.message);
+      return;
+    }
     toast.success(editing ? "Batch updated" : "Batch created");
     setOpen(false); load();
   };

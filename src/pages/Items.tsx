@@ -166,7 +166,9 @@ export default function Items() {
                 <div className="flex flex-col gap-1">
                   {i.type === "product" && (
                     <>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i.is_batch_tracked}
+                        title={i.is_batch_tracked ? "Batch-tracked — adjust stock from Batches instead" : "Adjust stock"}
+                        onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Stock history" onClick={() => { setHistoryItem(i); setHistoryOpen(true); }}>
@@ -242,7 +244,8 @@ export default function Items() {
                       <div className="flex justify-end gap-1">
                         {i.type === "product" && (
                           <>
-                            <Button size="icon" variant="ghost" title="Adjust stock"
+                            <Button size="icon" variant="ghost" disabled={i.is_batch_tracked}
+                              title={i.is_batch_tracked ? "Batch-tracked — adjust stock from Batches instead" : "Adjust stock"}
                               onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
                               <ArrowUpDown className="h-4 w-4" />
                             </Button>

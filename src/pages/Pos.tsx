@@ -326,16 +326,20 @@ export default function Pos() {
         balanceDue <= 0 ? "paid" : paidNow > 0 ? "partial" : "unpaid";
 
       const invoiceId = crypto.randomUUID();
+      // Drop zero-quantity lines (e.g. a cart line stepped down to 0 instead of
+      // removed) — a 0-qty row is a no-op financially but shouldn't be persisted.
+      const nonZeroCart = cart.filter((l) => Number(l.quantity) !== 0);
+      if (nonZeroCart.length === 0) { toast.error("Cart has no items with a non-zero quantity"); return; }
       // If prices were entered GST-inclusive, convert to net so stored line prices
       // stay consistent with the exclusive-price convention used everywhere else.
       const linesForSave = pricesIncludeTax && isGst
-        ? cart.map((l) => {
+        ? nonZeroCart.map((l) => {
             const rate = Number(l.tax_rate) || 0;
             if (rate <= 0) return l;
             const factor = 1 + rate / 100;
             return { ...l, price: (Number(l.price) || 0) / factor };
           })
-        : cart;
+        : nonZeroCart;
       const savedTotals = computeInvoice(linesForSave, isInter, { isGst, extraDiscount: Number(extraDiscount) || 0 });
       // Seed with paid=0/balance=total/status=unpaid — the apply_payment_to_invoice
       // trigger will update these when the payment rows below are inserted.
@@ -775,27 +779,45 @@ export default function Pos() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-1 mt-1">
-                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateLine(l._key, { quantity: Math.max(1, Number(l.quantity) - 1) })}><Minus className="h-3 w-3" /></Button>
-                      <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} min="0" max={l.max_stock ?? undefined} value={l.quantity} onChange={(e) => {
-                        const n = Number(e.target.value);
-                        if (!Number.isFinite(n)) return;
-                        const normalized = (l as any).allow_decimal_qty ? Math.max(0, n) : Math.max(0, Math.floor(n));
-                        const max = Number(l.max_stock ?? 0);
-                        if (normalized > max) {
-                          toast.error(`Out of stock: only ${max} ${l.unit} available`);
-                          updateLine(l._key, { quantity: max });
-                          return;
-                        }
-                        updateLine(l._key, { quantity: normalized });
-                      }} />
-                      <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => {
-                        const max = Number(l.max_stock ?? 0);
-                        const next = Number(l.quantity) + 1;
-                        if (next > max) { toast.error(`Out of stock: only ${max} ${l.unit} available`); return; }
-                        updateLine(l._key, { quantity: next });
-                      }}><Plus className="h-3 w-3" /></Button>
+                      {(() => {
+                        // A return-loaded cart holds negative quantities (see startReturn).
+                        // These controls edit the magnitude and preserve the line's sign,
+                        // instead of assuming positive — a return line used to silently
+                        // flip into a forward sale the moment you touched the stepper.
+                        const isReturn = Number(l.quantity) < 0;
+                        return (
+                          <>
+                            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => {
+                              const mag = Math.max(1, Math.abs(Number(l.quantity)) - 1);
+                              updateLine(l._key, { quantity: isReturn ? -mag : mag });
+                            }}><Minus className="h-3 w-3" /></Button>
+                            <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} max={isReturn ? undefined : (l.max_stock ?? undefined)} value={l.quantity} onChange={(e) => {
+                              const n = Number(e.target.value);
+                              if (!Number.isFinite(n)) return;
+                              const mag = (l as any).allow_decimal_qty ? Math.max(0, Math.abs(n)) : Math.max(0, Math.floor(Math.abs(n)));
+                              if (!isReturn) {
+                                const max = Number(l.max_stock ?? 0);
+                                if (mag > max) {
+                                  toast.error(`Out of stock: only ${max} ${l.unit} available`);
+                                  updateLine(l._key, { quantity: max });
+                                  return;
+                                }
+                              }
+                              updateLine(l._key, { quantity: isReturn ? -mag : mag });
+                            }} />
+                            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => {
+                              const mag = Math.abs(Number(l.quantity)) + 1;
+                              if (!isReturn) {
+                                const max = Number(l.max_stock ?? 0);
+                                if (mag > max) { toast.error(`Out of stock: only ${max} ${l.unit} available`); return; }
+                              }
+                              updateLine(l._key, { quantity: isReturn ? -mag : mag });
+                            }}><Plus className="h-3 w-3" /></Button>
+                          </>
+                        );
+                      })()}
                       <span className="text-xs text-muted-foreground ml-1">Disc%</span>
-                      <Input className="h-6 w-14" value={l.discount_pct} onChange={(e) => updateLine(l._key, { discount_pct: Number(e.target.value) || 0 })} />
+                      <Input className="h-6 w-14" type="number" min="0" max="100" step="0.01" value={l.discount_pct} onChange={(e) => updateLine(l._key, { discount_pct: Math.min(100, Math.max(0, Number(e.target.value) || 0)) })} />
                       <span className="ml-auto text-sm font-medium">Rs.{((Number(l.quantity) * Number(l.price)) * (1 - Number(l.discount_pct) / 100)).toFixed(2)}</span>
                     </div>
                   </div>

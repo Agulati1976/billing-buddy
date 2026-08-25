@@ -845,6 +845,25 @@ export default function InvoiceEditor({ type }: Props) {
         }).eq("id", id);
         if (updRes.error) throw updRes.error;
 
+        // 6b. Record loyalty points redeemed during this edit. The "Redeem points"
+        // widget is available whenever the invoice isn't read-only (including
+        // edits, not just brand-new sales) — without this, redeeming points on an
+        // edit reduced the total but never actually debited the customer's points
+        // balance, letting the same points be redeemed again indefinitely.
+        // Points earned are intentionally not re-recorded here to avoid granting
+        // them again on every subsequent edit of the same invoice.
+        if (type === "sale" && partyId && loyaltyCfg?.enabled && redeemPoints > 0) {
+          await omInsert("loyalty_transactions", {
+            business_id: current.id,
+            party_id: partyId,
+            invoice_id: id,
+            points_earned: 0,
+            points_redeemed: Number(redeemPoints) || 0,
+            redeem_value: redeemValue,
+            created_by: user.id,
+          });
+        }
+
         // 7. Build diff & write audit log
         const diff = buildInvoiceDiff(
           oldInv, oldLines,
@@ -921,6 +940,7 @@ export default function InvoiceEditor({ type }: Props) {
       invoice_date: date,
       due_date: dueDate || null,
       received_date: (type === "purchase" || type === "purchase_return") ? (receivedDate || null) : null,
+      source_invoice_id: type === "sale_return" ? (sourceLoaded?.id ?? null) : null,
       party_state_code: party?.state_code ?? null,
       is_inter_state: isInterState,
       is_gst: isGst,
@@ -944,7 +964,12 @@ export default function InvoiceEditor({ type }: Props) {
 
 
 
-    if (invRes.error) { setSaving(false); toast.error((invRes.error as any).message ?? "Failed"); return; }
+    if (invRes.error) {
+      setSaving(false);
+      const err = invRes.error as any;
+      toast.error(err?.code === "23505" ? `${meta.label} number "${number.trim()}" already exists` : err?.message ?? "Failed");
+      return;
+    }
 
     const liRes = await omInsertMany("invoice_items",
       computed.lines.map((l) => ({
@@ -982,6 +1007,23 @@ export default function InvoiceEditor({ type }: Props) {
         if (b) {
           await supabase.from("batches").update({ quantity: Number((b as any).quantity) + qty }).eq("id", l.batch_id);
         }
+      }
+    }
+
+    // Net this return against the original sale's balance — otherwise the
+    // return is recorded as fully settled on its own, but the original sale's
+    // balance_amount never drops, overstating receivables (Dashboard/Customer
+    // outstanding) by the returned amount.
+    if (type === "sale_return" && sourceLoaded?.id) {
+      const { data: src } = await supabase.from("invoices")
+        .select("total_amount, paid_amount, balance_amount").eq("id", sourceLoaded.id).single();
+      if (src) {
+        const s = src as any;
+        const newSrcBalance = Math.max(0, Number(s.balance_amount) - computed.total_amount);
+        const newSrcStatus = newSrcBalance <= 0 ? "paid" : Number(s.paid_amount) > 0 ? "partial" : "unpaid";
+        await supabase.from("invoices")
+          .update({ balance_amount: newSrcBalance, status: newSrcStatus })
+          .eq("id", sourceLoaded.id);
       }
     }
 
@@ -1091,8 +1133,11 @@ export default function InvoiceEditor({ type }: Props) {
         tax_amount: totals.cgst_amount + totals.sgst_amount + totals.igst_amount,
         round_off: totals.round_off,
         total_amount: totals.total_amount,
-        paid_amount: totals.total_amount,
-        balance_amount: 0,
+        // Use the invoice's real recorded paid/balance when one exists (viewing/
+        // editing a saved invoice) instead of always claiming "fully paid" — that
+        // was misleading the printed receipt for a partially-paid invoice.
+        paid_amount: originalSnapshot ? Number(originalSnapshot.invoice.paid_amount) || 0 : totals.total_amount,
+        balance_amount: originalSnapshot ? Number(originalSnapshot.invoice.balance_amount) || 0 : 0,
         payment_method: null,
       },
       design ? { upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name, show_upi_qr: (design as any).show_upi_qr } : undefined,
@@ -1418,9 +1463,11 @@ export default function InvoiceEditor({ type }: Props) {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => openNewBatchFor(idx, it.id)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                        {type === "purchase" && (
+                          <Button type="button" variant="outline" className="h-10 shrink-0" onClick={() => openNewBatchFor(idx, it.id)}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </>
@@ -1442,8 +1489,12 @@ export default function InvoiceEditor({ type }: Props) {
                   <div>
                     <Label className="text-[11px] text-muted-foreground">{(type === "purchase" || type === "purchase_return") ? "Cost" : "Price"}</Label>
                     {readOnly ? <div className="num h-10 flex items-center">{formatINR(l.price)}</div> : (
-                      <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
-                        value={l.price} onChange={(e) => updateLine(idx, { price: Number(e.target.value) })} />
+                      <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01" min="0"
+                        value={l.price} onChange={(e) => {
+                          const n = Number(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          updateLine(idx, { price: Math.max(0, n) });
+                        }} />
                     )}
                   </div>
                 </div>
@@ -1453,9 +1504,10 @@ export default function InvoiceEditor({ type }: Props) {
                     <Label className="text-[11px] text-muted-foreground">Discount</Label>
                     {readOnly ? <div className="num h-10 flex items-center">{l.discount_pct}%</div> : (
                       <div className="flex gap-1">
-                        <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
+                        <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01" min="0"
                           value={discVal || ""} onChange={(e) => {
-                            const n = Number(e.target.value) || 0;
+                            const raw = Number(e.target.value) || 0;
+                            const n = mode === "amt" ? Math.max(0, raw) : Math.min(100, Math.max(0, raw));
                             if (mode === "amt") updateLine(idx, { discount_amount: n, discount_pct: 0 });
                             else updateLine(idx, { discount_pct: n, discount_amount: 0 });
                           }} />
@@ -1473,8 +1525,12 @@ export default function InvoiceEditor({ type }: Props) {
                   <div>
                     <Label className="text-[11px] text-muted-foreground">Tax %</Label>
                     {readOnly ? <div className="num h-10 flex items-center">{l.tax_rate}</div> : (
-                      <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01"
-                        value={l.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: Number(e.target.value) })} />
+                      <Input className="h-10 num text-base" type="number" inputMode="decimal" step="0.01" min="0"
+                        value={l.tax_rate} onChange={(e) => {
+                          const n = Number(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          updateLine(idx, { tax_rate: Math.max(0, n) });
+                        }} />
                     )}
                   </div>
                 </div>
@@ -1589,9 +1645,11 @@ export default function InvoiceEditor({ type }: Props) {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => openNewBatchFor(idx, it.id)} title="Add new batch">
-                              <Plus className="h-3.5 w-3.5" />
-                            </Button>
+                            {type === "purchase" && (
+                              <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" onClick={() => openNewBatchFor(idx, it.id)} title="Add new batch">
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         );
                       })()}
@@ -1627,7 +1685,11 @@ export default function InvoiceEditor({ type }: Props) {
 
                 <TableCell>
                   {readOnly ? <span className="num">{formatINR(l.price)}</span> : (
-                    <Input className="h-8 num" type="number" step="0.01" value={l.price} onChange={(e) => updateLine(idx, { price: Number(e.target.value) })} />
+                    <Input className="h-8 num" type="number" step="0.01" min="0" value={l.price} onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
+                      updateLine(idx, { price: Math.max(0, n) });
+                    }} />
                   )}
                 </TableCell>
                 <TableCell>
@@ -1642,9 +1704,11 @@ export default function InvoiceEditor({ type }: Props) {
                           className="h-8 num"
                           type="number"
                           step="0.01"
+                          min="0"
                           value={val || ""}
                           onChange={(e) => {
-                            const n = Number(e.target.value) || 0;
+                            const raw = Number(e.target.value) || 0;
+                            const n = mode === "amt" ? Math.max(0, raw) : Math.min(100, Math.max(0, raw));
                             if (mode === "amt") updateLine(idx, { discount_amount: n, discount_pct: 0 });
                             else updateLine(idx, { discount_pct: n, discount_amount: 0 });
                           }}
@@ -1665,7 +1729,11 @@ export default function InvoiceEditor({ type }: Props) {
                 </TableCell>
                 <TableCell>
                   {readOnly ? <span className="num">{l.tax_rate}</span> : (
-                    <Input className="h-8 num" type="number" step="0.01" value={l.tax_rate} onChange={(e) => updateLine(idx, { tax_rate: Number(e.target.value) })} />
+                    <Input className="h-8 num" type="number" step="0.01" min="0" value={l.tax_rate} onChange={(e) => {
+                      const n = Number(e.target.value);
+                      if (!Number.isFinite(n)) return;
+                      updateLine(idx, { tax_rate: Math.max(0, n) });
+                    }} />
                   )}
                 </TableCell>
                 <TableCell className="text-right num">
@@ -1726,6 +1794,7 @@ export default function InvoiceEditor({ type }: Props) {
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
                     className="h-8 w-24 num text-right"
                     value={extraDiscount}
                     onChange={(e) => setExtraDiscount(e.target.value)}
