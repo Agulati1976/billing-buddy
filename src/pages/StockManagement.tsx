@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Card } from "@/components/ui/card";
@@ -9,8 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchBar } from "@/components/SearchBar";
 import { StockAdjustDialog } from "@/components/StockAdjustDialog";
 import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
-import { ArrowUpDown, Pencil, Package, AlertTriangle } from "lucide-react";
+import { ArrowUpDown, Pencil, Package, AlertTriangle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { fetchInvoiceLinksForReferenceIds, invoiceViewRoute, type StockMovementInvoiceLink } from "@/lib/stockMovementLinks";
+import { INVOICE_TYPE_META } from "@/lib/invoice";
 
 type Movement = {
   id: string;
@@ -20,6 +23,9 @@ type Movement = {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  reference_id: string | null;
+  batch_id: string | null;
+  batches?: { batch_number: string } | null;
 };
 
 const SIGN: Record<Movement["type"], 1 | -1> = {
@@ -35,9 +41,11 @@ const TYPE_LABEL: Record<Movement["type"], string> = {
 
 export default function StockManagement() {
   const { current } = useBusiness();
+  const navigate = useNavigate();
   const [items, setItems] = useState<ItemRow[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [links, setLinks] = useState<Map<string, StockMovementInvoiceLink>>(new Map());
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [historyQ, setHistoryQ] = useState("");
@@ -53,15 +61,16 @@ export default function StockManagement() {
     const [itemsRes, mvRes] = await Promise.all([
       supabase.from("items").select("*").eq("business_id", current.id)
         .eq("type", "product").order("name"),
-      supabase.from("stock_movements").select("*").eq("business_id", current.id)
+      supabase.from("stock_movements").select("*, batches(batch_number)").eq("business_id", current.id)
         .order("created_at", { ascending: true }),
     ]);
     if (itemsRes.error) toast.error(itemsRes.error.message);
     if (mvRes.error) toast.error(mvRes.error.message);
     const its = (itemsRes.data ?? []) as ItemRow[];
-    const mvs = (mvRes.data ?? []) as Movement[];
+    const mvs = (mvRes.data ?? []) as any as Movement[];
     setItems(its);
     setMovements(mvs);
+    setLinks(await fetchInvoiceLinksForReferenceIds(mvs.map((m) => m.reference_id).filter(Boolean) as string[]));
 
     const userIds = Array.from(new Set(mvs.map((m) => m.created_by).filter(Boolean))) as string[];
     if (userIds.length) {
@@ -255,6 +264,8 @@ export default function StockManagement() {
               const it = itemMap.get(m.item_id);
               const sign = SIGN[m.type];
               const delta = sign * Number(m.quantity);
+              const link = m.reference_id ? links.get(m.reference_id) : undefined;
+              const route = link ? invoiceViewRoute(link.type, link.invoiceId) : null;
               return (
                 <Card key={m.id} className="p-3">
                   <div className="flex items-start justify-between gap-2 mb-2">
@@ -280,10 +291,22 @@ export default function StockManagement() {
                       <div className="text-sm font-semibold tabular-nums">{m.after}</div>
                     </div>
                   </div>
-                  {(m.notes || m.created_by) && (
+                  {(m.notes || m.created_by || link || m.batches) && (
                     <div className="text-xs text-muted-foreground space-y-0.5">
                       {m.created_by && <div>By: {profiles[m.created_by] ?? "—"}</div>}
-                      {m.notes && <div className="truncate">Note: {m.notes}</div>}
+                      {m.batches?.batch_number && <div>Batch: {m.batches.batch_number}</div>}
+                      {link ? (
+                        <div className="flex items-center gap-1.5">
+                          <span>{INVOICE_TYPE_META[link.type]?.label ?? link.type}: <span className="font-medium text-foreground">{link.invoiceNumber}</span></span>
+                          {route && (
+                            <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={() => navigate(route)}>
+                              <ExternalLink className="h-3 w-3 mr-1" /> View bill
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        m.notes && <div className="truncate">Note: {m.notes}</div>
+                      )}
                     </div>
                   )}
                 </Card>
@@ -302,19 +325,22 @@ export default function StockManagement() {
                   <TableHead className="text-right">Before</TableHead>
                   <TableHead className="text-right">Change</TableHead>
                   <TableHead className="text-right">After</TableHead>
+                  <TableHead>Batch</TableHead>
+                  <TableHead>Invoice / Bill</TableHead>
                   <TableHead>By</TableHead>
-                  <TableHead>Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
                 ) : filteredHistory.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No stock changes yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No stock changes yet.</TableCell></TableRow>
                 ) : filteredHistory.map((m) => {
                   const it = itemMap.get(m.item_id);
                   const sign = SIGN[m.type];
                   const delta = sign * Number(m.quantity);
+                  const link = m.reference_id ? links.get(m.reference_id) : undefined;
+                  const route = link ? invoiceViewRoute(link.type, link.invoiceId) : null;
                   return (
                     <TableRow key={m.id}>
                       <TableCell className="text-sm whitespace-nowrap">{new Date(m.created_at).toLocaleString()}</TableCell>
@@ -330,8 +356,23 @@ export default function StockManagement() {
                         {delta >= 0 ? "+" : ""}{delta} {it?.unit}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-semibold">{m.after} {it?.unit}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{m.batches?.batch_number ?? "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {link ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground">{INVOICE_TYPE_META[link.type]?.label ?? link.type}</span>
+                            <span className="font-medium">{link.invoiceNumber}</span>
+                            {route && (
+                              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" title="View bill" onClick={() => navigate(route)}>
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground" title={m.notes ?? ""}>{m.notes ?? "—"}</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm">{m.created_by ? (profiles[m.created_by] ?? "—") : "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[260px] truncate" title={m.notes ?? ""}>{m.notes ?? "—"}</TableCell>
                     </TableRow>
                   );
                 })}

@@ -7,20 +7,22 @@ export function useSupportStaff() {
   const [isSupportStaff, setIsSupportStaff] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const userId = user?.id;
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { setIsSupportStaff(false); setLoading(false); return; }
+    if (!userId) { setIsSupportStaff(false); setLoading(false); return; }
     supabase
       .from("support_staff")
       .select("id, active")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("active", true)
       .maybeSingle()
       .then(({ data }) => {
         setIsSupportStaff(!!data);
         setLoading(false);
       });
-  }, [user, authLoading]);
+  }, [userId, authLoading]);
 
   return { isSupportStaff, loading: loading || authLoading };
 }

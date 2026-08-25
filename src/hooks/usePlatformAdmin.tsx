@@ -7,9 +7,11 @@ export function usePlatformAdmin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const userId = user?.id;
+
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!userId) {
       setIsAdmin(false);
       setLoading(false);
       return;
@@ -17,13 +19,13 @@ export function usePlatformAdmin() {
     supabase
       .from("platform_admins")
       .select("id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => {
         setIsAdmin(!!data);
         setLoading(false);
       });
-  }, [user, authLoading]);
+  }, [userId, authLoading]);
 
   return { isAdmin, loading: loading || authLoading };
 }

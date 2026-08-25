@@ -89,6 +89,21 @@ export default function Batches() {
     }
   };
 
+  // Page-level scan (next to "New Batch") — scan an item's barcode to jump
+  // straight into a prefilled New Batch dialog for it, same as Items' Scan button.
+  const [pageScannerOpen, setPageScannerOpen] = useState(false);
+  const onPageScan = (code: string) => {
+    const c = code.trim();
+    const match = items.find((it) => (it.barcode ?? "").trim() === c);
+    if (match) {
+      openNew();
+      setItemId(match.id);
+      toast.success(`Item: ${match.name} — add batch details below`);
+    } else {
+      toast.error("No batch-tracked item with this barcode. Add the barcode in the item first.");
+    }
+  };
+
   const submit = async () => {
     if (!current || !user) return;
     if (!itemId) { toast.error("Pick an item"); return; }
@@ -150,9 +165,14 @@ export default function Batches() {
           </h1>
           <p className="text-sm text-muted-foreground">Per-batch stock for batch-tracked items</p>
         </div>
-        <Button onClick={openNew} className="gap-1.5" disabled={items.length === 0}>
-          <Plus className="h-4 w-4" /> New Batch
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setPageScannerOpen(true)} disabled={items.length === 0} className="px-2 sm:px-3">
+            <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline ml-1">Scan</span>
+          </Button>
+          <Button onClick={openNew} className="gap-1.5" disabled={items.length === 0}>
+            <Plus className="h-4 w-4" /> New Batch
+          </Button>
+        </div>
       </div>
 
       {items.length === 0 && (
@@ -336,6 +356,7 @@ export default function Batches() {
       </Dialog>
 
       <BarcodeScanner open={scannerOpen} onOpenChange={setScannerOpen} onScanned={onScannedItem} />
+      <BarcodeScanner open={pageScannerOpen} onOpenChange={setPageScannerOpen} onScanned={onPageScan} />
     </div>
   );
 }

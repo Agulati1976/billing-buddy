@@ -782,7 +782,7 @@ export default function InvoiceEditor({ type }: Props) {
             tax_amount: l.tax_amount,
             total_amount: l.total_amount,
           }))
-        );
+        ).select("id, batch_id, quantity");
         if (liRes.error) {
           await supabase.from("invoice_items").insert(oldLines as any);
           throw liRes.error;
@@ -793,15 +793,14 @@ export default function InvoiceEditor({ type }: Props) {
         // deliberately skips stock additions for purchase-type invoice_items (a
         // freshly created batch already carries its received qty). Credit lines
         // that reference an existing batch explicitly so edits don't lose stock.
+        // Goes through the credit_batch_quantity RPC (not a plain update) so the
+        // resulting Stock History row is tagged with this invoice line.
         if (type === "purchase") {
-          for (const l of computed.lines) {
+          for (const l of (liRes.data as any[]) ?? []) {
             if (!l.batch_id || freshBatchIdsRef.current.has(l.batch_id)) continue;
             const qty = Number(l.quantity) || 0;
             if (qty <= 0) continue;
-            const { data: b } = await supabase.from("batches").select("quantity").eq("id", l.batch_id).single();
-            if (b) {
-              await supabase.from("batches").update({ quantity: Number((b as any).quantity) + qty }).eq("id", l.batch_id);
-            }
+            await supabase.rpc("credit_batch_quantity", { p_batch_id: l.batch_id, p_qty: qty, p_reference_id: l.id });
           }
         }
 
@@ -998,15 +997,14 @@ export default function InvoiceEditor({ type }: Props) {
     // The DB trigger deliberately skips adding stock for purchase-type invoice_items
     // (a freshly created batch already carries its received qty — see saveNewBatch).
     // For lines that restock an existing batch instead, credit them explicitly here.
+    // Goes through the credit_batch_quantity RPC (not a plain update) so the
+    // resulting Stock History row is tagged with this invoice line.
     if (type === "purchase") {
-      for (const l of computed.lines) {
+      for (const l of (liRes.data as any[]) ?? []) {
         if (!l.batch_id || freshBatchIdsRef.current.has(l.batch_id)) continue;
         const qty = Number(l.quantity) || 0;
         if (qty <= 0) continue;
-        const { data: b } = await supabase.from("batches").select("quantity").eq("id", l.batch_id).single();
-        if (b) {
-          await supabase.from("batches").update({ quantity: Number((b as any).quantity) + qty }).eq("id", l.batch_id);
-        }
+        await supabase.rpc("credit_batch_quantity", { p_batch_id: l.batch_id, p_qty: qty, p_reference_id: l.id });
       }
     }
 

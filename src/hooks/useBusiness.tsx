@@ -38,9 +38,13 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const { loading: authLoading } = useAuth();
+  const userId = user?.id;
 
+  // Keyed on the stable user id, not the `user` object — Supabase silently
+  // refreshes the session (new session/user object each time) whenever the
+  // tab regains focus, which must NOT be treated as "identity changed".
   const refresh = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setBusinesses([]);
       setCurrentState(null);
       setLoading(false);
@@ -55,12 +59,14 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       if (found) localStorage.setItem(STORAGE_KEY, found.id);
     }
     setLoading(false);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
-    // While auth is resolving, or whenever the user identity changes,
-    // mark businesses as loading so AppLayout doesn't prematurely
-    // redirect to /onboarding before we've fetched for this user.
+    // While auth is resolving, or whenever the signed-in user actually
+    // changes, mark businesses as loading so AppLayout doesn't prematurely
+    // redirect to /onboarding before we've fetched for this user. A token
+    // refresh (e.g. from switching tabs) must not retrigger this — it would
+    // unmount every page under AppLayout and wipe unsaved form state.
     if (authLoading) {
       setLoading(true);
       return;
