@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert, omInsertMany } from "@/lib/offlineMutate";
@@ -79,6 +79,11 @@ export default function InvoiceEditor({ type }: Props) {
   const [itemDialogTarget, setItemDialogTarget] = useState<number | null>(null); // line idx to fill, or null = append
   const [batchDialogFor, setBatchDialogFor] = useState<{ lineIdx: number; itemId: string } | null>(null);
   const [newBatch, setNewBatch] = useState({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
+  // Batches created via "Add new batch" already carry their full received quantity
+  // (see saveNewBatch) — the purchase stock trigger intentionally skips them to avoid
+  // double-counting. Track which batch ids were freshly created in this session so the
+  // save/update paths below know not to credit them a second time.
+  const freshBatchIdsRef = useRef<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
@@ -379,8 +384,11 @@ export default function InvoiceEditor({ type }: Props) {
   };
 
   const openNewBatchFor = (lineIdx: number, itemId: string) => {
+    // Prefill from the line's own quantity so the batch's received qty and the
+    // invoice line's billed qty start in sync (see saveNewBatch).
+    const lineQty = Number(lines[lineIdx]?.quantity);
     setBatchDialogFor({ lineIdx, itemId });
-    setNewBatch({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
+    setNewBatch({ batch_number: "", quantity: Number.isFinite(lineQty) && lineQty > 0 ? String(lineQty) : "1", mfg_date: "", expiry_date: "", notes: "" });
   };
 
   const saveNewBatch = async () => {
@@ -404,9 +412,12 @@ export default function InvoiceEditor({ type }: Props) {
     toast.success("Batch added");
     const created = data as any as Batch;
     setBatches((prev) => [created, ...prev]);
+    freshBatchIdsRef.current.add(created.id);
     const lineIdx = batchDialogFor.lineIdx;
     setBatchDialogFor(null);
-    updateLine(lineIdx, { batch_id: created.id });
+    // The batch's quantity above IS the received qty — keep the invoice line's own
+    // qty equal to it so the bill matches what actually landed in stock.
+    updateLine(lineIdx, { batch_id: created.id, quantity: qty });
   };
 
 
@@ -751,6 +762,23 @@ export default function InvoiceEditor({ type }: Props) {
           throw liRes.error;
         }
 
+        // 4b. Step 1 reversed the old purchase quantities off each batch, but the
+        // insert above never credits the new quantities back — the DB trigger
+        // deliberately skips stock additions for purchase-type invoice_items (a
+        // freshly created batch already carries its received qty). Credit lines
+        // that reference an existing batch explicitly so edits don't lose stock.
+        if (type === "purchase") {
+          for (const l of computed.lines) {
+            if (!l.batch_id || freshBatchIdsRef.current.has(l.batch_id)) continue;
+            const qty = Number(l.quantity) || 0;
+            if (qty <= 0) continue;
+            const { data: b } = await supabase.from("batches").select("quantity").eq("id", l.batch_id).single();
+            if (b) {
+              await supabase.from("batches").update({ quantity: Number((b as any).quantity) + qty }).eq("id", l.batch_id);
+            }
+          }
+        }
+
         // 5. Recompute paid/balance/status from existing payments
         const { data: pays } = await supabase.from("payments")
           .select("amount").eq("invoice_id", id).is("deleted_at", null);
@@ -914,6 +942,21 @@ export default function InvoiceEditor({ type }: Props) {
       setSaving(false);
       toast.error((liRes.error as any).message ?? "Failed");
       return;
+    }
+
+    // The DB trigger deliberately skips adding stock for purchase-type invoice_items
+    // (a freshly created batch already carries its received qty — see saveNewBatch).
+    // For lines that restock an existing batch instead, credit them explicitly here.
+    if (type === "purchase") {
+      for (const l of computed.lines) {
+        if (!l.batch_id || freshBatchIdsRef.current.has(l.batch_id)) continue;
+        const qty = Number(l.quantity) || 0;
+        if (qty <= 0) continue;
+        const { data: b } = await supabase.from("batches").select("quantity").eq("id", l.batch_id).single();
+        if (b) {
+          await supabase.from("batches").update({ quantity: Number((b as any).quantity) + qty }).eq("id", l.batch_id);
+        }
+      }
     }
 
     // Loyalty: record earned + redeemed for sale
