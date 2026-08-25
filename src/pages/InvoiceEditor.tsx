@@ -35,7 +35,7 @@ import { Sparkles } from "lucide-react";
 interface Props { type: InvoiceType; }
 interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; }
 interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; unit_size?: number | null; is_batch_tracked: boolean; allow_decimal_qty?: boolean; current_stock?: number | null; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
-interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
+interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; purchase_price?: number | null; sale_price?: number | null; }
 
 export default function InvoiceEditor({ type }: Props) {
   const { id } = useParams();
@@ -78,7 +78,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [itemDialogTarget, setItemDialogTarget] = useState<number | null>(null); // line idx to fill, or null = append
   const [batchDialogFor, setBatchDialogFor] = useState<{ lineIdx: number; itemId: string } | null>(null);
-  const [newBatch, setNewBatch] = useState({ batch_number: "", quantity: "1", mfg_date: "", expiry_date: "", notes: "" });
+  const [newBatch, setNewBatch] = useState({ batch_number: "", quantity: "1", purchase_price: "", sale_price: "", mfg_date: "", expiry_date: "", notes: "" });
   // Batches created via "Add new batch" already carry their full received quantity
   // (see saveNewBatch) — the purchase stock trigger intentionally skips them to avoid
   // double-counting. Track which batch ids were freshly created in this session so the
@@ -138,7 +138,7 @@ export default function InvoiceEditor({ type }: Props) {
     if (!current) return { items: [] as Item[], batches: [] as Batch[] };
     const [it, b] = await Promise.all([
       supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
-      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
     ]);
     const nextItems = ((it.data as any) ?? []) as Item[];
     const nextBatches = ((b.data as any) ?? []) as Batch[];
@@ -153,7 +153,7 @@ export default function InvoiceEditor({ type }: Props) {
     Promise.all([
       supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name"),
       supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
-      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
       supabase.from("branches" as any).select("id, name, code").eq("business_id", current.id).order("name"),
     ]).then(([p, it, b, br]) => {
       setParties((p.data as any) ?? []);
@@ -387,8 +387,19 @@ export default function InvoiceEditor({ type }: Props) {
     // Prefill from the line's own quantity so the batch's received qty and the
     // invoice line's billed qty start in sync (see saveNewBatch).
     const lineQty = Number(lines[lineIdx]?.quantity);
+    const isPurchase = type === "purchase" || type === "purchase_return";
+    // Purchase price: default to what this line is already costed at. Sale price:
+    // default to the item's own price (purchase lines don't set a sale price here).
+    const linePrice = Number(lines[lineIdx]?.price);
+    const it = items.find((x) => x.id === itemId);
     setBatchDialogFor({ lineIdx, itemId });
-    setNewBatch({ batch_number: "", quantity: Number.isFinite(lineQty) && lineQty > 0 ? String(lineQty) : "1", mfg_date: "", expiry_date: "", notes: "" });
+    setNewBatch({
+      batch_number: "",
+      quantity: Number.isFinite(lineQty) && lineQty > 0 ? String(lineQty) : "1",
+      purchase_price: isPurchase && Number.isFinite(linePrice) && linePrice > 0 ? String(linePrice) : "",
+      sale_price: !isPurchase && Number.isFinite(linePrice) && linePrice > 0 ? String(linePrice) : (it ? String(it.sale_price) : ""),
+      mfg_date: "", expiry_date: "", notes: "",
+    });
   };
 
   const saveNewBatch = async () => {
@@ -397,17 +408,21 @@ export default function InvoiceEditor({ type }: Props) {
     const qty = Number(newBatch.quantity);
     if (!bn) { toast.error("Enter batch number"); return; }
     if (!Number.isFinite(qty) || qty <= 0) { toast.error("Quantity must be greater than zero"); return; }
+    const purchasePrice = newBatch.purchase_price.trim() ? Number(newBatch.purchase_price) : null;
+    const salePrice = newBatch.sale_price.trim() ? Number(newBatch.sale_price) : null;
     const payload: any = {
       business_id: current.id,
       item_id: batchDialogFor.itemId,
       batch_number: bn,
       quantity: qty,
+      purchase_price: purchasePrice,
+      sale_price: salePrice,
       mfg_date: newBatch.mfg_date || null,
       expiry_date: newBatch.expiry_date || null,
       notes: newBatch.notes?.trim() || null,
       created_by: user?.id ?? null,
     };
-    const { data, error } = await supabase.from("batches").insert(payload).select("id, item_id, batch_number, expiry_date, quantity").single();
+    const { data, error } = await supabase.from("batches").insert(payload).select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").single();
     if (error) { toast.error(error.message); return; }
     toast.success("Batch added");
     const created = data as any as Batch;
@@ -415,9 +430,16 @@ export default function InvoiceEditor({ type }: Props) {
     freshBatchIdsRef.current.add(created.id);
     const lineIdx = batchDialogFor.lineIdx;
     setBatchDialogFor(null);
+    const isPurchase = type === "purchase" || type === "purchase_return";
     // The batch's quantity above IS the received qty — keep the invoice line's own
-    // qty equal to it so the bill matches what actually landed in stock.
-    updateLine(lineIdx, { batch_id: created.id, quantity: qty });
+    // qty equal to it so the bill matches what actually landed in stock. Also match
+    // the line's price to whatever was set for this batch, so the bill reflects the
+    // actual cost/sale price of this specific batch rather than the item default.
+    const resolvedPrice = isPurchase ? purchasePrice : salePrice;
+    updateLine(lineIdx, {
+      batch_id: created.id, quantity: qty,
+      ...(resolvedPrice != null ? { price: resolvedPrice } : {}),
+    });
   };
 
 
@@ -1369,14 +1391,25 @@ export default function InvoiceEditor({ type }: Props) {
                       placeholder="Or type item name" />
                     {it?.is_batch_tracked && (
                       <div className="flex gap-1">
-                        <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                        <Select value={l.batch_id ?? ""} onValueChange={(v) => {
+                          const b = itemBatches.find((x) => x.id === v);
+                          const isPurchase = type === "purchase" || type === "purchase_return";
+                          const resolvedPrice = b ? (isPurchase ? b.purchase_price : b.sale_price) : null;
+                          updateLine(idx, { batch_id: v, ...(resolvedPrice != null ? { price: Number(resolvedPrice) } : {}) });
+                        }}>
                           <SelectTrigger className="h-10 flex-1"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
                           <SelectContent>
                             {itemBatches.length === 0 ? (
                               <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
                             ) : itemBatches.map(b => (
                               <SelectItem key={b.id} value={b.id}>
-                                {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                                {b.batch_number} · qty {Number(b.quantity)}
+                                {(() => {
+                                  const isPurchase = type === "purchase" || type === "purchase_return";
+                                  const p = isPurchase ? b.purchase_price : b.sale_price;
+                                  return p != null ? ` · ₹${Number(p).toFixed(2)}` : "";
+                                })()}
+                                {b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1529,14 +1562,25 @@ export default function InvoiceEditor({ type }: Props) {
                         const itemBatches = batches.filter(b => b.item_id === it.id);
                         return (
                           <div className="flex gap-1">
-                            <Select value={l.batch_id ?? ""} onValueChange={(v) => updateLine(idx, { batch_id: v })}>
+                            <Select value={l.batch_id ?? ""} onValueChange={(v) => {
+                          const b = itemBatches.find((x) => x.id === v);
+                          const isPurchase = type === "purchase" || type === "purchase_return";
+                          const resolvedPrice = b ? (isPurchase ? b.purchase_price : b.sale_price) : null;
+                          updateLine(idx, { batch_id: v, ...(resolvedPrice != null ? { price: Number(resolvedPrice) } : {}) });
+                        }}>
                               <SelectTrigger className="h-8 flex-1"><SelectValue placeholder="Pick batch *" /></SelectTrigger>
                               <SelectContent>
                                 {itemBatches.length === 0 ? (
                                   <div className="px-2 py-1.5 text-xs text-muted-foreground">No stock batches</div>
                                 ) : itemBatches.map(b => (
                                   <SelectItem key={b.id} value={b.id}>
-                                    {b.batch_number} · qty {Number(b.quantity)}{b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
+                                    {b.batch_number} · qty {Number(b.quantity)}
+                                {(() => {
+                                  const isPurchase = type === "purchase" || type === "purchase_return";
+                                  const p = isPurchase ? b.purchase_price : b.sale_price;
+                                  return p != null ? ` · ₹${Number(p).toFixed(2)}` : "";
+                                })()}
+                                {b.expiry_date ? ` · exp ${b.expiry_date}` : ""}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1844,6 +1888,16 @@ export default function InvoiceEditor({ type }: Props) {
               <div className="space-y-1.5">
                 <Label>Expiry date</Label>
                 <Input type="date" value={newBatch.expiry_date} onChange={(e) => setNewBatch({ ...newBatch, expiry_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Purchase price (₹)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="Item default" value={newBatch.purchase_price} onChange={(e) => setNewBatch({ ...newBatch, purchase_price: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sale price (₹)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="Item default" value={newBatch.sale_price} onChange={(e) => setNewBatch({ ...newBatch, sale_price: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">

@@ -63,6 +63,7 @@ const emptyForm = {
   category_id: "", is_batch_tracked: false, allow_decimal_qty: false,
   brand: "", flavour: "", color: "", mrp: "0",
   batch_number: "", batch_mfg_date: "", batch_expiry_date: "", batch_quantity: "",
+  batch_purchase_price: "", batch_sale_price: "",
 };
 
 
@@ -106,6 +107,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         brand: item.brand ?? "", flavour: item.flavour ?? "", color: item.color ?? "",
         mrp: String(item.mrp ?? 0),
         batch_number: "", batch_mfg_date: "", batch_expiry_date: "", batch_quantity: "",
+        batch_purchase_price: "", batch_sale_price: "",
       });
 
       setCatalogId(item.catalog_id ?? null);
@@ -273,6 +275,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
           mfg_date: form.batch_mfg_date || null,
           expiry_date: form.batch_expiry_date || null,
           quantity: Number(form.batch_quantity) || 0,
+          purchase_price: form.batch_purchase_price.trim() ? Number(form.batch_purchase_price) : null,
+          sale_price: form.batch_sale_price.trim() ? Number(form.batch_sale_price) : null,
           created_by: user.id,
         }).catch((e: any) => toast.error(e?.message ?? "Batch save failed"));
       }
@@ -520,6 +524,16 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                     onChange={(e) => setForm({ ...form, batch_quantity: e.target.value })}
                     placeholder="0"
                   />
+                </div>
+                <div>
+                  <Label className="text-xs">Purchase Price (₹)</Label>
+                  <Input type="number" step="0.01" min="0" placeholder={`Default ${form.purchase_price}`}
+                    value={form.batch_purchase_price} onChange={(e) => setForm({ ...form, batch_purchase_price: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Sale Price (₹)</Label>
+                  <Input type="number" step="0.01" min="0" placeholder={`Default ${form.sale_price}`}
+                    value={form.batch_sale_price} onChange={(e) => setForm({ ...form, batch_sale_price: e.target.value })} />
                 </div>
                 <div>
                   <Label className="text-xs">Mfg Date</Label>

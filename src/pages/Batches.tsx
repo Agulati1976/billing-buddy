@@ -21,6 +21,7 @@ interface Batch {
   id: string; item_id: string; batch_number: string;
   mfg_date: string | null; expiry_date: string | null;
   quantity: number; notes: string | null;
+  purchase_price: number | null; sale_price: number | null;
   items: { name: string; unit: string } | null;
 }
 
@@ -36,6 +37,8 @@ export default function Batches() {
   const [mfgDate, setMfgDate] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [quantity, setQuantity] = useState("0");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [salePrice, setSalePrice] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
@@ -50,7 +53,7 @@ export default function Batches() {
     if (!current) return;
     const [b, it] = await Promise.all([
       supabase.from("batches")
-        .select("id, item_id, batch_number, mfg_date, expiry_date, quantity, notes, items(name, unit)")
+        .select("id, item_id, batch_number, mfg_date, expiry_date, quantity, notes, purchase_price, sale_price, items(name, unit)")
         .eq("business_id", current.id).order("expiry_date", { ascending: true, nullsFirst: false }),
       supabase.from("items")
         .select("id, name, unit, is_batch_tracked, barcode")
@@ -63,12 +66,16 @@ export default function Batches() {
 
   const openNew = () => {
     setEditing(null); setItemId(""); setBatchNumber(""); setMfgDate("");
-    setExpiryDate(""); setQuantity("0"); setNotes(""); setOpen(true);
+    setExpiryDate(""); setQuantity("0"); setPurchasePrice(""); setSalePrice("");
+    setNotes(""); setOpen(true);
   };
   const openEdit = (b: Batch) => {
     setEditing(b); setItemId(b.item_id); setBatchNumber(b.batch_number);
     setMfgDate(b.mfg_date ?? ""); setExpiryDate(b.expiry_date ?? "");
-    setQuantity(String(b.quantity)); setNotes(b.notes ?? ""); setOpen(true);
+    setQuantity(String(b.quantity));
+    setPurchasePrice(b.purchase_price != null ? String(b.purchase_price) : "");
+    setSalePrice(b.sale_price != null ? String(b.sale_price) : "");
+    setNotes(b.notes ?? ""); setOpen(true);
   };
 
   const onScannedItem = (code: string) => {
@@ -89,12 +96,14 @@ export default function Batches() {
     const qty = Number(quantity) || 0;
     if (qty < 0) { toast.error("Batch quantity cannot be negative"); return; }
     setSaving(true);
-    const payload = {
+    const payload: any = {
       business_id: current.id, item_id: itemId,
       batch_number: batchNumber.trim(),
       mfg_date: mfgDate || null,
       expiry_date: expiryDate || null,
       quantity: qty,
+      purchase_price: purchasePrice.trim() ? Number(purchasePrice) : null,
+      sale_price: salePrice.trim() ? Number(salePrice) : null,
       notes: notes.trim() || null,
       created_by: user.id,
     };
@@ -176,6 +185,13 @@ export default function Batches() {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{b.items?.name ?? "—"}</div>
                   <div className="text-[11px] text-muted-foreground">Batch: {b.batch_number}</div>
+                  {(b.purchase_price != null || b.sale_price != null) && (
+                    <div className="text-[11px] text-muted-foreground">
+                      {b.purchase_price != null && <>Cost ₹{Number(b.purchase_price).toFixed(2)}</>}
+                      {b.purchase_price != null && b.sale_price != null && " · "}
+                      {b.sale_price != null && <>Sale ₹{Number(b.sale_price).toFixed(2)}</>}
+                    </div>
+                  )}
                 </div>
                 <div className="text-sm font-semibold num shrink-0">{Number(b.quantity)} {b.items?.unit ?? ""}</div>
               </div>
@@ -202,19 +218,25 @@ export default function Batches() {
                 <TableHead>Batch No.</TableHead>
                 <TableHead>Mfg Date</TableHead>
                 <TableHead>Expiry</TableHead>
+                <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No batches yet" : "No matches"}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">{rows.length === 0 ? "No batches yet" : "No matches"}</TableCell></TableRow>
               ) : filtered.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">{b.items?.name ?? "—"}</TableCell>
                   <TableCell>{b.batch_number}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{b.mfg_date ? format(parseISO(b.mfg_date), "dd MMM yyyy") : "—"}</TableCell>
                   <TableCell>{expiryBadge(b.expiry_date)}</TableCell>
+                  <TableCell className="text-right num text-xs text-muted-foreground">
+                    {b.purchase_price != null && <div>Cost ₹{Number(b.purchase_price).toFixed(2)}</div>}
+                    {b.sale_price != null && <div>Sale ₹{Number(b.sale_price).toFixed(2)}</div>}
+                    {b.purchase_price == null && b.sale_price == null && "—"}
+                  </TableCell>
                   <TableCell className="text-right num">{Number(b.quantity)} {b.items?.unit ?? ""}</TableCell>
                   <TableCell className="text-right">
                     <Button size="icon" variant="ghost" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
@@ -250,6 +272,17 @@ export default function Batches() {
               <div><Label>Batch No. *</Label><Input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} /></div>
               <div><Label>Quantity</Label><Input type="number" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Purchase Price (₹)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="Use item default" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
+              </div>
+              <div>
+                <Label>Sale Price (₹)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="Use item default" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground -mt-2">Leave blank to use the item's default price for this batch.</p>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Mfg Date</Label><Input type="date" value={mfgDate} onChange={(e) => setMfgDate(e.target.value)} /></div>
               <div><Label>Expiry Date</Label><Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} /></div>

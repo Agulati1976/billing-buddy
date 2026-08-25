@@ -34,7 +34,7 @@ interface Item {
   brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null;
 }
 interface Party { id: string; name: string; phone: string | null; state_code: string | null; gstin: string | null; }
-interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; }
+interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; purchase_price?: number | null; sale_price?: number | null; }
 interface CartLine extends InvoiceLineInput { _key: string; max_stock?: number; allow_decimal_qty?: boolean; batch_number?: string | null; }
 
 
@@ -93,7 +93,7 @@ export default function Pos() {
       supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
       supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
       supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
-      supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+      supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
     ]).then(([it, p, s, b]) => {
       setItems((it.data as any) ?? []);
       setParties((p.data as any) ?? []);
@@ -157,9 +157,12 @@ export default function Pos() {
         return prev.map((l) => keyMatch(l) ? { ...l, quantity: nextQty } : l);
       }
       const name = batch ? `${composeItemName(it)}\nBatch - ${batch.batch_number}${batch.expiry_date ? ` (exp ${batch.expiry_date})` : ""}` : composeItemName(it);
+      // A batch's own sale_price (if set) overrides the item default, so different
+      // batches of the same item can be priced differently.
+      const unitPrice = batch?.sale_price != null ? Number(batch.sale_price) : Number(it.sale_price) || 0;
       return [...prev, {
         _key: newKey(), item_id: it.id, item_name: name, hsn_code: it.hsn_code,
-        quantity: 1, unit: it.unit, price: Number(it.sale_price) || 0,
+        quantity: 1, unit: it.unit, price: unitPrice,
         discount_pct: 0, tax_rate: Number(it.tax_rate) || 0, batch_id: batch?.id ?? null,
         batch_number: batch?.batch_number ?? null,
         max_stock: available,
@@ -414,7 +417,7 @@ export default function Pos() {
       // Refresh items & batches stock
       const [itRes, bRes] = await Promise.all([
         supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
-        supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+        supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
       ]);
       setItems((itRes.data as any) ?? []);
       setBatches((bRes.data as any) ?? []);
@@ -858,6 +861,7 @@ export default function Pos() {
                 <div className="text-sm font-medium">Batch {b.batch_number}</div>
                 <div className="text-xs text-muted-foreground">
                   Qty {Number(b.quantity)} {batchPickerItem?.unit}
+                  {" · Rs."}{(b.sale_price != null ? Number(b.sale_price) : Number(batchPickerItem?.sale_price) || 0).toFixed(2)}
                   {b.expiry_date ? ` · Expiry ${b.expiry_date}` : ""}
                 </div>
               </button>

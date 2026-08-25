@@ -8,7 +8,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown, ScanLine, History } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, ArrowUpDown, ScanLine, History, Ruler } from "lucide-react";
 import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { StockAdjustDialog } from "@/components/StockAdjustDialog";
 import { StockHistoryDialog } from "@/components/StockHistoryDialog";
@@ -23,7 +23,8 @@ function ItemDetails({ item, compact }: { item: ItemRow; compact?: boolean }) {
   return (
     <div className={`mt-1 space-y-0.5 ${compact ? "text-[11px]" : "text-xs"} text-muted-foreground`}>
       {rows.map((r) => (
-        <div key={r.label} className="flex gap-1">
+        <div key={r.label} className="flex items-center gap-1">
+          {r.label === "Unit" && <Ruler className="h-3 w-3 shrink-0 text-foreground/70" />}
           <span className="font-medium text-foreground/70 shrink-0">{r.label} -</span>
           <span className="truncate">{r.value}</span>
         </div>
