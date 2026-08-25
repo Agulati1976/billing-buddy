@@ -34,6 +34,7 @@ export interface ThermalReceipt {
   invoice_date: string;
   party_name?: string | null;
   party_phone?: string | null;
+  party_gstin?: string | null;
   cashier?: string | null;
   lines: ThermalLine[];
   subtotal: number;
@@ -77,7 +78,7 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
 
   // Estimate height (extra padding so nothing clips)
   const qrBlock = qrDataUrl ? 38 : 0;
-  const estHeight = 100 + r.lines.length * 10 + (r.party_name ? 6 : 0) + (r.footer ? 12 : 0) + qrBlock;
+  const estHeight = 100 + r.lines.length * 10 + (r.party_name ? 6 : 0) + (r.party_gstin ? 4 : 0) + (r.footer ? 12 : 0) + qrBlock;
   const doc = new jsPDF({ unit: "mm", format: [W, estHeight] });
 
   let y = M + 3;
@@ -104,6 +105,7 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
   doc.text(`Bill: ${r.invoice_number}`, M, y);
   doc.text(r.invoice_date, W - M, y, { align: "right" }); y += 4;
   if (r.party_name) { doc.text(`Customer: ${r.party_name}${r.party_phone ? ` · ${r.party_phone}` : ""}`, M, y); y += 3.5; }
+  if (r.party_gstin) { doc.text(`GSTIN: ${r.party_gstin}`, M, y); y += 3.5; }
   if (r.cashier) { doc.text(`Cashier: ${r.cashier}`, M, y); y += 3.5; }
 
   y += 1;

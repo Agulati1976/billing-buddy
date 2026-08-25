@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScanLine, Plus, Minus, Trash2, Pause, Play, Printer, Download, ShoppingCart, X, UserPlus, KeyboardIcon, Power, RotateCcw } from "lucide-react";
@@ -65,6 +66,7 @@ export default function Pos() {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [extraDiscount, setExtraDiscount] = useState("0");
   const [isGst, setIsGst] = useState(true);
+  const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [splits, setSplits] = useState<Split[]>([{ method: "cash", amount: 0 }]);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [holdLabel, setHoldLabel] = useState("");
@@ -210,8 +212,8 @@ export default function Pos() {
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInter = !!(party?.state_code && current?.state_code && party.state_code !== current.state_code);
   const totals = useMemo(
-    () => computeInvoice(cart, isInter, { isGst, extraDiscount: Number(extraDiscount) || 0 }),
-    [cart, isInter, isGst, extraDiscount]
+    () => computeInvoice(cart, isInter, { isGst, extraDiscount: Number(extraDiscount) || 0, pricesIncludeTax }),
+    [cart, isInter, isGst, extraDiscount, pricesIncludeTax]
   );
 
   const cashPaid = splits.filter((s) => s.method !== "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0);
@@ -321,6 +323,17 @@ export default function Pos() {
         balanceDue <= 0 ? "paid" : paidNow > 0 ? "partial" : "unpaid";
 
       const invoiceId = crypto.randomUUID();
+      // If prices were entered GST-inclusive, convert to net so stored line prices
+      // stay consistent with the exclusive-price convention used everywhere else.
+      const linesForSave = pricesIncludeTax && isGst
+        ? cart.map((l) => {
+            const rate = Number(l.tax_rate) || 0;
+            if (rate <= 0) return l;
+            const factor = 1 + rate / 100;
+            return { ...l, price: (Number(l.price) || 0) / factor };
+          })
+        : cart;
+      const savedTotals = computeInvoice(linesForSave, isInter, { isGst, extraDiscount: Number(extraDiscount) || 0 });
       // Seed with paid=0/balance=total/status=unpaid — the apply_payment_to_invoice
       // trigger will update these when the payment rows below are inserted.
       // Setting paid_amount here as well caused the trigger to double-count and
@@ -330,18 +343,18 @@ export default function Pos() {
         business_id: current.id, party_id: partyId || null, type: "sale",
         invoice_number: number, invoice_date: new Date().toISOString().slice(0, 10),
         is_inter_state: isInter, is_gst: isGst,
-        subtotal: totals.subtotal, discount_amount: totals.discount_amount,
-        extra_discount: totals.extra_discount, tax_amount: totals.tax_amount,
-        cgst_amount: totals.cgst_amount, sgst_amount: totals.sgst_amount, igst_amount: totals.igst_amount,
-        round_off: totals.round_off, total_amount: totals.total_amount,
-        paid_amount: 0, balance_amount: totals.total_amount, status: "unpaid",
+        subtotal: savedTotals.subtotal, discount_amount: savedTotals.discount_amount,
+        extra_discount: savedTotals.extra_discount, tax_amount: savedTotals.tax_amount,
+        cgst_amount: savedTotals.cgst_amount, sgst_amount: savedTotals.sgst_amount, igst_amount: savedTotals.igst_amount,
+        round_off: savedTotals.round_off, total_amount: savedTotals.total_amount,
+        paid_amount: 0, balance_amount: savedTotals.total_amount, status: "unpaid",
         party_state_code: party?.state_code ?? null, created_by: user.id,
         pos_session_id: session?.id ?? null,
       });
       if (invRes.error) throw invRes.error;
       const queuedAny = invRes.queued;
 
-      const lineRows = totals.lines.map((l) => ({
+      const lineRows = savedTotals.lines.map((l) => ({
         invoice_id: invoiceId, item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: l.quantity, unit: l.unit, price: l.price, discount_pct: l.discount_pct,
         tax_rate: l.tax_rate, taxable_amount: l.taxable_amount, tax_amount: l.tax_amount,
@@ -379,6 +392,7 @@ export default function Pos() {
         {
           invoice_number: number, invoice_date: new Date().toLocaleString(),
           party_name: party?.name ?? null, party_phone: party?.phone ?? null,
+          party_gstin: party?.gstin ?? null,
           cashier: user.email ?? null,
           lines: totals.lines.map((l) => ({
             item_name: l.item_name, quantity: l.quantity, unit: l.unit,
@@ -453,6 +467,7 @@ export default function Pos() {
         invoice_date: new Date().toLocaleString(),
         party_name: party?.name ?? null,
         party_phone: party?.phone ?? null,
+        party_gstin: party?.gstin ?? null,
         cashier: user?.email ?? null,
         lines: totals.lines.map((l) => ({
           item_name: l.item_name, quantity: l.quantity, unit: l.unit,
@@ -718,6 +733,23 @@ export default function Pos() {
             <Button variant="outline" size="icon" onClick={() => setQuickOpen(true)}><UserPlus className="h-4 w-4" /></Button>
           </div>
 
+          <div className="flex items-center gap-4 flex-wrap text-sm">
+            <div className="flex items-center gap-2">
+              <Switch id="pos-gst-toggle" checked={isGst} onCheckedChange={setIsGst} />
+              <Label htmlFor="pos-gst-toggle" className="cursor-pointer text-xs">
+                {isGst ? "GST Invoice" : "Non-GST (no tax)"}
+              </Label>
+            </div>
+            {isGst && (
+              <div className="flex items-center gap-2">
+                <Switch id="pos-incl-tax-toggle" checked={pricesIncludeTax} onCheckedChange={setPricesIncludeTax} />
+                <Label htmlFor="pos-incl-tax-toggle" className="cursor-pointer text-xs">
+                  {pricesIncludeTax ? "Prices incl. GST" : "Prices excl. GST"}
+                </Label>
+              </div>
+            )}
+          </div>
+
           <div className="flex-1 min-h-[200px] max-h-[40vh] overflow-auto border rounded-md">
             {cart.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-10">Cart is empty</div>
@@ -776,7 +808,13 @@ export default function Pos() {
               <Label className="text-xs flex-1">Extra discount</Label>
               <Input className="h-7 w-24" value={extraDiscount} onChange={(e) => setExtraDiscount(e.target.value)} />
             </div>
-            <Row label="Tax" value={`Rs.${totals.tax_amount.toFixed(2)}`} />
+            {isGst && isInter && <Row label="IGST" value={`Rs.${totals.igst_amount.toFixed(2)}`} />}
+            {isGst && !isInter && (
+              <>
+                <Row label="CGST" value={`Rs.${totals.cgst_amount.toFixed(2)}`} />
+                <Row label="SGST" value={`Rs.${totals.sgst_amount.toFixed(2)}`} />
+              </>
+            )}
             <Row label="Round off" value={`Rs.${totals.round_off.toFixed(2)}`} />
             <Row label="TOTAL" value={`Rs.${totals.total_amount.toFixed(2)}`} bold />
           </div>
