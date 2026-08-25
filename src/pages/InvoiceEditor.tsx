@@ -367,7 +367,11 @@ export default function InvoiceEditor({ type }: Props) {
   const addItemToLines = (it: Item) => {
     const isPurchase = type === "purchase" || type === "purchase_return";
     setLines((ls) => {
-      const existingIdx = ls.findIndex((l) => l.item_id === it.id);
+      // Batch-tracked items must never merge into an existing line — each batch
+      // needs its own line (and its own price) since different batches of the
+      // same item can be priced differently. Only non-batch items collapse into
+      // a single line with quantity bumped.
+      const existingIdx = it.is_batch_tracked ? -1 : ls.findIndex((l) => l.item_id === it.id);
       if (existingIdx >= 0) {
         return ls.map((l, i) => i === existingIdx ? { ...l, quantity: Number(l.quantity) + 1 } : l);
       }
