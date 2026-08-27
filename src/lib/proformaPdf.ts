@@ -161,8 +161,8 @@ function renderCopy(
   // Line items table
   const showIgst = invoice.is_inter_state;
   const head = showIgst
-    ? [["Goods / Services supplied", "HSN/SAC", "Qty.", "Unit", "List Price", "IGST (%)", "IGST Amt.", "Amount (Rs.)"]]
-    : [["Goods / Services supplied", "HSN/SAC", "Qty.", "Unit", "List Price", "CGST (%)", "CGST Amt.", "SGST (%)", "SGST Amt.", "Amount (Rs.)"]];
+    ? [["Goods / Services supplied", "HSN/SAC", "Qty.", "Unit", "List Price", "IGST%", "IGST Amt.", "Amount (Rs.)"]]
+    : [["Goods / Services supplied", "HSN/SAC", "Qty.", "Unit", "List Price", "CGST%", "CGST Amt.", "SGST%", "SGST Amt.", "Amount (Rs.)"]];
 
   const body = invoice.lines.map((l) => {
     const cgstPct = showIgst ? 0 : l.tax_rate / 2;
@@ -181,15 +181,18 @@ function renderCopy(
     theme: "grid",
     styles: { font: "helvetica", fontSize: 7, cellPadding: 1.3, lineColor: [180, 180, 180], textColor: 30 },
     headStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: "bold", halign: "center", fontSize: 6.5 },
+    // Widths sum to exactly contentW (194mm) so the table fills the outer border
+    // with no left-over gap — a mismatched sum was letting autoTable's own
+    // redistribution logic shift columns out of line with the boxes below them.
     columnStyles: showIgst ? {
-      0: { cellWidth: 56 }, 1: { halign: "center", cellWidth: 20 }, 2: { halign: "right", cellWidth: 14 },
+      0: { cellWidth: 64 }, 1: { halign: "center", cellWidth: 20 }, 2: { halign: "right", cellWidth: 14 },
       3: { halign: "center", cellWidth: 16 }, 4: { halign: "right", cellWidth: 22 },
       5: { halign: "right", cellWidth: 16 }, 6: { halign: "right", cellWidth: 20 }, 7: { halign: "right", cellWidth: 22 },
     } : {
-      0: { cellWidth: 40 }, 1: { halign: "center", cellWidth: 16 }, 2: { halign: "right", cellWidth: 10 },
+      0: { cellWidth: 54 }, 1: { halign: "center", cellWidth: 16 }, 2: { halign: "right", cellWidth: 10 },
       3: { halign: "center", cellWidth: 12 }, 4: { halign: "right", cellWidth: 18 },
-      5: { halign: "right", cellWidth: 12 }, 6: { halign: "right", cellWidth: 16 },
-      7: { halign: "right", cellWidth: 12 }, 8: { halign: "right", cellWidth: 16 }, 9: { halign: "right", cellWidth: 20 },
+      5: { halign: "right", cellWidth: 14 }, 6: { halign: "right", cellWidth: 18 },
+      7: { halign: "right", cellWidth: 14 }, 8: { halign: "right", cellWidth: 18 }, 9: { halign: "right", cellWidth: 20 },
     },
     margin: { left: MARGIN, right: MARGIN },
     tableWidth: contentW,
@@ -197,19 +200,20 @@ function renderCopy(
   });
 
   // @ts-ignore
-  let cy: number = ((doc as any).lastAutoTable?.finalY ?? y + 10) + 2;
+  let cy: number = ((doc as any).lastAutoTable?.finalY ?? y + 10) + 3;
 
   // Grand Total bar (right-aligned)
   const gtW = 70;
   const gtX = PAGE_W - MARGIN - gtW;
 
-  // Round off (shown so the Grand Total reconciles with Taxable + CGST/SGST below)
+  // Round off (shown so the Grand Total reconciles with Taxable + CGST/SGST below).
+  // Given clear space below the table so it doesn't crowd the border above it.
   if (invoice.round_off) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(70);
-    doc.text(`Round Off: ${invoice.round_off > 0 ? "+" : "-"}Rs. ${Math.abs(invoice.round_off).toFixed(2)}`, gtX + gtW - 2, cy - 1, { align: "right" });
-    cy += 4;
+    doc.text(`Round Off: ${invoice.round_off > 0 ? "+" : "-"}Rs. ${Math.abs(invoice.round_off).toFixed(2)}`, gtX + gtW - 2, cy + 3, { align: "right" });
+    cy += 6;
   }
 
   doc.setDrawColor(150);
