@@ -1,7 +1,7 @@
 // Module catalog used for staff access toggles.
 export type ModuleKey =
   | "dashboard" | "pos"
-  | "sales" | "sale_returns" | "quotations" | "purchases" | "quick_invoices"
+  | "sales" | "sale_returns" | "quotations" | "purchases" | "quick_invoices" | "proforma_invoice"
   | "customers" | "suppliers" | "party_ledger"
   | "items" | "stock" | "categories" | "warehouses" | "batches" | "branches"
   | "accounts" | "payments" | "expenses" | "loyalty"
@@ -17,6 +17,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: "quotations",   label: "Quotations",       group: "Sales & Purchases" },
   { key: "purchases",    label: "Purchases",        group: "Sales & Purchases" },
   { key: "quick_invoices", label: "Quick Invoices", group: "Sales & Purchases" },
+  { key: "proforma_invoice", label: "Proforma Invoice", group: "Sales & Purchases" },
   { key: "customers",    label: "Customers",        group: "Parties" },
   { key: "suppliers",    label: "Suppliers",        group: "Parties" },
   { key: "party_ledger", label: "Party Ledger",     group: "Parties" },
@@ -35,7 +36,7 @@ export const ALL_MODULES: ModuleDef[] = [
 ];
 
 export const DEFAULT_STAFF_MODULES: ModuleKey[] = [
-  "dashboard", "sales", "sale_returns", "quotations", "purchases", "quick_invoices",
+  "dashboard", "sales", "sale_returns", "quotations", "purchases", "quick_invoices", "proforma_invoice",
   "customers", "suppliers", "items", "stock", "payments",
 ];
 
@@ -48,6 +49,7 @@ export const ROUTE_TO_MODULE: Record<string, ModuleKey> = {
   "/quotations": "quotations",
   "/purchases": "purchases",
   "/quick_invoices": "quick_invoices",
+  "/proforma-invoice": "proforma_invoice",
   "/customers": "customers",
   "/suppliers": "suppliers",
   "/party-ledger": "party_ledger",

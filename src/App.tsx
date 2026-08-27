@@ -18,6 +18,7 @@ import Batches from "./pages/Batches";
 import StockManagement from "./pages/StockManagement";
 import Invoices from "./pages/Invoices";
 import InvoiceEditor from "./pages/InvoiceEditor";
+import ProformaInvoice from "./pages/ProformaInvoice";
 import Payments from "./pages/Payments";
 import Accounts from "./pages/Accounts";
 import Expenses from "./pages/Expenses";
@@ -107,6 +108,7 @@ const App = () => (
                 <Route path="/quotations/:id" element={<InvoiceEditor type="quotation" />} />
                 <Route path="/quick_invoices" element={<Invoices type="non_inventory" />} />
                 <Route path="/quick_invoices/:id" element={<InvoiceEditor type="non_inventory" />} />
+                <Route path="/proforma-invoice" element={<ProformaInvoice />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/party-ledger" element={<PartyLedger />} />
                 <Route path="/branches" element={<Branches />} />

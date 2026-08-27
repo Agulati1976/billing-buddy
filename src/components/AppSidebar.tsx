@@ -6,7 +6,7 @@ import {
 import {
   LayoutDashboard, Users, Truck, Package, FileText, FileEdit,
   Wallet, Receipt as ReceiptIcon, Settings, Receipt, Tags, Warehouse, Boxes,
-  BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown, BookOpen, Building2, CreditCard, LifeBuoy,
+  BarChart3, Sparkles, ShoppingCart, Gift, ArrowUpDown, BookOpen, Building2, CreditCard, LifeBuoy, Copy,
 } from "lucide-react";
 import { usePosAccess } from "@/hooks/usePosAccess";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -30,6 +30,7 @@ const groups: NavGroup[] = [
       { to: "/quotations", label: "Quotations", icon: FileEdit },
       { to: "/purchases", label: "Purchases", icon: ReceiptIcon },
       { to: "/quick_invoices", label: "Quick Invoices", icon: FileEdit },
+      { to: "/proforma-invoice", label: "Proforma Invoice", icon: Copy },
     ],
   },
   {

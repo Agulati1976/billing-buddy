@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import {
   ArrowUpDown, BarChart3, BookOpen, Boxes, Building2, CreditCard, FileEdit, FileText,
   Gift, LayoutDashboard, LayoutGrid, Package, Receipt as ReceiptIcon, Settings,
-  ShoppingCart, Sparkles, Tags, Truck, Users, Wallet, Warehouse, LifeBuoy,
+  ShoppingCart, Sparkles, Tags, Truck, Users, Wallet, Warehouse, LifeBuoy, Copy,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { usePosAccess } from "@/hooks/usePosAccess";
@@ -35,6 +35,7 @@ const MENU_GROUPS: MobileMenuGroup[] = [
       { to: "/quotations", label: "Quotations", icon: FileEdit, module: "quotations" },
       { to: "/purchases", label: "Purchases", icon: ReceiptIcon, module: "purchases" },
       { to: "/quick_invoices", label: "Quick Invoices", icon: FileEdit, module: "quick_invoices" },
+      { to: "/proforma-invoice", label: "Proforma Invoice", icon: Copy, module: "proforma_invoice" },
     ],
   },
   {
