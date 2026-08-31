@@ -50,12 +50,29 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       return;
     }
-    const { data, error } = await supabase.from("businesses").select("*").order("created_at", { ascending: true });
+    // Deliberately scoped through user_roles (this user's actual memberships)
+    // instead of a bare `SELECT * FROM businesses`. The businesses table also
+    // carries a separate RLS policy so platform admins can see every business
+    // for the admin dashboard — those two SELECT policies combine with OR, so
+    // an unscoped query here would hand a platform-admin account every other
+    // tenant's business in their own shopkeeper switcher. Going through
+    // user_roles keeps this query correct regardless of that policy.
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("businesses(*)")
+      .eq("user_id", userId);
     if (!error && data) {
-      setBusinesses(data as Business[]);
+      const seen = new Set<string>();
+      const list: Business[] = [];
+      for (const row of data as any[]) {
+        const b = row.businesses as Business | null;
+        if (b && !seen.has(b.id)) { seen.add(b.id); list.push(b); }
+      }
+      list.sort((a: any, b: any) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+      setBusinesses(list);
       const savedId = localStorage.getItem(STORAGE_KEY);
-      const found = (data as Business[]).find((b) => b.id === savedId) ?? data[0] ?? null;
-      setCurrentState(found as Business | null);
+      const found = list.find((b) => b.id === savedId) ?? list[0] ?? null;
+      setCurrentState(found);
       if (found) localStorage.setItem(STORAGE_KEY, found.id);
     }
     setLoading(false);
