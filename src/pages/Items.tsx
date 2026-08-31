@@ -13,6 +13,7 @@ import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { StockAdjustDialog } from "@/components/StockAdjustDialog";
 import { StockHistoryDialog } from "@/components/StockHistoryDialog";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { useHardwareScanner } from "@/hooks/useHardwareScanner";
 import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import { composeItemName, composeItemLines } from "@/lib/invoice";
@@ -62,6 +63,10 @@ export default function Items() {
       setDialogOpen(true);
     }
   };
+
+  // Physical USB/Bluetooth barcode scanner — active on the list view; paused
+  // while the item dialog is open so a stray scan can't switch what's being edited.
+  useHardwareScanner(handleScan, { enabled: !dialogOpen });
 
   const load = async () => {
     if (!current) return;

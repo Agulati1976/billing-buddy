@@ -23,6 +23,7 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { lookupBarcode, createItemFromCatalog } from "@/lib/barcodeCatalog";
 import { SearchBar } from "@/components/SearchBar";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
+import { useHardwareScanner } from "@/hooks/useHardwareScanner";
 import { Mic, MicOff } from "lucide-react";
 
 interface Item {
@@ -175,6 +176,7 @@ export default function Pos() {
 
   const onScan = async (code: string) => {
     setScannerOpen(false);
+    setSearch("");
     const trimmed = code.trim();
     const found = items.find((i) => (i.barcode ?? "").trim() === trimmed);
     if (found) { addToCart(found); toast.success(`Added ${found.name}`); return; }
@@ -205,6 +207,10 @@ export default function Pos() {
       toast.error(e.message || "Could not auto-create item from catalog");
     }
   };
+
+  // Physical USB/Bluetooth barcode scanner (keyboard-wedge mode) — works
+  // anywhere on this page, no need to click into the search box first.
+  useHardwareScanner(onScan);
 
   const updateLine = (key: string, patch: Partial<CartLine>) => {
     setCart((prev) => prev.map((l) => l._key === key ? { ...l, ...patch } : l));

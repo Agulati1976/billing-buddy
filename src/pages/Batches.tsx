@@ -14,6 +14,7 @@ import { Plus, Pencil, Trash2, Boxes, AlertTriangle, ScanLine } from "lucide-rea
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { useHardwareScanner } from "@/hooks/useHardwareScanner";
 import { format, differenceInDays, parseISO } from "date-fns";
 
 interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; barcode: string | null; }
@@ -103,6 +104,12 @@ export default function Batches() {
       toast.error("No batch-tracked item with this barcode. Add the barcode in the item first.");
     }
   };
+
+  // Physical USB/Bluetooth barcode scanner: while the New/Edit Batch dialog is
+  // open (and an item hasn't been locked in by editing), a scan picks the item;
+  // on the list view, a scan jumps straight into a prefilled New Batch dialog.
+  useHardwareScanner(onScannedItem, { enabled: open && !editing });
+  useHardwareScanner(onPageScan, { enabled: !open });
 
   const submit = async () => {
     if (!current || !user) return;

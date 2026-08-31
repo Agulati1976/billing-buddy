@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Search, ScanLine } from "lucide-react";
 import { composeItemLines } from "@/lib/invoice";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { useHardwareScanner } from "@/hooks/useHardwareScanner";
 import { toast } from "sonner";
 
 export interface PickerItem {
@@ -51,6 +52,7 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
   const handleBarcode = (code: string) => {
     const trimmed = code.trim();
     if (!trimmed) return;
+    setQ("");
     const hit = items.find((i) => (i.barcode || "").trim() === trimmed);
     if (!hit) {
       toast.error(`No item with barcode ${trimmed}`);
@@ -65,6 +67,10 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
     toast.success(`Selected: ${hit.name}`);
     // keep scanner open so user can scan more
   };
+
+  // Physical USB/Bluetooth barcode scanner (keyboard-wedge mode) — works the
+  // moment this dialog is open, no need to click into the search box first.
+  useHardwareScanner(handleBarcode, { enabled: open });
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
