@@ -9,13 +9,13 @@ const business = '20000000-0000-4000-8000-000000000001';
 test('failed fixture initialization closes its database connections', {timeout:10000}, async () => {
   await assert.rejects(database({onStatement(){throw new Error('fixture initialization failed');}}), /fixture initialization failed/);
 });
-test('live-schema fixture and stabilization migration compile in PostgreSQL', async () => {
+test('live-schema fixture and stabilization migration compile in PostgreSQL', async (t) => {
   const db = await database();
+  t.after(()=>db.close());
   await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2),($3,$4)',[owner,'owner@example.invalid',other,'other@example.invalid']);
   await db.query('INSERT INTO businesses(id,owner_id,name) VALUES($1,$2,$3)',[business,owner,'Test business']);
   const allowed = await asUser(db,owner,'SELECT app_has_access($1,$2) allowed',[business,'sales']);
   assert.equal(allowed.rows[0].allowed,true);
   const denied = await asUser(db,other,'SELECT app_has_access($1,$2) allowed',[business,'sales']);
   assert.equal(denied.rows[0].allowed,false);
-  await db.close();
 });

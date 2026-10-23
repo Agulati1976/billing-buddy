@@ -13,10 +13,10 @@ const roles = `DO $$ BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THE
 
 async function postgresDatabase(url) {
   const {Client}=await import('pg');
-  const admin=new Client({connectionString:url});await admin.connect();
+  const admin=new Client({connectionString:url,connectionTimeoutMillis:10000,statement_timeout:30000});await admin.connect();
   const name='billlook_test_'+randomUUID().replaceAll('-','');
   const target=new URL(url);target.pathname='/'+name;
-  const client=new Client({connectionString:target.href});
+  const client=new Client({connectionString:target.href,connectionTimeoutMillis:10000,statement_timeout:30000});
   let created=false;
   try {
     // Roles belong to the cluster. All test workers lock in the same admin

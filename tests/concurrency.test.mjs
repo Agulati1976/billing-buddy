@@ -6,10 +6,10 @@ import {database,asUser} from './database-helpers.mjs';
 
 test('concurrent requests cannot oversell stock or activate a payment twice',{skip:!process.env.BILLLOOK_TEST_POSTGRES},async t=>{
   const db=await database();
-  const clients=[new Client({connectionString:db.connectionString}),new Client({connectionString:db.connectionString})];
+  const clients=[new Client({connectionString:db.connectionString,connectionTimeoutMillis:10000,statement_timeout:30000}),new Client({connectionString:db.connectionString,connectionTimeoutMillis:10000,statement_timeout:30000})];
+  t.after(async()=>{try{await Promise.all(clients.map(client=>client.end()));}finally{await db.close();}});
   await Promise.all(clients.map(client=>client.connect()));
   const sessions=clients.map(client=>({exec:sql=>client.query(sql),query:(sql,params)=>client.query(sql,params)}));
-  t.after(async()=>{await Promise.all(clients.map(client=>client.end()));await db.close();});
   const owner=uuid(),biz=uuid(),item=uuid();
   await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2)',[owner,'concurrency@example.invalid']);
   await db.query("INSERT INTO businesses(id,owner_id,name) VALUES($1,$2,'Concurrency shop')",[biz,owner]);

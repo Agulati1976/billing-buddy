@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -31,7 +31,27 @@ jobs:
       - run: npm ci --no-audit
       - run: npm run audit:all
       - run: npx playwright install --with-deps chromium
-      - run: npm run check
+      - name: Lint (no warnings)
+        run: npm run lint
+        timeout-minutes: 2
+      - name: Unit, PDF and offline tests
+        run: npm run test
+        timeout-minutes: 3
+      - name: PostgreSQL authorization and concurrency tests
+        run: npm run test:database
+        timeout-minutes: 3
+      - name: Strict edge-function type checks
+        run: npm run typecheck:edge
+        timeout-minutes: 5
+      - name: Edge-handler tests
+        run: npm run test:edge
+        timeout-minutes: 2
+      - name: Type-checked production build
+        run: npm run build
+        timeout-minutes: 5
+      - name: Desktop and mobile browser tests
+        run: npx playwright test
+        timeout-minutes: 4
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
