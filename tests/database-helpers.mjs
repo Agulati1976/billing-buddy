@@ -46,9 +46,13 @@ export async function database({ migrate = true, onStatement } = {}) {
   const db = process.env.BILLLOOK_TEST_POSTGRES ? await postgresDatabase(process.env.BILLLOOK_TEST_POSTGRES) : new PGlite();
   if (onStatement) {
     const execute = db.exec.bind(db);
-    db.exec = async sql => { onStatement(sql); return execute(sql); };
+    db.exec = async sql => { onStatement(sql,db); return execute(sql); };
   }
   try {
+  // Fixture DDL belongs to one setup transaction, rather than hundreds of
+  // individual durable commits on slow CI disks. Release migrations still run
+  // with their own real transaction boundaries below.
+  await db.exec('BEGIN');
   if(!process.env.BILLLOOK_TEST_POSTGRES)await db.exec(roles);
   await db.exec(`
     CREATE SCHEMA auth; CREATE TABLE auth.users(id uuid PRIMARY KEY,email text,raw_user_meta_data jsonb);
@@ -81,6 +85,7 @@ export async function database({ migrate = true, onStatement } = {}) {
   for(const plan of readJson('tests/fixtures/plans-baseline.json')){
     await db.exec(`INSERT INTO public.subscription_plans(id,code,name,price_inr,features) VALUES(${literal(plan.id)},${literal(plan.code)},${literal(plan.name)},${plan.price_inr},${literal(JSON.stringify(plan.features))}::jsonb);`);
   }
+  await db.exec('COMMIT');
   if (migrate) {
     const migrations = fs.readdirSync(path.join(root,'supabase/migrations')).filter(name => /^20261023.*\.sql$/.test(name)).sort();
     for (const migration of migrations) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',migration),'utf8'));

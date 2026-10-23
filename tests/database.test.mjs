@@ -6,8 +6,10 @@ const owner = '10000000-0000-4000-8000-000000000001';
 const other = '10000000-0000-4000-8000-000000000002';
 const business = '20000000-0000-4000-8000-000000000001';
 
-test('failed fixture initialization closes its database connections', {timeout:10000}, async () => {
-  await assert.rejects(database({onStatement(){throw new Error('fixture initialization failed');}}), /fixture initialization failed/);
+test('failed fixture initialization closes its database connections', {timeout:60000}, async () => {
+  let failedFixture;
+  await assert.rejects(database({onStatement(_sql,db){failedFixture=db;throw new Error('fixture initialization failed');}}), /fixture initialization failed/);
+  await assert.rejects(async()=>failedFixture.query('SELECT 1'), /closed|ended|queryable/i);
 });
 test('live-schema fixture and stabilization migration compile in PostgreSQL', async (t) => {
   const db = await database();
