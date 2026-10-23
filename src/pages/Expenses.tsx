@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -16,7 +18,8 @@ import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
 import { format, startOfMonth } from "date-fns";
-import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, useDateFilter, type DatePreset } from "@/hooks/useDateFilter";
 
 const CATEGORIES = ["Rent", "Salary", "Utilities", "Travel", "Office Supplies", "Marketing", "Repairs", "Tax", "Other"];
 
@@ -31,6 +34,7 @@ interface ExpenseRow {
 
 export default function Expenses() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [open, setOpen] = useState(false);
@@ -38,7 +42,7 @@ export default function Expenses() {
 
   const [category, setCategory] = useState("Rent");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(businessDate());
   const [method, setMethod] = useState("cash");
   const [description, setDescription] = useState("");
   const [search, setSearch] = useState("");
@@ -53,14 +57,14 @@ export default function Expenses() {
     return dateFiltered.filter((r) => [r.category, r.description, r.method].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [dateFiltered, search]);
 
-  const load = async () => {
-    if (!current) return;
-    const { data } = await supabase.from("expenses")
+  const load = useCallback(async () => {
+    if (!currentId) return;
+    const { data } = await allRows(supabase.from("expenses")
       .select("id, category, amount, expense_date, method, description")
-      .eq("business_id", current.id).order("expense_date", { ascending: false });
-    setRows((data as any) ?? []);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+      .eq("business_id", currentId).order("expense_date", { ascending: false }));
+    setRows((data) ?? []);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const submit = async () => {
     if (!current || !user) return;
@@ -69,10 +73,10 @@ export default function Expenses() {
     setSaving(true);
     const res = await omInsert("expenses", {
       business_id: current.id, category, amount: amt, expense_date: date,
-      method: method as any, description: description.trim() || null, created_by: user.id,
+      method: method as "cash"|"bank"|"upi"|"cheque"|"card"|"other", description: description.trim() || null, created_by: user.id,
     });
     setSaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Expense recorded");
     setOpen(false); setAmount(""); setDescription("");
     load();

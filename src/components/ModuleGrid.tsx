@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, FileText, ArrowUpDown, FileEdit, Receipt as ReceiptIcon,
@@ -11,7 +12,7 @@ import type { ModuleKey } from "@/lib/modules";
 type Tile = {
   to: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   module?: ModuleKey;
   tone: "primary" | "success" | "warning" | "danger" | "info" | "violet" | "pink" | "teal";
   alwaysVisible?: boolean;
@@ -82,7 +83,7 @@ export function ModuleGrid({ includeHome = false, onItemClick }: Props) {
           key={t.to + t.label}
           to={t.to}
           onClick={onItemClick}
-          className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card p-3 aspect-square text-center transition-transform active:scale-95 hover:border-primary/40 hover:shadow-sm"
+          className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card p-3 aspect-square text-center transition-transform active:scale-95 hover:border-primary/40 hover:shadow-xs"
         >
           <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${TONE[t.tone]}`}>
             <t.icon className="h-5 w-5" />

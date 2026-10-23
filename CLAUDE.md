@@ -23,8 +23,8 @@ Money is in **INR (₹)**. Dates/GST/HSN/state codes follow Indian conventions.
 
 ## 2. Stack
 
-- **React 18 + Vite 5 + TypeScript 5**, Tailwind CSS v3, **shadcn/ui** (Radix) in `src/components/ui`
-- **React Router v6** (all routes in `src/App.tsx`), **TanStack Query** provider is mounted but most pages fetch directly with the Supabase client + `useState/useEffect`
+- **React 18 + Vite 6 + TypeScript 5**, Tailwind CSS v4, **shadcn/ui** (Radix) in `src/components/ui`
+- **React Router v7** (all routes in `src/App.tsx`), **TanStack Query** provider is mounted but most pages fetch directly with the Supabase client + `useState/useEffect`
 - **Supabase** (project ref `qbxombgwzqqumubpaogo`) — Postgres + RLS + Auth + Edge Functions (Deno)
 - **Capacitor 8** for Android/iOS wrapper (`capacitor.config.ts`, `src/lib/native.ts`)
 - **Cashfree** (`@cashfreepayments/cashfree-js`) for SaaS subscription payments
@@ -58,8 +58,8 @@ src/
     support/              # TicketBadges, TicketDetail
     ui/                   # shadcn primitives — don't restyle globally
   hooks/
-    useAuth.tsx           # session provider
-    useBusiness.tsx       # current business + business list (multi-tenant switcher)
+    useAuth.tsx           # consumer hook; AuthProvider.tsx owns the session
+    useBusiness.tsx       # consumer hook; BusinessProvider.tsx owns business state
     usePermissions.tsx    # role within a business + staff module access
     usePlatformAdmin.tsx  # is this user Bill Look staff?
     useSupportStaff.tsx
@@ -135,11 +135,10 @@ Security-definer helpers: `has_role`, `is_business_member`, `is_platform_admin`,
 
 1. **Stock must never go negative.** Enforced by `BEFORE` triggers in Postgres *and* by front-end
    validation in `InvoiceEditor`/`Pos`. Don't bypass either.
-2. **No double stock deduction.** `stock_movements` has a unique index; the invoice-item trigger
-   (`handle_invoice_item_stock`) is the single source of stock change per line.
-3. **Purchase + new batch:** when a batch is created from a purchase bill it already carries the
-   received quantity (`sync_item_stock_from_batches`), so `handle_invoice_item_batch` **skips the
-   positive add on `purchase`**. Sales / returns still adjust batch quantities.
+2. **No double stock deduction.** the atomic `save_invoice` RPC records forward/reversal movements;
+   legacy invoice-item stock/batch triggers are removed by the release migration. Never add client-side financial writes.
+3. **Purchase + new batch:** the `save_invoice` RPC creates an empty batch and applies received
+   quantities once. `sync_item_stock_from_batches` emits the matching movement. Never pre-credit a batch from the client.
 4. **Quick Invoices (`non_inventory`, prefix `QINV`)** never touch inventory. Keep them excluded
    from stock logic but included in revenue reports.
 5. **Invoice numbering** (`src/lib/invoice.ts`): `<shopkeeper code>` + optional `/<branch code>`
@@ -179,7 +178,7 @@ the browser always uses the anon key.
 
 ## 8. Conventions
 
-- Colors/tokens are semantic and defined in `src/index.css` + `tailwind.config.ts`. **Never hardcode**
+- Colors/tokens are semantic and defined in `src/index.css`. **Never hardcode**
   `text-white`, `bg-black`, `bg-[#...]` in components.
 - Everything must work on **mobile** — the user tests on a phone. Tables get a stacked-card layout,
   and every desktop row action (view / share / edit / delete) must also exist on mobile.
@@ -195,3 +194,7 @@ npm run build
 npm run lint
 npm run test     # vitest
 ```
+
+## 10. Release checkpoint (2026-10-23)
+
+Read `audit/RELEASE_CHECKLIST.md` and `audit/STAGING_RESULTS.md` before deployment. The full release is not live yet; only the explicitly approved test-stock reconciliation was committed on the hosted project. Zero lint warnings and zero full-tree npm vulnerabilities are CI requirements. Node 22 and PostgreSQL 17 are CI targets. Version conflicts use SQLSTATE `PT409` (HTTP 409); `40001` causes this hosted PostgREST version to retry indefinitely. Keep the ignored `audit/private/` backup/Auth data out of source and deployment archives. Use `npm run check` with `BILLLOOK_TEST_POSTGRES` pointing to the disposable local PostgreSQL 17 container.

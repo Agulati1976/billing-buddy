@@ -1,4 +1,4 @@
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+import { corsHeaders, identity, membership, quota, requestJson, HttpError, failure } from "../_shared/security.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
@@ -38,14 +38,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { image_base64, mime_type } = await req.json();
+    const ctx = await identity(req);
+    const { image_base64, mime_type, business_id } = await requestJson(req, 8_000_000);
+    await membership(ctx, business_id, "purchases");
+    if (typeof image_base64 !== "string" || image_base64.length > 7_000_000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(image_base64)) throw new HttpError(400, "Invalid image data");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(mime_type)) throw new HttpError(400, "Use a JPG, PNG or WebP image");
     if (!image_base64) {
       return new Response(JSON.stringify({ error: "image_base64 required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const dataUrl = `data:${mime_type || "image/jpeg"};base64,${image_base64}`;
+    await quota(ctx, business_id, "ocr");
+    const dataUrl = `data:${mime_type};base64,${image_base64}`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -81,9 +86,8 @@ Deno.serve(async (req) => {
     });
 
     if (!resp.ok) {
-      const txt = await resp.text();
       const status = resp.status === 429 ? 429 : resp.status === 402 ? 402 : 500;
-      return new Response(JSON.stringify({ error: `AI gateway: ${txt}` }), {
+      return new Response(JSON.stringify({ error: "The invoice reader is unavailable. Please retry later." }), {
         status, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -91,7 +95,7 @@ Deno.serve(async (req) => {
     const data = await resp.json();
     const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!args) {
-      return new Response(JSON.stringify({ error: "No structured output", raw: data }), {
+      return new Response(JSON.stringify({ error: "No structured output" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -100,9 +104,5 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: true, data: parsed }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  } catch (error) { return failure(error); }
 });

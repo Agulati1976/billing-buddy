@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Upload, ScanLine, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useBusiness } from "@/hooks/useBusiness";
 
 export interface ExtractedItem {
   name: string;
@@ -46,12 +48,15 @@ function fileToBase64(file: File): Promise<{ base64: string; mime: string }> {
 }
 
 export function PurchaseInvoiceScanner({ open, onOpenChange, onExtracted }: Props) {
+  const { current } = useBusiness();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractedInvoice | null>(null);
 
   const handleFile = async (file: File) => {
+    if (!current) return;
+    if (file.size > 5_000_000) { toast.error("Choose an image smaller than 5 MB"); return; }
     if (!file.type.startsWith("image/")) {
       toast.error("Please upload an image of the bill (JPG/PNG)");
       return;
@@ -62,7 +67,7 @@ export function PurchaseInvoiceScanner({ open, onOpenChange, onExtracted }: Prop
       const { base64, mime } = await fileToBase64(file);
       setPreview(`data:${mime};base64,${base64}`);
       const { data, error } = await supabase.functions.invoke("parse-purchase-invoice", {
-        body: { image_base64: base64, mime_type: mime },
+        body: { image_base64: base64, mime_type: mime, business_id: current.id },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.error || "Failed to parse");
@@ -70,8 +75,8 @@ export function PurchaseInvoiceScanner({ open, onOpenChange, onExtracted }: Prop
       if (!parsed.items?.length) throw new Error("No items detected on the bill");
       setResult(parsed);
       toast.success(`Detected ${parsed.items.length} item${parsed.items.length === 1 ? "" : "s"}`);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not read the bill");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Could not read the bill");
     } finally {
       setBusy(false);
     }

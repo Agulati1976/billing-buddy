@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
+import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +22,7 @@ import { format, differenceInDays, parseISO } from "date-fns";
 
 interface Item { id: string; name: string; unit: string; is_batch_tracked: boolean; barcode: string | null; }
 interface Batch {
-  id: string; item_id: string; batch_number: string;
+  updated_at: string; id: string; item_id: string; batch_number: string;
   mfg_date: string | null; expiry_date: string | null;
   quantity: number; notes: string | null;
   purchase_price: number | null; sale_price: number | null;
@@ -28,6 +31,7 @@ interface Batch {
 
 export default function Batches() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [rows, setRows] = useState<Batch[]>([]);
@@ -50,20 +54,20 @@ export default function Batches() {
     return rows.filter((r) => [r.batch_number, r.items?.name, r.notes].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
   }, [rows, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const [b, it] = await Promise.all([
-      supabase.from("batches")
-        .select("id, item_id, batch_number, mfg_date, expiry_date, quantity, notes, purchase_price, sale_price, items(name, unit)")
-        .eq("business_id", current.id).order("expiry_date", { ascending: true, nullsFirst: false }),
-      supabase.from("items")
+      allRows(supabase.from("batches")
+        .select("id, updated_at, item_id, batch_number, mfg_date, expiry_date, quantity, notes, purchase_price, sale_price, items(name, unit)")
+        .eq("business_id", currentId).order("expiry_date", { ascending: true, nullsFirst: false })),
+      allRows(supabase.from("items")
         .select("id, name, unit, is_batch_tracked, barcode")
-        .eq("business_id", current.id).eq("is_batch_tracked", true).order("name"),
+        .eq("business_id", currentId).eq("is_batch_tracked", true).order("name")),
     ]);
-    setRows((b.data as any) ?? []);
-    setItems((it.data as any) ?? []);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+    setRows((b.data) ?? []);
+    setItems((it.data) ?? []);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const openNew = () => {
     setEditing(null); setItemId(""); setBatchNumber(""); setMfgDate("");
@@ -118,8 +122,8 @@ export default function Batches() {
     const qty = Number(quantity) || 0;
     if (qty < 0) { toast.error("Batch quantity cannot be negative"); return; }
     setSaving(true);
-    const payload: any = {
-      business_id: current.id, item_id: itemId,
+    const payload = {
+      id:editing?.id ?? crypto.randomUUID(),business_id: current.id, item_id: itemId,
       batch_number: batchNumber.trim(),
       mfg_date: mfgDate || null,
       expiry_date: expiryDate || null,
@@ -129,9 +133,7 @@ export default function Batches() {
       notes: notes.trim() || null,
       created_by: user.id,
     };
-    const { error } = editing
-      ? await supabase.from("batches").update(payload).eq("id", editing.id)
-      : await supabase.from("batches").insert(payload);
+    const {error}=await billingTransaction("save_batch",current.id,{p_operation_id:crypto.randomUUID(),p_batch:jsonValue(payload),p_expected_updated_at:editing?.updated_at ?? null},payload);
     setSaving(false);
     if (error) {
       toast.error(error.code === "23505" ? "This batch number already exists for this item" : error.message);
@@ -143,7 +145,8 @@ export default function Batches() {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this batch? Stock will be removed.")) return;
-    const { error } = await supabase.from("batches").delete().eq("id", id);
+    if(!current)return;
+    const { error } = await billingTransaction("delete_batch",current.id,{p_operation_id:crypto.randomUUID(),p_business_id:current.id,p_batch_id:id},{id});
     if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
   };
 
@@ -325,7 +328,7 @@ export default function Batches() {
                     onClick={() => {
                       const base = mfgDate ? new Date(mfgDate) : new Date();
                       base.setDate(base.getDate() + d);
-                      setExpiryDate(base.toISOString().slice(0, 10));
+                      setExpiryDate(businessDate(base));
                     }}>
                     {d} days
                   </Button>
@@ -337,7 +340,7 @@ export default function Batches() {
                       if (d > 0) {
                         const base = mfgDate ? new Date(mfgDate) : new Date();
                         base.setDate(base.getDate() + d);
-                        setExpiryDate(base.toISOString().slice(0, 10));
+                        setExpiryDate(businessDate(base));
                       }
                     }
                   }}
@@ -346,7 +349,7 @@ export default function Batches() {
                     if (d > 0) {
                       const base = mfgDate ? new Date(mfgDate) : new Date();
                       base.setDate(base.getDate() + d);
-                      setExpiryDate(base.toISOString().slice(0, 10));
+                      setExpiryDate(businessDate(base));
                     }
                   }}
                 />

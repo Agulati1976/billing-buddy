@@ -21,8 +21,8 @@ function moduleForPath(pathname: string) {
 }
 
 export default function AppLayout() {
-  const { user, loading: authLoading } = useAuth();
-  const { businesses, loading: bizLoading } = useBusiness();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { businesses, current, hasMembership, loading: bizLoading } = useBusiness();
   const { isAdmin, loading: adminLoading } = usePlatformAdmin();
   const { isSupportStaff, loading: supportLoading } = useSupportStaff();
   const perms = usePermissions();
@@ -40,14 +40,16 @@ export default function AppLayout() {
   if (businesses.length === 0) {
     if (isAdmin) return <Navigate to="/admin" replace />;
     if (isSupportStaff) return <Navigate to="/support-agent" replace />;
+    if(hasMembership)return <main className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center"><h1 className="text-xl font-semibold">Business access unavailable</h1><p>Your business may be suspended, deleted, or your staff access may have expired. Contact the business owner or Bill Look support.</p><button className="text-primary underline" onClick={()=>void signOut()}>Sign out</button></main>;
     return <Navigate to="/onboarding" replace />;
   }
 
   // Dashboard ("/") is always exempt — it's the safe redirect target below, so
   // gating it too could loop.
-  if (perms.isStaff && location.pathname !== "/") {
+  if (location.pathname !== "/") {
     const mod = moduleForPath(location.pathname);
-    if (mod && !perms.canSeeModule(mod)) {
+    const posReturn=location.pathname==="/sale_returns/new" && new URLSearchParams(location.search).has("pos_session_id") && perms.canSeeModule("pos");
+    if (mod && !perms.canSeeModule(mod) && !posReturn) {
       toast.error("You don't have access to this section");
       return <Navigate to="/" replace />;
     }
@@ -62,7 +64,7 @@ export default function AppLayout() {
         <div className="flex-1 flex flex-col min-w-0">
           <AppTopbar />
           <main className="flex-1 p-3 sm:p-6 overflow-auto pb-24 md:pb-6">
-            <Outlet />
+            <Outlet key={`${user.id}:${current?.id}:${location.pathname}`} />
           </main>
         </div>
         <MobileBottomNav />

@@ -1,0 +1,35 @@
+{
+  "run_id": "fe0048b6-0214-40a2-a114-7702493ffc16",
+  "investigation_sha256": "d5f90de2ebaa89e62bc1fd2b4998cbeafb2e0c53607b3d5711fa1ae9633fb965",
+  "user_confirmation": "Affected records are all test data",
+  "source_of_truth": "Existing batch quantities; original movement records preserved",
+  "items_reviewed": 6,
+  "ledger_corrections": 6,
+  "item_totals_changed": 1,
+  "rehearsed_on_restore": true,
+  "rehearsed_on_live_with_rollback": true,
+  "applied_to_live": true,
+  "post_checks": [
+    {
+      "affected": 0,
+      "check_name": "batch_stock_mismatch"
+    },
+    {
+      "affected": 0,
+      "check_name": "payment_invoice_tenant_mismatch"
+    },
+    {
+      "affected": 0,
+      "check_name": "invoice_item_tenant_mismatch"
+    },
+    {
+      "affected": 0,
+      "check_name": "stock_history_balance_mismatch"
+    },
+    {
+      "affected": 0,
+      "check_name": "multiple_roles_per_business_user"
+    }
+  ],
+  "private_details": "Ignored audit/private/ contains the original records, backup, reviewed plan and execution receipts"
+}

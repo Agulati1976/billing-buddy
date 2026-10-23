@@ -1,3 +1,6 @@
+import type { Tables } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -32,15 +35,15 @@ const TEMPLATES: Record<string, { subject: string; body: string }> = {
 };
 
 export default function AdminReminders() {
-  const [businesses, setBusinesses] = useState<any[]>([]);
-  const [subs, setSubs] = useState<any[]>([]);
-  const [plans, setPlans] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [businesses, setBusinesses] = useState<Array<Pick<Tables<"businesses">,"id"|"name"|"email"|"phone"|"owner_id">>>([]);
+  const [subs, setSubs] = useState<Tables<"business_subscriptions">[]>([]);
+  const [plans, setPlans] = useState<Array<Pick<Tables<"subscription_plans">,"id"|"name">>>([]);
+  const [profiles, setProfiles] = useState<Array<Pick<Tables<"profiles">,"user_id"|"email"|"phone"|"full_name">>>([]);
+  const [history, setHistory] = useState<Tables<"saas_reminders">[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
-  const [form, setForm] = useState<any>({
+  const [form, setForm] = useState({
     business_id: "",
     reminder_type: "renewal_due",
     channel: "email",
@@ -51,10 +54,10 @@ export default function AdminReminders() {
   const load = async () => {
     setLoading(true);
     const [{ data: b }, { data: s }, { data: p }, { data: pr }, { data: h }] = await Promise.all([
-      supabase.from("businesses").select("id, name, email, phone, owner_id").order("name"),
-      supabase.from("business_subscriptions").select("*"),
-      supabase.from("subscription_plans").select("id, name"),
-      supabase.from("profiles").select("user_id, email, phone, full_name"),
+      allRows(supabase.from("businesses").select("id, name, email, phone, owner_id").order("name")),
+      allRows(supabase.from("business_subscriptions").select("*")),
+      allRows(supabase.from("subscription_plans").select("id, name")),
+      allRows(supabase.from("profiles").select("user_id, email, phone, full_name")),
       supabase.from("saas_reminders").select("*").order("sent_at", { ascending: false }).limit(200),
     ]);
     setBusinesses(b ?? []);
@@ -71,7 +74,7 @@ export default function AdminReminders() {
   const planMap = useMemo(() => new Map(plans.map((p) => [p.id, p.name])), [plans]);
   const profileMap = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const subMap = useMemo(() => {
-    const m = new Map<string, any>();
+    const m = new Map<string,Tables<"business_subscriptions">>();
     subs.forEach((s) => m.set(s.business_id, s));
     return m;
   }, [subs]);
@@ -102,10 +105,10 @@ export default function AdminReminders() {
 
   const onTypeChange = (type: string) => {
     const tpl = TEMPLATES[type] || TEMPLATES.custom;
-    setForm((f: any) => ({ ...f, reminder_type: type, subject: tpl.subject, body: tpl.body }));
+    setForm((f) => ({ ...f, reminder_type: type, subject: tpl.subject, body: tpl.body }));
   };
 
-  const fillVars = (text: string, biz: any) => {
+  const fillVars = (text: string, biz: Pick<Tables<"businesses">,"id"|"name">) => {
     const sub = subMap.get(biz.id);
     return text
       .split("{business_name}").join(biz.name || "")
@@ -128,7 +131,7 @@ export default function AdminReminders() {
     setSending(true);
     try {
       // Persist reminder record (channel-specific delivery follows)
-      const { error } = await supabase.from("saas_reminders").insert({
+      const { data:reminder,error } = await supabase.from("saas_reminders").insert({
         business_id: biz.id,
         reminder_type: form.reminder_type,
         channel: form.channel,
@@ -136,11 +139,12 @@ export default function AdminReminders() {
         body,
         recipient_email: email,
         recipient_phone: phone,
-        status: "sent",
-      });
+        status: "pending",
+      }).select("id").single();
       if (error) throw error;
 
-      // WhatsApp: open the wa.me link in a new tab
+      let delivered=false;
+      // WhatsApp opens a compose window; delivery is not yet confirmed.
       if ((form.channel === "whatsapp" || form.channel === "both") && phone) {
         const cleanPhone = String(phone).replace(/[^\d]/g, "");
         const waText = encodeURIComponent(`${subject}\n\n${body}`);
@@ -148,9 +152,10 @@ export default function AdminReminders() {
       }
       // Email: invoke edge function if available, else fallback to mailto
       if ((form.channel === "email" || form.channel === "both") && email) {
-        const { error: fnErr } = await supabase.functions.invoke("send-saas-reminder", {
+        const { data:delivery,error: fnErr } = await supabase.functions.invoke("send-saas-reminder", {
           body: { to: email, subject, body, business_id: biz.id },
         });
+        if (!fnErr && delivery?.delivered===true) delivered=true;
         if (fnErr) {
           // Fallback to mailto
           const href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -158,11 +163,12 @@ export default function AdminReminders() {
         }
       }
 
-      toast.success("Reminder sent");
+      if(delivered){const {error:logError}=await supabase.from("saas_reminders").update({status:"sent"}).eq("id",reminder!.id);if(logError)throw logError;}
+      toast.success(delivered ? "Email accepted for delivery" : "Reminder recorded; delivery is pending");
       setOpen(false);
       load();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to send");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Failed to send");
     } finally {
       setSending(false);
     }
@@ -173,13 +179,13 @@ export default function AdminReminders() {
       <AdminTopbar
         title="Reminders"
         subtitle="Send renewal & overdue reminders to shopkeepers via email or WhatsApp"
-        actions={<Button onClick={() => { setForm((f: any) => ({ ...f, business_id: "" })); setOpen(true); }}><Send className="h-4 w-4 mr-2" />New Reminder</Button>}
+        actions={<Button onClick={() => { setForm((f) => ({ ...f, business_id: "" })); setOpen(true); }}><Send className="h-4 w-4 mr-2" />New Reminder</Button>}
       />
 
       <div className="grid sm:grid-cols-3 gap-4 mb-4">
         <KpiCard label="Expiring this week" value={expiring.length} icon={Bell} loading={loading} />
         <KpiCard label="Overdue" value={overdue.length} icon={AlertTriangle} loading={loading} />
-        <KpiCard label="Reminders sent (all-time)" value={history.length} icon={Send} loading={loading} />
+        <KpiCard label="Reminders sent (all-time)" value={history.filter(reminder=>reminder.status==="sent").length} icon={Send} loading={loading} />
       </div>
 
       <Tabs defaultValue="targets" className="space-y-4">

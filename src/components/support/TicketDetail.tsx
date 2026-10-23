@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -49,12 +51,12 @@ export function TicketDetail({
 
   useEffect(() => {
     loadTicket();
-    supabase.from("support_ticket_messages").select("*")
-      .eq("ticket_id", ticketId).order("created_at", { ascending: true })
+    allRows(supabase.from("support_ticket_messages").select("*")
+      .eq("ticket_id", ticketId).order("created_at", { ascending: true }))
       .then(({ data }) => setMessages((data ?? []) as Message[]));
 
     if (showAssign) {
-      supabase.from("support_staff").select("user_id,full_name,email").eq("active", true)
+      allRows(supabase.from("support_staff").select("user_id,full_name,email").eq("active", true))
         .then(({ data }) => setStaff((data ?? []) as StaffOption[]));
     }
 
@@ -78,16 +80,16 @@ export function TicketDetail({
     setReply("");
   };
 
-  const updateStatus = async (status: string) => {
+  const updateStatus = async (status: Database["public"]["Enums"]["support_ticket_status"]) => {
     if (!ticket) return;
-    const { error } = await supabase.from("support_tickets").update({ status: status as any }).eq("id", ticket.id);
+    const { error } = await supabase.from("support_tickets").update({ status: status }).eq("id", ticket.id);
     if (error) return toast.error(error.message);
     toast.success("Status updated");
   };
 
-  const updatePriority = async (priority: string) => {
+  const updatePriority = async (priority: Database["public"]["Enums"]["support_ticket_priority"]) => {
     if (!ticket) return;
-    const { error } = await supabase.from("support_tickets").update({ priority: priority as any }).eq("id", ticket.id);
+    const { error } = await supabase.from("support_tickets").update({ priority: priority }).eq("id", ticket.id);
     if (error) return toast.error(error.message);
   };
 

@@ -82,6 +82,7 @@ function renderCopy(
   copyLabel: "Original Copy" | "Duplicate Copy",
 ) {
   const contentW = PAGE_W - MARGIN * 2;
+  const fullPage=blockH>200;
   let y = startY;
 
   // Outer border for this copy
@@ -194,13 +195,13 @@ function renderCopy(
       5: { halign: "right", cellWidth: 14 }, 6: { halign: "right", cellWidth: 18 },
       7: { halign: "right", cellWidth: 14 }, 8: { halign: "right", cellWidth: 18 }, 9: { halign: "right", cellWidth: 20 },
     },
-    margin: { left: MARGIN, right: MARGIN },
+    margin: { left: MARGIN, right: MARGIN,top:MARGIN+12,bottom:fullPage?65:MARGIN },
+    didDrawPage: data=>{if(fullPage && data.pageNumber>1){doc.setFontSize(8);doc.text(`${copyLabel} - continued`,MARGIN,MARGIN);}},
     tableWidth: contentW,
-    pageBreak: "avoid",
+    pageBreak: fullPage?"auto":"avoid",
   });
 
-  // @ts-ignore
-  let cy: number = ((doc as any).lastAutoTable?.finalY ?? y + 10) + 3;
+  let cy: number = ((doc as jsPDF & {lastAutoTable?:{finalY:number}}).lastAutoTable?.finalY ?? y + 10) + 3;
 
   // Grand Total bar (right-aligned)
   const gtW = 70;
@@ -247,8 +248,7 @@ function renderCopy(
     tableWidth: contentW,
     pageBreak: "avoid",
   });
-  // @ts-ignore
-  cy = ((doc as any).lastAutoTable?.finalY ?? cy + 8) + 2;
+  cy = ((doc as jsPDF & {lastAutoTable?:{finalY:number}}).lastAutoTable?.finalY ?? cy + 8) + 2;
 
   // Amount in words
   doc.setFont("helvetica", "normal");
@@ -295,6 +295,15 @@ export function generateProformaDeliveryPdf(
   const blockH = (usableH - gap) / 2;
   const topY = MARGIN;
   const bottomY = MARGIN + blockH + gap;
+
+  doc.setFontSize(7);
+  const tableHeight=invoice.lines.reduce((sum,line)=>sum+Math.max(doc.splitTextToSize(line.item_name,invoice.is_inter_state?61:51).length*2.85+2.6,5.5),0);
+  if(tableHeight+110>blockH){
+    renderCopy(doc,business,party,invoice,taxableTotal,MARGIN,usableH,"Original Copy");
+    doc.addPage();
+    renderCopy(doc,business,party,invoice,taxableTotal,MARGIN,usableH,"Duplicate Copy");
+    return doc;
+  }
 
   renderCopy(doc, business, party, invoice, taxableTotal, topY, blockH, "Original Copy");
 

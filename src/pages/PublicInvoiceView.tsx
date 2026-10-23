@@ -1,3 +1,5 @@
+import type { Tables } from "@/integrations/supabase/types";
+import type { PdfBusiness,PdfParty } from "@/lib/invoicePdf";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,13 +8,14 @@ import { Download, FileText, Receipt } from "lucide-react";
 import { generateInvoicePdf } from "@/lib/invoicePdf";
 import { generateThermalReceipt } from "@/lib/thermalReceipt";
 
+type PublicInvoiceData={invoice:Tables<"invoices">&{taxable_total?:number;taxable_amount?:number};items:Tables<"invoice_items">[];business:PdfBusiness;party:PdfParty|null;settings:Tables<"invoice_settings">|null};
 type View = "invoice" | "pos";
 
 export default function PublicInvoiceView() {
   const { id } = useParams<{ id: string }>();
   const [params, setParams] = useSearchParams();
   const view = (params.get("view") as View) || "invoice";
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PublicInvoiceData|null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -25,7 +28,7 @@ export default function PublicInvoiceView() {
       setLoading(true);
       const { data: res, error } = await supabase.functions.invoke("public-invoice", { body: { id } });
       setLoading(false);
-      if (error || (res as any)?.error) { setError((res as any)?.error || error?.message || "Not found"); return; }
+      if (error || (res)?.error) { setError((res)?.error || error?.message || "Not found"); return; }
       setData(res);
     })();
   }, [id]);
@@ -43,7 +46,7 @@ export default function PublicInvoiceView() {
       setRendering(true);
       try {
         const { invoice, items, business, party, settings } = data;
-        const safeNum = String(invoice.invoice_number || "Document").replace(/[\/\\]/g, "-");
+        const safeNum = String(invoice.invoice_number || "Document").replace(/[/\\]/g, "-");
 
         if (view === "invoice") {
           const doc = await generateInvoicePdf(
@@ -67,7 +70,7 @@ export default function PublicInvoiceView() {
               is_inter_state: !!invoice.is_inter_state,
               subtotal: Number(invoice.subtotal) || 0,
               discount_amount: Number(invoice.discount_amount) || 0,
-              taxable_total: Number(invoice.taxable_total ?? invoice.taxable_amount ?? invoice.subtotal) || 0,
+              taxable_total: Number(invoice.taxable_total ?? invoice.taxable_amount ?? Math.max(0,Number(invoice.subtotal)-Number(invoice.discount_amount || 0))) || 0,
               cgst_amount: Number(invoice.cgst_amount) || 0,
               sgst_amount: Number(invoice.sgst_amount) || 0,
               igst_amount: Number(invoice.igst_amount) || 0,
@@ -76,7 +79,7 @@ export default function PublicInvoiceView() {
               paid_amount: Number(invoice.paid_amount) || 0,
               balance_amount: Number(invoice.balance_amount) || 0,
               notes: invoice.notes, terms: invoice.terms,
-              lines: (items ?? []).map((l: any) => ({
+              lines: (items ?? []).map((l) => ({
                 item_name: l.item_name,
                 hsn_code: l.hsn_code,
                 quantity: Number(l.quantity) || 0,
@@ -112,7 +115,7 @@ export default function PublicInvoiceView() {
               party_name: party?.name ?? null,
               party_phone: party?.phone ?? null,
               cashier: null,
-              lines: (items ?? []).map((l: any) => ({
+              lines: (items ?? []).map((l) => ({
                 item_name: l.item_name,
                 quantity: Number(l.quantity) || 0,
                 unit: l.unit,

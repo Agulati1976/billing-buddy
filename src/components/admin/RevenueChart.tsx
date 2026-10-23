@@ -16,7 +16,7 @@ export function RevenueChart({ data }: { data: { date: string; revenue: number }
           tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
         <Tooltip
           contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-          formatter={(v: any) => [`₹${Number(v).toLocaleString("en-IN")}`, "Revenue"]}
+          formatter={(v) => [`₹${Number(v).toLocaleString("en-IN")}`, "Revenue"]}
         />
         <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="url(#revGrad)" strokeWidth={2} />
       </AreaChart>

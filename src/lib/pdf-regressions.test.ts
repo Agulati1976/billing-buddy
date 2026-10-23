@@ -1,0 +1,14 @@
+// @vitest-environment node
+import {it,expect,vi} from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+vi.mock("@/lib/barcodeImage",()=>({makeBarcodeDataUrl:()=>null}));
+import {generateInvoicePdf,type PdfInvoice} from "./invoicePdf";
+import {generateThermalReceipt} from "./thermalReceipt";
+import {generateProformaDeliveryPdf} from "./proformaPdf";
+const lines=Array.from({length:80},(_,index)=>({item_name:`Product ${index+1}: Brand, variant and a detailed wrapped description of the supplied product`,hsn_code:"1234",quantity:1,unit:"pcs",price:100,discount_pct:0,tax_rate:18,taxable_amount:100,tax_amount:18,total_amount:118}));
+const invoice:PdfInvoice={type:"sale",invoice_number:"INV/2026/0001",invoice_date:"2026-10-23",is_inter_state:false,subtotal:8000,discount_amount:0,taxable_total:8000,cgst_amount:720,sgst_amount:720,igst_amount:0,round_off:0,total_amount:9440,paid_amount:9440,balance_amount:0,lines,notes:Array.from({length:55},(_,index)=>`Note ${index+1}: Keep this record for warranty and contact the business for assistance.`).join("\n"),terms:"Goods and quantities follow the signed delivery record."};
+function artifact(name:string,buffer:ArrayBuffer){if(process.env.BILLLOOK_PDF_ARTIFACTS){const dir=path.resolve("tests/.artifacts");fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,name),Buffer.from(buffer));}}
+it("paginates long invoices and keeps the final terms and signature",async()=>{const doc=await generateInvoicePdf({name:"Example Business With A Long Registered Trading Name",address:"New Delhi, India"},{name:"Example Customer",billing_address:"New Delhi"},invoice);expect(doc.getNumberOfPages()).toBeGreaterThan(2);const pdf=doc.output();expect(pdf).toContain("Goods and quantities follow");expect(pdf).toContain("Authorised Signatory");artifact("long-invoice.pdf",doc.output("arraybuffer"));});
+it("measures wrapped receipt rows and does not request another payment on a paid receipt",async()=>{const doc=await generateThermalReceipt({name:"Example Business",address:"New Delhi, India"},{...invoice,invoice_number:invoice.invoice_number,invoice_date:invoice.invoice_date,tax_amount:1440,payment_method:"Cash",paid_amount:9440,balance_amount:0},{upi_id:"example@upi",show_upi_qr:true});expect(doc.getNumberOfPages()).toBeGreaterThan(1);expect(doc.output()).not.toContain("Pay via UPI");expect(doc.output()).toContain("Thank you!");artifact("long-receipt.pdf",doc.output("arraybuffer"));});
+it("prints long delivery copies on separate pages instead of overlapping two half pages",()=>{const doc=generateProformaDeliveryPdf({name:"Example Business",address:"New Delhi"},{name:"Example Customer"},invoice);expect(doc.getNumberOfPages()).toBeGreaterThan(2);expect(doc.output()).toContain("Original Copy");expect(doc.output()).toContain("Duplicate Copy");artifact("long-delivery-copies.pdf",doc.output("arraybuffer"));});

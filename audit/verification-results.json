@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-23",
+  "branch": "codex/production-stabilization",
+  "baseline_commit": "02ed926",
+  "deployed": false,
+  "checks": {
+    "clean_npm_ci": true,
+    "release_check_exit": 0,
+    "unit_tests_passed": 26,
+    "postgres_tests_passed": 28,
+    "postgres_version": 17,
+    "postgres_concurrency_skipped": 0,
+    "edge_tests_passed": 15,
+    "edge_functions_typechecked": 11,
+    "browser_tests_passed": 14,
+    "owner_routes_visited": 27,
+    "admin_routes_visited": 13,
+    "production_build": true,
+    "application_typecheck": true,
+    "lint_errors": 0,
+    "lint_warnings": 0,
+    "production_dependency_vulnerabilities": 0,
+    "development_advisory_packages": 0,
+    "total_dependency_vulnerabilities": 0,
+    "real_auth_rest_browser_checks_passed": 15,
+    "hosted_rollback_smoke_checks_passed": 11,
+    "backup_restore_verified": true
+  },
+  "pdfs": [
+    {
+      "file": "long-delivery-copies.pdf",
+      "pages": 8,
+      "out_of_bounds_characters": 0
+    },
+    {
+      "file": "long-invoice.pdf",
+      "pages": 8,
+      "out_of_bounds_characters": 0
+    },
+    {
+      "file": "long-receipt.pdf",
+      "pages": 2,
+      "out_of_bounds_characters": 0
+    }
+  ],
+  "critical_file_sha256": {
+    "package-lock.json": "34fafeaf773abe26cd66db2f07c4db87e7b4a54080cc20c967a7df23af3b7ed7",
+    "supabase/migrations/20261023080621_secure_atomic_billing.sql": "291870416b7337aed158a41bacb66cf75510cb3043dc3725c5cc119126008f6e",
+    "src/integrations/supabase/types.ts": "9879c9db9bc1c4cdcab9b1ad1200c034e5b7f7da5e4aebb411176951aafe5b04"
+  },
+  "remaining_release_gates": [
+    "Coordinate database, edge functions, frontend and old-client/outbox transition using regular Hostinger hosting access",
+    "Verify external recovery-email delivery and Cashfree settlement/webhook delivery; no actual charge or outbound email performed",
+    "Reconcile historical migration bookkeeping before future automated pushes"
+  ],
+  "limits": [
+    "The full release migration was rehearsed on a restored backup and the actual hosted database with rollback, but is not permanently deployed",
+    "Auth/PostgREST integration and frontend ran against a local backup restore; this does not certify external email delivery or provider settlement",
+    "The large frontend main chunk remains performance maintenance work",
+    "Regular Hostinger hosting tools are unavailable in this session; the exposed agency inventory has no billlook.com website"
+  ],
+  "staging": {
+    "real_api_report": "evidence/staging-results.json",
+    "hosted_rehearsal_report": "evidence/hosted-transaction-results.json",
+    "auth_version": "v2.197.0",
+    "postgrest_version": "v14.5",
+    "postgres_version": "17.6.1.104",
+    "external_email_delivery_tested": false,
+    "provider_settlement_tested": false,
+    "test_users_cleaned_up": true
+  },
+  "stock_reconciliation": {
+    "report": "evidence/stock-reconciliation-results.json",
+    "run_id": "fe0048b6-0214-40a2-a114-7702493ffc16",
+    "authority": "User confirmed affected records are test data; existing batch quantities used as authority",
+    "items_reviewed": 6,
+    "ledger_corrections": 6,
+    "item_totals_changed": 1,
+    "batch_mismatches_after": 0,
+    "movement_history_mismatches_after": 0
+  }
+}

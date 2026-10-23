@@ -140,7 +140,7 @@ export function ItemPickerDialog({ open, onOpenChange, items, mode = "multi", on
             <div className="text-sm text-muted-foreground text-center py-8">No items found.</div>
           )}
           {filtered.map((it) => {
-            const rows = composeItemLines(it as any);
+            const rows = composeItemLines(it);
             const isSel = !!selected[it.id];
             return (
               <button

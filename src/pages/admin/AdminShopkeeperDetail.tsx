@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import type { Tables } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -19,20 +22,20 @@ import { Receipt, Wallet, AlertCircle, Package, Users as UsersIcon } from "lucid
 export default function AdminShopkeeperDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const [biz, setBiz] = useState<any>(null);
-  const [owner, setOwner] = useState<any>(null);
+  const [biz, setBiz] = useState<Tables<"businesses"> | null>(null);
+  const [owner, setOwner] = useState<Tables<"profiles"> | null>(null);
   const [counts, setCounts] = useState({ items: 0, parties: 0, invoices: 0, revenue: 0, paid: 0, due: 0, members: 0 });
-  const [members, setMembers] = useState<any[]>([]);
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
-  const [parties, setParties] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [feat, setFeat] = useState<any>(null);
+  const [members, setMembers] = useState<Array<Pick<Tables<"user_roles">,"user_id"|"role">&Partial<Pick<Tables<"profiles">,"full_name"|"email">>>>([]);
+  const [invoices, setInvoices] = useState<Array<Pick<Tables<"invoices">,"id"|"invoice_number"|"type"|"status"|"total_amount"|"paid_amount"|"balance_amount"|"invoice_date">>>([]);
+  const [items, setItems] = useState<Array<Pick<Tables<"items">,"id"|"name"|"type"|"current_stock"|"sale_price">>>([]);
+  const [parties, setParties] = useState<Array<Pick<Tables<"parties">,"id"|"name"|"type"|"phone"|"email">>>([]);
+  const [payments, setPayments] = useState<Array<Pick<Tables<"payments">,"id"|"amount"|"method"|"payment_date"|"reference">>>([]);
+  const [feat, setFeat] = useState<Tables<"business_features"> | null>(null);
   const [savingPos, setSavingPos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     const { data: b } = await supabase.from("businesses").select("*").eq("id", id).maybeSingle();
@@ -42,14 +45,14 @@ export default function AdminShopkeeperDetail() {
       setOwner(o);
     }
     const [itemsR, partiesR, invsR, roles, feats, pays] = await Promise.all([
-      supabase.from("items").select("id, name, type, current_stock, sale_price").eq("business_id", id).limit(100),
-      supabase.from("parties").select("id, name, type, phone, email").eq("business_id", id).limit(100),
-      supabase.from("invoices").select("id, invoice_number, type, status, total_amount, paid_amount, balance_amount, invoice_date").eq("business_id", id).order("invoice_date", { ascending: false }).limit(100),
-      supabase.from("user_roles").select("user_id, role").eq("business_id", id),
+      allRows(supabase.from("items").select("id, name, type, current_stock, sale_price").eq("business_id", id)),
+      allRows(supabase.from("parties").select("id, name, type, phone, email").eq("business_id", id)),
+      allRows(supabase.from("invoices").select("id, invoice_number, type, status, total_amount, paid_amount, balance_amount, invoice_date").eq("business_id", id).is("deleted_at",null).order("invoice_date", { ascending: false })),
+      allRows(supabase.from("user_roles").select("user_id, role").eq("business_id", id)),
       supabase.from("business_features").select("*").eq("business_id", id).maybeSingle(),
-      supabase.from("payments").select("id, amount, method, payment_date, reference").eq("business_id", id).order("payment_date", { ascending: false }).limit(100),
+      allRows(supabase.from("payments").select("id, amount, method, payment_date, reference").eq("business_id", id).order("payment_date", { ascending: false })),
     ]);
-    const sales = (invsR.data ?? []).filter((i: any) => i.type === "sale");
+    const sales = (invsR.data ?? []).filter((i) => ["sale","non_inventory","sale_return"].includes(i.type));
     setInvoices(invsR.data ?? []);
     setItems(itemsR.data ?? []);
     setParties(partiesR.data ?? []);
@@ -59,21 +62,21 @@ export default function AdminShopkeeperDetail() {
       items: itemsR.data?.length ?? 0,
       parties: partiesR.data?.length ?? 0,
       invoices: sales.length,
-      revenue: sales.reduce((s, i: any) => s + Number(i.total_amount || 0), 0),
-      paid: sales.reduce((s, i: any) => s + Number(i.paid_amount || 0), 0),
-      due: sales.reduce((s, i: any) => s + Number(i.balance_amount || 0), 0),
+      revenue: sales.reduce((s, i) => s + (i.type==="sale_return"?-1:1)*Number(i.total_amount || 0), 0),
+      paid: sales.reduce((s, i) => s + (i.type==="sale_return"?-1:1)*Number(i.paid_amount || 0), 0),
+      due: sales.reduce((s, i) => s + (i.type==="sale_return"?0:Number(i.balance_amount || 0)), 0),
       members: roles.data?.length ?? 0,
     });
-    const memberIds = (roles.data ?? []).map((r: any) => r.user_id);
+    const memberIds = (roles.data ?? []).map((r) => r.user_id);
     if (memberIds.length) {
-      const { data: profs } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", memberIds);
-      const map = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
-      setMembers((roles.data ?? []).map((r: any) => ({ ...r, ...(map.get(r.user_id) ?? {}) })));
+      const { data: profs } = await allRows(supabase.from("profiles").select("user_id, full_name, email").in("user_id", memberIds));
+      const map = new Map((profs ?? []).map((p) => [p.user_id, p]));
+      setMembers((roles.data ?? []).map((r) => ({ ...r, ...(map.get(r.user_id) ?? {}) })));
     } else setMembers([]);
     setLoading(false);
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [id, load]);
 
   const togglePos = async (next: boolean) => {
     if (!id || !user) return;
@@ -86,7 +89,7 @@ export default function AdminShopkeeperDetail() {
       });
       toast.success(next ? "POS enabled" : "POS disabled");
       load();
-    } catch (e: any) { toast.error(e.message ?? "Failed"); }
+    } catch (e: unknown) { toast.error(errorMessage(e) ?? "Failed"); }
     finally { setSavingPos(false); }
   };
 
@@ -95,7 +98,7 @@ export default function AdminShopkeeperDetail() {
     if (confirmMsg && !confirm(confirmMsg)) return;
     setWorking(true);
     try { await callAdminAction(action, id); toast.success(ok); load(); }
-    catch (e: any) { toast.error(e.message ?? "Failed"); }
+    catch (e: unknown) { toast.error(errorMessage(e) ?? "Failed"); }
     finally { setWorking(false); }
   };
 
@@ -103,7 +106,7 @@ export default function AdminShopkeeperDetail() {
     if (!biz?.owner_id) return;
     setWorking(true);
     try { await callAdminAction("reset_user_password", biz.owner_id); toast.success("Password reset email sent"); }
-    catch (e: any) { toast.error(e.message ?? "Failed"); }
+    catch (e: unknown) { toast.error(errorMessage(e) ?? "Failed"); }
     finally { setWorking(false); }
   };
 

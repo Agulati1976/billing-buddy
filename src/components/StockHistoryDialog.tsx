@@ -1,3 +1,6 @@
+import { allRows } from "@/lib/pagination";
+import { toCsv } from "@/lib/csv";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Download, History, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import type { ItemRow } from "@/components/ItemDialog";
-import { fetchInvoiceLinksForReferenceIds, invoiceViewRoute, type StockMovementInvoiceLink } from "@/lib/stockMovementLinks";
+import { fetchInvoiceLinksForMovements, invoiceViewRoute, type StockMovementInvoiceLink } from "@/lib/stockMovementLinks";
 import { INVOICE_TYPE_META } from "@/lib/invoice";
 
 type Movement = {
@@ -17,6 +20,8 @@ type Movement = {
   quantity: number;
   notes: string | null;
   reference_id: string | null;
+  invoice_id: string | null;
+  invoice_number_snapshot: string | null;
   batch_id: string | null;
   created_at: string;
   batches?: { batch_number: string } | null;
@@ -48,24 +53,26 @@ export function StockHistoryDialog({
   const [rows, setRows] = useState<Movement[]>([]);
   const [links, setLinks] = useState<Map<string, StockMovementInvoiceLink>>(new Map());
   const [loading, setLoading] = useState(false);
+  const {features}=usePermissions();
   const navigate = useNavigate();
 
+  const itemId = item?.id;
+
   useEffect(() => {
-    if (!open || !item) return;
+    if (!open || !itemId) return;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await allRows(supabase
         .from("stock_movements")
-        .select("id, type, quantity, notes, reference_id, batch_id, created_at, batches(batch_number)")
-        .eq("item_id", item.id)
-        .order("created_at", { ascending: true });
+        .select("id, type, quantity, notes, reference_id, invoice_id, invoice_number_snapshot, batch_id, created_at, batches(batch_number)")
+        .eq("item_id", itemId)
+        .order("created_at", { ascending: true }));
       if (error) toast.error(error.message);
-      else setRows((data ?? []) as any as Movement[]);
-      const refIds = ((data ?? []) as any[]).map((r) => r.reference_id).filter(Boolean);
-      setLinks(await fetchInvoiceLinksForReferenceIds(refIds));
+      else setRows((data ?? []) as Movement[]);
+      setLinks(await fetchInvoiceLinksForMovements(data??[]));
       setLoading(false);
     })();
-  }, [open, item?.id]);
+  }, [open, itemId]);
 
   // Reverse for display (newest first) but compute running balance forward
   const withBalance = useMemo(() => {
@@ -80,6 +87,7 @@ export function StockHistoryDialog({
 
   const exportCSV = () => {
     if (!item) return;
+    if(!features.reports_export){toast.error("CSV export is not included in this plan");return;}
     const header = ["Date", "Type", "Change", "Balance", "Notes"];
     const lines = [...withBalance].reverse().map((r) =>
       [
@@ -88,9 +96,9 @@ export function StockHistoryDialog({
         (r.signed > 0 ? "+" : "") + r.signed,
         r.balance,
         (r.notes ?? "").replace(/[\r\n,]/g, " "),
-      ].join(",")
+      ]
     );
-    const csv = [header.join(","), ...lines].join("\n");
+    const csv = toCsv([header,...lines]);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -135,7 +143,7 @@ export function StockHistoryDialog({
             ) : withBalance.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No stock movements yet.</TableCell></TableRow>
             ) : withBalance.map((r) => {
-              const link = r.reference_id ? links.get(r.reference_id) : undefined;
+              const link = links.get(r.id);
               const route = link ? invoiceViewRoute(link.type, link.invoiceId) : null;
               return (
                 <TableRow key={r.id}>
@@ -166,7 +174,7 @@ export function StockHistoryDialog({
                         )}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground">{r.notes ?? "—"}</span>
+                      <span className="text-muted-foreground">{r.invoice_number_snapshot ? `Invoice: ${r.invoice_number_snapshot} (archived)` : r.notes ?? "—"}</span>
                     )}
                   </TableCell>
                 </TableRow>

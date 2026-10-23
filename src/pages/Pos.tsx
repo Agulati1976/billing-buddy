@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate } from "react-router-dom";
+import type { Tables } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { omInsert, omInsertMany, omUpdate, omDelete } from "@/lib/offlineMutate";
+import { omInsert, omDelete } from "@/lib/offlineMutate";
+import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
+import { businessDate } from "@/lib/dates";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { usePosAccess } from "@/hooks/usePosAccess";
@@ -27,7 +32,7 @@ import { useHardwareScanner } from "@/hooks/useHardwareScanner";
 import { Mic, MicOff } from "lucide-react";
 
 interface Item {
-  id: string; name: string; barcode: string | null; sale_price: number;
+  type?: "product" | "service"; id: string; name: string; barcode: string | null; sale_price: number;
   tax_rate: number; unit: string; unit_size?: number | null; hsn_code: string | null; current_stock: number;
   is_batch_tracked?: boolean;
   image_url?: string | null;
@@ -53,8 +58,15 @@ const toDbMethod = (m: PaymentMethod): "cash" | "bank" | "upi" | "cheque" | "car
 const newKey = () => Math.random().toString(36).slice(2);
 
 export default function Pos() {
+  const navigate=useNavigate();
+  const completingRef=useRef(false);
+  const invoiceIdRef=useRef(crypto.randomUUID());
+  const operationIdRef=useRef(crypto.randomUUID());
+  const [completing,setCompleting]=useState(false);
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
+  const userId = user?.id;
   const { canUsePos, posEnabled, hasPosAccess, loading: accessLoading } = usePosAccess();
 
   const [items, setItems] = useState<Item[]>([]);
@@ -74,14 +86,14 @@ export default function Pos() {
   const [holdOpen, setHoldOpen] = useState(false);
   const [resumeOpen, setResumeOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [held, setHeld] = useState<any[]>([]);
-  const [session, setSession] = useState<any | null>(null);
+  const [held, setHeld] = useState<Tables<"pos_held_carts">[]>([]);
+  const [session, setSession] = useState<Tables<"pos_sessions"> | null>(null);
   const [openSessionDialog, setOpenSessionDialog] = useState(false);
   const [closeSessionDialog, setCloseSessionDialog] = useState(false);
   const [openingCash, setOpeningCash] = useState("0");
   const [closingCash, setClosingCash] = useState("0");
   const [returnsOpen, setReturnsOpen] = useState(false);
-  const [returnsItems, setReturnsItems] = useState<any[]>([]);
+  const [returnsItems, setReturnsItems] = useState<Array<Pick<Tables<"invoices">,"id"|"invoice_number"|"invoice_date"|"total_amount"|"party_id">>>([]);
   const [returnsSearch, setReturnsSearch] = useState("");
   const [upiSettings, setUpiSettings] = useState<{ upi_id?: string | null; upi_payee_name?: string | null; show_upi_qr?: boolean | null } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -89,36 +101,36 @@ export default function Pos() {
 
   // Load reference data
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     Promise.all([
-      supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
-      supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name"),
-      supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
-      supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+      allRows(supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,type,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", currentId).order("name")),
+      allRows(supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", currentId).eq("type", "customer").order("name")),
+      supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", currentId).maybeSingle(),
+      allRows(supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", currentId).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
     ]).then(([it, p, s, b]) => {
-      setItems((it.data as any) ?? []);
-      setParties((p.data as any) ?? []);
-      setUpiSettings((s.data as any) ?? null);
-      setBatches((b.data as any) ?? []);
+      setItems((it.data) ?? []);
+      setParties((p.data) ?? []);
+      setUpiSettings((s.data) ?? null);
+      setBatches((b.data) ?? []);
     });
-  }, [current?.id]);
+  }, [currentId]);
 
   // Load active session
   useEffect(() => {
-    if (!current || !user) return;
+    if (!currentId || !userId) return;
     supabase.from("pos_sessions").select("*")
-      .eq("business_id", current.id).eq("opened_by", user.id).is("closed_at", null)
+      .eq("business_id", currentId).eq("opened_by", userId).is("closed_at", null)
       .order("opened_at", { ascending: false }).limit(1)
       .then(({ data }) => setSession(data?.[0] ?? null));
-  }, [current?.id, user?.id]);
+  }, [currentId, userId]);
 
   // Refresh held carts
-  const refreshHeld = async () => {
-    if (!current) return;
-    const { data } = await supabase.from("pos_held_carts").select("*").eq("business_id", current.id).order("created_at", { ascending: false });
+  const refreshHeld = useCallback(async () => {
+    if (!currentId) return;
+    const { data } = await allRows(supabase.from("pos_held_carts").select("*").eq("business_id", currentId).order("created_at", { ascending: false }));
     setHeld(data ?? []);
-  };
-  useEffect(() => { refreshHeld(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { refreshHeld(); }, [currentId, refreshHeld]);
 
   // Filter
   const filtered = useMemo(() => {
@@ -148,7 +160,7 @@ export default function Pos() {
     setCart((prev) => {
       const keyMatch = (l: CartLine) => l.item_id === it.id && (l.batch_id ?? null) === (batch?.id ?? null);
       const existing = prev.find(keyMatch);
-      const available = batch ? Number(batch.quantity) || 0 : Number(it.current_stock) || 0;
+      const available = it.type==="service" ? Infinity : batch ? Number(batch.quantity) || 0 : Number(it.current_stock) || 0;
       const nextQty = (existing ? Number(existing.quantity) : 0) + 1;
       if (nextQty > available) {
         toast.error(`Out of stock: ${it.name}${batch ? ` (batch ${batch.batch_number})` : ""} has only ${available} ${it.unit} available`);
@@ -188,7 +200,7 @@ export default function Pos() {
       return;
     }
     try {
-      const created: any = await createItemFromCatalog(hit, current.id, user.id);
+      const created = await createItemFromCatalog(hit, current.id, user.id);
       const newItem: Item = {
         id: created.id,
         name: created.name,
@@ -203,8 +215,8 @@ export default function Pos() {
       setItems((prev) => [newItem, ...prev]);
       addToCart(newItem);
       toast.success(`Added ${newItem.name} (from catalog) — set your sale price in Items.`);
-    } catch (e: any) {
-      toast.error(e.message || "Could not auto-create item from catalog");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Could not auto-create item from catalog");
     }
   };
 
@@ -230,8 +242,8 @@ export default function Pos() {
   const totalPaid = cashPaid + creditAmt; // total tendered including credit allocation
   const change = cashPaid - Math.max(0, totals.total_amount - creditAmt);
 
-  const validateCartStock = async () => {
-    if (!current) return false;
+  const validateCartStock = useCallback(async () => {
+    if (!currentId) return false;
     const reqItem = new Map<string, number>();
     const reqBatch = new Map<string, number>();
     for (const line of cart) {
@@ -245,15 +257,16 @@ export default function Pos() {
     }
 
     if (reqItem.size > 0) {
-      const { data, error } = await supabase
+      const { data, error } = await allRows(supabase
         .from("items")
-        .select("id,name,unit,current_stock,is_batch_tracked")
-        .eq("business_id", current.id)
-        .in("id", Array.from(reqItem.keys()));
+        .select("id,name,unit,current_stock,type,is_batch_tracked")
+        .eq("business_id", currentId)
+        .in("id", Array.from(reqItem.keys())));
       if (error) { toast.error(error.message); return false; }
-      const fresh = new Map((data ?? []).map((item: any) => [item.id, item]));
+      const fresh = new Map((data ?? []).map((item) => [item.id, item]));
       for (const [itemId, need] of reqItem) {
         const item = fresh.get(itemId);
+        if (item?.type==="service") continue;
         if (item?.is_batch_tracked) {
           toast.error(`${item.name} is batch-tracked. Remove it and re-add by picking a batch.`);
           return false;
@@ -267,14 +280,14 @@ export default function Pos() {
     }
 
     if (reqBatch.size > 0) {
-      const { data, error } = await supabase
+      const { data, error } = await allRows(supabase
         .from("batches")
         .select("id,batch_number,quantity,item_id,items(name,unit)")
-        .in("id", Array.from(reqBatch.keys()));
+        .in("id", Array.from(reqBatch.keys())));
       if (error) { toast.error(error.message); return false; }
-      const fresh = new Map((data ?? []).map((b: any) => [b.id, b]));
+      const fresh = new Map((data ?? []).map((b) => [b.id, b]));
       for (const [batchId, need] of reqBatch) {
-        const b: any = fresh.get(batchId);
+        const b = fresh.get(batchId);
         const available = Number(b?.quantity ?? 0);
         if (!b || need > available) {
           toast.error(`Out of stock: batch ${b?.batch_number ?? ""}${b?.items?.name ? ` of ${b.items.name}` : ""} has only ${available} ${b?.items?.unit ?? ""} available. Pick another batch.`);
@@ -283,35 +296,39 @@ export default function Pos() {
       }
     }
     return true;
-  };
+  }, [cart, currentId]);
 
 
-  const openPayment = async () => {
+  const openPayment = useCallback(async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    if (!session) {setOpenSessionDialog(true);return;}
     if (!(await validateCartStock())) return;
     setSplits([{ method: "cash", amount: totals.total_amount }]);
     setPaymentOpen(true);
-  };
+  }, [cart.length, session, totals.total_amount, validateCartStock]);
 
   const completeSale = async () => {
-    if (!current || !user) return;
+    if (!current || !user || completingRef.current) return;
+    if (!session) {setOpenSessionDialog(true);return;}
+    if (totalPaid < totals.total_amount) {toast.error("Allocate the full amount to payment or credit");return;}
     if (totalPaid <= 0) { toast.error("Enter payment amount"); return; }
-    if (!(await validateCartStock())) return;
+    completingRef.current=true;setCompleting(true);
     // Actual money received (excluding credit allocation), capped at total
     const recordedPaid = Math.min(cashPaid, totals.total_amount);
     try {
+      if (!(await validateCartStock())) return;
       // Suggest invoice number (cached GET works offline; suffix when offline to avoid clashes)
       let number: string;
       try {
-        const pin = (current as any).pincode as string | null;
-        const rank = (current as any).pincode_rank as number | null;
+        const pin = (current).pincode as string | null;
+        const rank = (current).pincode_rank as number | null;
         if (pin && rank) {
-          const todayISO = new Date().toISOString().slice(0, 10);
+          const todayISO = businessDate();
           const base = shopInvoiceBase(pin, rank, todayISO);
-          const { data } = await supabase.from("invoices")
+          const { data } = await allRows(supabase.from("invoices")
             .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
-            .like("invoice_number", `${base}%`);
-          number = pickShopInvoiceNumber(base, (data ?? []).map((r: any) => r.invoice_number));
+            .like("invoice_number", `${base}%`));
+          number = pickShopInvoiceNumber(base, (data ?? []).map((r) => r.invoice_number));
         } else {
           const { data: last } = await supabase.from("invoices")
             .select("invoice_number").eq("business_id", current.id).eq("type", "sale")
@@ -331,7 +348,7 @@ export default function Pos() {
       const status: "paid" | "partial" | "unpaid" =
         balanceDue <= 0 ? "paid" : paidNow > 0 ? "partial" : "unpaid";
 
-      const invoiceId = crypto.randomUUID();
+      const invoiceId = invoiceIdRef.current;
       // Drop zero-quantity lines (e.g. a cart line stepped down to 0 instead of
       // removed) — a 0-qty row is a no-op financially but shouldn't be persisted.
       const nonZeroCart = cart.filter((l) => Number(l.quantity) !== 0);
@@ -347,57 +364,26 @@ export default function Pos() {
           })
         : nonZeroCart;
       const savedTotals = computeInvoice(linesForSave, isInter, { isGst, extraDiscount: Number(extraDiscount) || 0 });
-      // Seed with paid=0/balance=total/status=unpaid — the apply_payment_to_invoice
-      // trigger will update these when the payment rows below are inserted.
-      // Setting paid_amount here as well caused the trigger to double-count and
-      // wiped out the credit portion of partial-cash + partial-credit sales.
-      const invRes = await omInsert("invoices", {
-        id: invoiceId,
-        business_id: current.id, party_id: partyId || null, type: "sale",
-        invoice_number: number, invoice_date: new Date().toISOString().slice(0, 10),
-        is_inter_state: isInter, is_gst: isGst,
-        subtotal: savedTotals.subtotal, discount_amount: savedTotals.discount_amount,
-        extra_discount: savedTotals.extra_discount, tax_amount: savedTotals.tax_amount,
-        cgst_amount: savedTotals.cgst_amount, sgst_amount: savedTotals.sgst_amount, igst_amount: savedTotals.igst_amount,
-        round_off: savedTotals.round_off, total_amount: savedTotals.total_amount,
-        paid_amount: 0, balance_amount: savedTotals.total_amount, status: "unpaid",
-        party_state_code: party?.state_code ?? null, created_by: user.id,
-        pos_session_id: session?.id ?? null,
-      });
-      if (invRes.error) throw invRes.error;
-      const queuedAny = invRes.queued;
+      let remaining=savedTotals.total_amount;
+      const payments=splits.filter(s=>s.method!=="credit" && Number(s.amount)>0).map(split=>{
+        const amount=Math.min(Number(split.amount),remaining); remaining-=amount;
+        return {id:crypto.randomUUID(),method:toDbMethod(split.method),amount};
+      }).filter(payment=>payment.amount>0);
+      const invoice={id:invoiceId,business_id:current.id,party_id:partyId || null,type:"sale",
+        invoice_number:number,auto_number:true,invoice_date:businessDate(),is_gst:isGst,
+        extra_discount:Number(extraDiscount)||0,pos_session_id:session.id,channel:"pos"};
+      const result=await billingTransaction("save_invoice",current.id,{
+        p_operation_id:operationIdRef.current,p_invoice:jsonValue(invoice),p_lines:jsonValue(linesForSave),
+        p_payments:jsonValue(payments),p_batches:[],p_expected_updated_at:null,
+      },{...invoice,...savedTotals,paid_amount:paidNow,balance_amount:balanceDue});
+      if(result.error)throw result.error;
+      number=result.data.invoice_number;
+      // Clear checkout before printing: a printer/download failure cannot submit it again.
+      setCart([]);setPartyId("");setExtraDiscount("0");setSplits([{method:"cash",amount:0}]);setPaymentOpen(false);
+      invoiceIdRef.current=crypto.randomUUID();operationIdRef.current=crypto.randomUUID();
+      toast.success(result.queued ? `Sale ${number} saved offline — pending validation` : `Sale ${number} completed`);
 
-      const lineRows = savedTotals.lines.map((l) => ({
-        invoice_id: invoiceId, item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
-        quantity: l.quantity, unit: l.unit, price: l.price, discount_pct: l.discount_pct,
-        tax_rate: l.tax_rate, taxable_amount: l.taxable_amount, tax_amount: l.tax_amount,
-        total_amount: l.total_amount, batch_id: l.batch_id ?? null,
-      }));
-      const liRes = await omInsertMany("invoice_items", lineRows);
-      if (liRes.error) throw liRes.error;
-
-      // Record one payment row per non-credit split, capped at total
-      const paySplits = splits
-        .filter((s) => s.method !== "credit" && Number(s.amount) > 0)
-        .map((s) => ({ ...s, amount: Number(s.amount) }));
-      let remaining = totals.total_amount;
-      const payRows = [] as any[];
-      for (const s of paySplits) {
-        if (remaining <= 0) break;
-        const amt = Math.min(s.amount, remaining);
-        remaining -= amt;
-        payRows.push({
-          business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
-          direction: "in", method: toDbMethod(s.method), amount: amt,
-          payment_date: new Date().toISOString().slice(0, 10),
-          notes: creditAmt > 0 ? `POS · ${PAYMENT_LABEL[s.method]} (credit: Rs.${creditAmt.toFixed(2)})` : `POS · ${PAYMENT_LABEL[s.method]}`,
-          created_by: user.id,
-        });
-      }
-      if (payRows.length) await omInsertMany("payments", payRows);
-
-      toast.success(queuedAny || liRes.queued ? `Sale ${number} saved offline — will sync` : `Sale ${number} completed`);
-
+      try {
       // Print thermal
       const methodSummary = splits.filter((s) => Number(s.amount) > 0).map((s) => `${PAYMENT_LABEL[s.method]}: Rs.${Number(s.amount).toFixed(2)}`).join(" + ");
       const receipt = await generateThermalReceipt(
@@ -421,19 +407,19 @@ export default function Pos() {
       receipt.autoPrint();
       await savePdf(receipt, `POS-Receipt-${Date.now()}.pdf`);
 
-      // Reset
-      setCart([]); setPartyId(""); setExtraDiscount("0");
-      setSplits([{ method: "cash", amount: 0 }]); setPaymentOpen(false);
+      } catch {
+        toast.error("Sale saved. Receipt could not be printed; open Sale Invoices to print it again.");
+      }
       // Refresh items & batches stock
       const [itRes, bRes] = await Promise.all([
-        supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name"),
-        supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+        allRows(supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,type,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name")),
+        allRows(supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
       ]);
-      setItems((itRes.data as any) ?? []);
-      setBatches((bRes.data as any) ?? []);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to save sale");
-    }
+      setItems((itRes.data) ?? []);
+      setBatches((bRes.data) ?? []);
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Failed to save sale");
+    } finally { completingRef.current=false;setCompleting(false); }
   };
 
   const downloadA4 = async () => {
@@ -443,11 +429,11 @@ export default function Pos() {
     const { data: design } = await supabase
       .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
     const pdf = await generateInvoicePdf(
-      { name: current.name, gstin: current.gstin, phone: current.phone, email: current.email, address: current.address, state: current.state, state_code: current.state_code, logo_url: (current as any).logo_url },
+      { name: current.name, gstin: current.gstin, phone: current.phone, email: current.email, address: current.address, state: current.state, state_code: current.state_code, logo_url: (current).logo_url },
       party ? { name: party.name, gstin: party.gstin, phone: party.phone, state_code: party.state_code } : null,
       {
         type: "sale", invoice_number: "DRAFT",
-        invoice_date: new Date().toISOString().slice(0, 10),
+        invoice_date: businessDate(),
         is_inter_state: isInter,
         subtotal: totals.subtotal, discount_amount: totals.discount_amount,
         taxable_total: totals.taxable_total, cgst_amount: totals.cgst_amount,
@@ -463,8 +449,8 @@ export default function Pos() {
         template: design.template, accent_color: design.accent_color,
         footer_text: design.footer_text, signature_label: design.signature_label,
         show_signature: design.show_signature, show_amount_in_words: design.show_amount_in_words,
-        upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name,
-        show_upi_qr: (design as any).show_upi_qr,
+        upi_id: (design).upi_id, upi_payee_name: (design).upi_payee_name,
+        show_upi_qr: (design).show_upi_qr,
       } : undefined,
     );
     await savePdf(pdf, `POS-${Date.now()}.pdf`);
@@ -506,20 +492,29 @@ export default function Pos() {
     const res = await omInsert("pos_held_carts", {
       business_id: current.id, created_by: user.id,
       label: holdLabel || `Cart ${new Date().toLocaleTimeString()}`,
-      party_id: partyId || null, cart: { lines: cart, isGst, extraDiscount } as any,
+      party_id: partyId || null, cart: jsonValue({ lines: cart, isGst, pricesIncludeTax, extraDiscount }),
     });
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Cart held offline" : "Cart held");
     setCart([]); setPartyId(""); setHoldLabel(""); setHoldOpen(false);
     refreshHeld();
   };
 
-  const resumeCart = async (h: any) => {
-    setCart((h.cart?.lines ?? []).map((l: any) => ({ ...l, _key: newKey() })));
+  const heldData=(h:Tables<"pos_held_carts">)=>{
+    const raw=h.cart;
+    if(!raw || typeof raw!=="object" || Array.isArray(raw))return {lines:[] as CartLine[],isGst:true,pricesIncludeTax:false,extraDiscount:"0"};
+    const lines=Array.isArray(raw.lines)?raw.lines.filter(line=>line && typeof line==="object" && !Array.isArray(line) && typeof line.item_name==="string") as unknown as CartLine[]:[];
+    return {lines,isGst:raw.isGst!==false,pricesIncludeTax:raw.pricesIncludeTax===true,extraDiscount:String(raw.extraDiscount??"0")};
+  };
+  const resumeCart = async (h: Tables<"pos_held_carts">) => {
+    const saved=heldData(h);
+    if(!saved.lines.length || saved.lines.some(line=>Number(line.quantity)<=0 || !Number.isFinite(Number(line.price)))){toast.error("This held cart needs review. Re-enter it before discarding the saved copy.");return;}
+    const result=await omDelete("pos_held_carts", { column: "id", value: h.id });
+    if(result.error){toast.error(result.error.message);return;}
+    setCart(saved.lines.map(line=>({...line,_key:newKey(),max_stock:items.find(item=>item.id===line.item_id)?.type==="service"?Infinity:line.max_stock})));
     setPartyId(h.party_id ?? "");
-    setIsGst(h.cart?.isGst ?? true);
-    setExtraDiscount(h.cart?.extraDiscount ?? "0");
-    await omDelete("pos_held_carts", { column: "id", value: h.id });
+    setIsGst(saved.isGst);setPricesIncludeTax(saved.pricesIncludeTax);
+    setExtraDiscount(saved.extraDiscount);
     refreshHeld();
     setResumeOpen(false);
     toast.success("Cart resumed");
@@ -528,27 +523,18 @@ export default function Pos() {
   // Day open/close
   const openDay = async () => {
     if (!current || !user) return;
-    const { data, error } = await supabase.from("pos_sessions").insert({
-      business_id: current.id, opened_by: user.id, opening_cash: Number(openingCash) || 0,
-    }).select().single();
-    if (error) { toast.error(error.message); return; }
-    setSession(data); setOpenSessionDialog(false);
-    toast.success("Day opened");
+    const id=crypto.randomUUID();
+    const result=await billingTransaction("open_pos_session",current.id,{p_operation_id:crypto.randomUUID(),p_business_id:current.id,p_session_id:id,p_opening_cash:Number(openingCash)},
+      {id,business_id:current.id,opened_by:user.id,opening_cash:Number(openingCash),opened_at:new Date().toISOString(),closed_at:null,closing_cash:null,expected_cash:null,notes:null});
+    if(result.error){toast.error(result.error.message);return;}
+    setSession(result.data);setOpenSessionDialog(false);
+    toast.success(result.queued ? "Day opening saved offline — pending validation" : "Day opened");
   };
   const closeDay = async () => {
     if (!session) return;
-    // expected = opening + sum cash payments today for this session
-    const { data: pays } = await supabase.from("payments").select("amount,method")
-      .eq("business_id", current!.id).eq("direction", "in").is("deleted_at", null)
-      .gte("created_at", session.opened_at);
-    const cashIn = (pays ?? []).filter((p: any) => p.method === "cash").reduce((s, p: any) => s + Number(p.amount), 0);
-    const expected = Number(session.opening_cash) + cashIn;
-    const { error } = await supabase.from("pos_sessions").update({
-      closed_at: new Date().toISOString(),
-      closing_cash: Number(closingCash) || 0, expected_cash: expected,
-    }).eq("id", session.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Day closed. Expected Rs.${expected.toFixed(2)}, counted Rs.${closingCash}`);
+    const result=await billingTransaction("close_pos_session",current!.id,{p_operation_id:crypto.randomUUID(),p_session_id:session.id,p_closing_cash:Number(closingCash)},{expected_cash:0});
+    if(result.error){toast.error(result.error.message);return;}
+    toast.success(result.queued ? "Closing request saved offline — pending validation" : `Day closed. Expected Rs.${Number(result.data.expected_cash).toFixed(2)}, counted Rs.${closingCash}`);
     setSession(null); setCloseSessionDialog(false); setClosingCash("0");
   };
 
@@ -561,16 +547,9 @@ export default function Pos() {
       .order("created_at", { ascending: false }).limit(50);
     setReturnsItems(data ?? []);
   };
-  const startReturn = async (inv: any) => {
-    const { data: lines } = await supabase.from("invoice_items").select("*").eq("invoice_id", inv.id);
-    setCart((lines ?? []).map((l: any) => ({
-      _key: newKey(), item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
-      quantity: -Math.abs(Number(l.quantity)), unit: l.unit, price: Number(l.price),
-      discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate), batch_id: l.batch_id,
-    })));
-    setPartyId(inv.party_id ?? "");
+  const startReturn = async (inv: {id:string}) => {
     setReturnsOpen(false);
-    toast.info("Loaded as return (negative quantities). Review then complete sale.");
+    navigate(`/sale_returns/new?from=${encodeURIComponent(inv.id)}${session ? `&pos_session_id=${encodeURIComponent(session.id)}` : ""}`);
   };
 
   // Quick-add customer
@@ -583,8 +562,8 @@ export default function Pos() {
     const res = await omInsert("parties", {
       business_id: current.id, name: quickName.trim(), phone: quickPhone.trim() || null, type: "customer",
     });
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    setParties((p) => [...p, res.data as any]);
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
+    setParties((p) => [...p, res.data]);
     setPartyId(res.data.id);
     setQuickName(""); setQuickPhone(""); setQuickOpen(false);
     toast.success(res.queued ? "Customer added (offline)" : "Customer added");
@@ -695,7 +674,7 @@ export default function Pos() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[calc(100vh-260px)] overflow-auto">
             {filtered.map((it) => {
-              const rows = composeItemLines(it as any);
+              const rows = composeItemLines(it);
               return (
                 <button
                   key={it.id}
@@ -797,10 +776,10 @@ export default function Pos() {
                               const mag = Math.max(1, Math.abs(Number(l.quantity)) - 1);
                               updateLine(l._key, { quantity: isReturn ? -mag : mag });
                             }}><Minus className="h-3 w-3" /></Button>
-                            <Input className="h-6 w-14 text-center" type="number" step={(l as any).allow_decimal_qty ? "0.01" : "1"} max={isReturn ? undefined : (l.max_stock ?? undefined)} value={l.quantity} onChange={(e) => {
+                            <Input className="h-6 w-14 text-center" type="number" step={(l).allow_decimal_qty ? "0.01" : "1"} max={isReturn ? undefined : (l.max_stock ?? undefined)} value={l.quantity} onChange={(e) => {
                               const n = Number(e.target.value);
                               if (!Number.isFinite(n)) return;
-                              const mag = (l as any).allow_decimal_qty ? Math.max(0, Math.abs(n)) : Math.max(0, Math.floor(Math.abs(n)));
+                              const mag = (l).allow_decimal_qty ? Math.max(0, Math.abs(n)) : Math.max(0, Math.floor(Math.abs(n)));
                               if (!isReturn) {
                                 const max = Number(l.max_stock ?? 0);
                                 if (mag > max) {
@@ -958,7 +937,7 @@ export default function Pos() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentOpen(false)}>Cancel</Button>
-            <Button onClick={completeSale}><Printer className="h-4 w-4 mr-1" /> Complete & Print</Button>
+            <Button onClick={completeSale} disabled={completing}><Printer className="h-4 w-4 mr-1" /> Complete & Print</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -988,7 +967,7 @@ export default function Pos() {
                 <div key={h.id} className="flex items-center justify-between border rounded-md p-2">
                   <div>
                     <div className="text-sm font-medium">{h.label}</div>
-                    <div className="text-xs text-muted-foreground">{(h.cart?.lines?.length ?? 0)} items · {new Date(h.created_at).toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">{heldData(h).lines.length} items · {new Date(h.created_at).toLocaleString()}</div>
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" onClick={() => resumeCart(h)}>Resume</Button>
@@ -1037,7 +1016,7 @@ export default function Pos() {
           <DialogHeader><DialogTitle>Close Day</DialogTitle></DialogHeader>
           <Label>Counted closing cash</Label>
           <Input type="number" value={closingCash} onChange={(e) => setClosingCash(e.target.value)} />
-          <p className="text-xs text-muted-foreground">Expected cash will be calculated from opening cash + cash sales since the day opened.</p>
+          <p className="text-xs text-muted-foreground">Expected cash will be calculated from opening cash plus cash receipts minus cash refunds recorded against this till.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCloseSessionDialog(false)}>Cancel</Button>
             <Button onClick={closeDay}>Close Day</Button>

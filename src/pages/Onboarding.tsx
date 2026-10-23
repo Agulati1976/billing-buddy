@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,11 +16,17 @@ import { Building2, Sparkles } from "lucide-react";
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const userId = user?.id;
   const { refresh, businesses } = useBusiness();
-  const FREE_LIMIT = 1;
-  const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
-  const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
-  const blocked = ownedCount >= FREE_LIMIT && !isPremium;
+  const [businessLimit,setBusinessLimit]=useState<number|null>(null);
+  const FREE_LIMIT=businessLimit ?? 1;
+  const ownedCount=businesses.filter(b=>b.owner_id===user?.id).length;
+  const blocked=businessLimit!==null && businessLimit>0 && ownedCount>=businessLimit;
+  useEffect(()=>{
+    let active=true;
+    if(userId)void supabase.rpc("account_business_limit").then(({data,error})=>{if(active){setBusinessLimit(error ? 1 : data);if(error)toast.error(error.message);}});
+    return()=>{active=false;};
+  },[userId]);
 
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");
@@ -35,7 +41,7 @@ export default function Onboarding() {
     e.preventDefault();
     if (!user) return;
     if (blocked) {
-      toast.error("Free plan allows only 1 business. Upgrade to premium to add more.");
+      toast.error("Your plan business limit has been reached. Upgrade to add more.");
       return;
     }
     if (pincode && !/^\d{6}$/.test(pincode)) {
@@ -49,7 +55,7 @@ export default function Onboarding() {
       address: address || null, state: stateName, state_code: stateCode || null,
       pincode: pincode || null,
       owner_id: user.id,
-    } as any);
+    });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Business created!");
@@ -76,10 +82,10 @@ export default function Onboarding() {
             <div className="flex-1 min-w-0">
               <div className="font-medium text-sm">Upgrade to Premium</div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Free plan supports up to {FREE_LIMIT} businesses. You already have {ownedCount}. Upgrade to add unlimited stores.
+                Free plan supports up to {FREE_LIMIT} businesses. You already have {ownedCount}. Check Billing & Plans to increase your limit.
               </p>
             </div>
-            <Button size="sm" onClick={() => toast.info("Premium plans coming soon!")}>Upgrade</Button>
+            <Button size="sm" onClick={() => navigate("/billing")}>Upgrade</Button>
           </div>
         )}
 

@@ -1,3 +1,5 @@
+import { featureFlags,planLimits } from "@/lib/planValues";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -45,11 +47,11 @@ const FEATURE_KEYS: { key: string; label: string }[] = [
 ];
 
 const LIMIT_KEYS: { key: string; label: string; placeholder?: string }[] = [
-  { key: "max_users", label: "Max staff users", placeholder: "0 = unlimited" },
+  { key: "max_users", label: "Max users including owner", placeholder: "0 = unlimited" },
+  { key: "max_businesses", label: "Max businesses per account", placeholder: "0 = unlimited" },
   { key: "max_invoices_per_month", label: "Invoices / month", placeholder: "0 = unlimited" },
   { key: "max_items", label: "Max items in catalogue", placeholder: "0 = unlimited" },
   { key: "max_branches", label: "Max branches", placeholder: "0 = unlimited" },
-  { key: "storage_mb", label: "Storage (MB)", placeholder: "0 = unlimited" },
 ];
 
 const emptyPlan = (): Plan => ({
@@ -77,16 +79,16 @@ export default function AdminPlans() {
   const load = async () => {
     setLoading(true);
     const [{ data: p }, { data: subs }] = await Promise.all([
-      supabase.from("subscription_plans").select("*").order("sort_order").order("price_inr"),
-      supabase.from("business_subscriptions").select("plan_id, status, expires_at"),
+      allRows(supabase.from("subscription_plans").select("*").order("sort_order").order("price_inr")),
+      allRows(supabase.from("business_subscriptions").select("plan_id, status, expires_at")),
     ]);
-    setPlans((p as any[])?.map((x) => ({
+    setPlans((p)?.map((x) => ({
       ...x,
-      features: x.features || {},
-      limits: x.limits || {},
+      features: featureFlags(x.features),
+      limits: planLimits(x.limits),
     })) || []);
     const counts: Record<string, number> = {};
-    (subs ?? []).forEach((s: any) => {
+    (subs ?? []).forEach((s) => {
       if (s.status === "active" && s.expires_at && new Date(s.expires_at) > new Date()) {
         counts[s.plan_id] = (counts[s.plan_id] || 0) + 1;
       }

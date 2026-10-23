@@ -51,28 +51,16 @@ export function AppTopbar() {
   const initials = (user?.email ?? "U").slice(0, 2).toUpperCase();
   const isHome = location.pathname === "/";
   const title = getTitle(location.pathname);
-  const FREE_LIMIT = 1;
-  const ownedCount = businesses.filter((b) => b.owner_id === user?.id).length;
-  const isPremium = typeof window !== "undefined" && localStorage.getItem("is_premium") === "1";
-  const atLimit = ownedCount >= FREE_LIMIT && !isPremium;
-
   const handleLogout = async () => {
     await signOut();
     navigate("/auth", { replace: true });
   };
 
-  const handleAddBusiness = () => {
-    if (atLimit) {
-      import("sonner").then(({ toast }) =>
-        toast.error(`Free plan allows up to ${FREE_LIMIT} businesses. Upgrade to premium to add more.`)
-      );
-    }
-    navigate("/onboarding");
-  };
+  const handleAddBusiness = () => {navigate("/onboarding");};
 
   return (
     <header
-      className="app-chrome border-b bg-card sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+      className="app-chrome border-b bg-card sticky top-0 z-30 backdrop-blur-sm supports-backdrop-filter:bg-card/85"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="h-14 flex items-center gap-2 sm:gap-3 px-2 sm:px-4">
@@ -132,7 +120,7 @@ export function AppTopbar() {
               ))}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleAddBusiness} className="text-primary">
-                <Plus className="h-4 w-4 mr-1" /> Add new business {atLimit && "(Premium)"}
+                <Plus className="h-4 w-4 mr-1" /> Add new business
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
+import { recordPayment } from "@/lib/billingTransactions";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -22,7 +25,7 @@ import { toast } from "sonner";
 import { formatINR } from "@/lib/states";
 import { downloadCsv } from "@/lib/csv";
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => businessDate();
 
 interface PartyLite {
   id: string;
@@ -84,7 +87,7 @@ function computeLedger(party: PartyLite, invoices: InvoiceRow[], payments: Payme
     const t = inv.type;
     let debit = 0, credit = 0;
     if (isCustomer) {
-      if (t === "sale") debit = Number(inv.total_amount);
+      if (t === "sale" || t === "non_inventory") debit = Number(inv.total_amount);
       else if (t === "sale_return") credit = Number(inv.total_amount);
     } else {
       if (t === "purchase") credit = Number(inv.total_amount);
@@ -92,7 +95,7 @@ function computeLedger(party: PartyLite, invoices: InvoiceRow[], payments: Payme
     }
     if (debit === 0 && credit === 0) continue;
     const route = t === "purchase" || t === "purchase_return" ? "/purchases"
-      : t === "sale_return" ? "/sale_returns" : "/sales";
+      : t === "sale_return" ? "/sale_returns" : t==="non_inventory" ? "/quick_invoices" : "/sales";
     events.push({
       sortKey: `${inv.invoice_date}-1-${inv.invoice_number}`,
       build: (run) => ({
@@ -134,6 +137,7 @@ function computeLedger(party: PartyLite, invoices: InvoiceRow[], payments: Payme
 
 export default function PartyLedger() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [search, setSearch] = useSearchParams();
   const [parties, setParties] = useState<PartyLite[]>([]);
@@ -154,29 +158,29 @@ export default function PartyLedger() {
   const [payReference, setPayReference] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const [pRes, iRes, payRes] = await Promise.all([
-      supabase.from("parties").select("id,name,type,phone,opening_balance")
-        .eq("business_id", current.id).order("name"),
-      supabase.from("invoices")
+      allRows(supabase.from("parties").select("id,name,type,phone,opening_balance")
+        .eq("business_id", currentId).order("name")),
+      allRows(supabase.from("invoices")
         .select("id,invoice_number,invoice_date,total_amount,balance_amount,type,party_id")
-        .eq("business_id", current.id).is("deleted_at", null)
-        .neq("type", "quotation").not("party_id", "is", null).order("invoice_date"),
-      supabase.from("payments")
+        .eq("business_id", currentId).is("deleted_at", null)
+        .neq("type", "quotation").not("party_id", "is", null).order("invoice_date")),
+      allRows(supabase.from("payments")
         .select("id,payment_date,amount,method,reference,invoice_id,direction,notes,party_id")
-        .eq("business_id", current.id).is("deleted_at", null)
-        .not("party_id", "is", null).order("payment_date"),
+        .eq("business_id", currentId).is("deleted_at", null)
+        .not("party_id", "is", null).order("payment_date")),
     ]);
     if (pRes.error) toast.error(pRes.error.message);
     setParties((pRes.data as PartyLite[]) ?? []);
     setAllInvoices((iRes.data as InvoiceRow[]) ?? []);
     setAllPayments((payRes.data as PaymentRow[]) ?? []);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [current?.id]);
+  useEffect(() => { load();   }, [currentId, load]);
 
   useEffect(() => {
     setSearch((s) => {
@@ -184,7 +188,7 @@ export default function PartyLedger() {
       if (partyId) n.set("party", partyId); else n.delete("party");
       return n;
     }, { replace: true });
-  }, [partyId]);
+  }, [partyId, setSearch]);
 
   // Per-party computed totals
   const summary = useMemo(() => {
@@ -283,10 +287,10 @@ export default function PartyLedger() {
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
     if (!payInvoiceId) { toast.error("Select an invoice"); return; }
     setPaySaving(true);
-    const res = await omInsert("payments", {
+    const res = await recordPayment({
       business_id: current.id,
       direction: selected.party.type === "customer" ? "in" : "out",
-      method: payMethod as any,
+      method: payMethod,
       amount: amt,
       payment_date: payDate,
       party_id: selected.party.id,
@@ -296,7 +300,7 @@ export default function PartyLedger() {
       created_by: user.id,
     });
     setPaySaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
     setPayOpen(false);
     load();
@@ -506,7 +510,7 @@ export default function PartyLedger() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-40">
             <label className="text-xs text-muted-foreground">Type</label>
-            <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+            <Select value={filter} onValueChange={(v) => setFilter(v as "all"|"customer"|"supplier")}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>

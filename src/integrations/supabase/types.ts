@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       admin_audit_log: {
@@ -121,7 +116,9 @@ export type Database = {
           item_id: string
           mfg_date: string | null
           notes: string | null
+          purchase_price: number | null
           quantity: number
+          sale_price: number | null
           updated_at: string
         }
         Insert: {
@@ -134,7 +131,9 @@ export type Database = {
           item_id: string
           mfg_date?: string | null
           notes?: string | null
+          purchase_price?: number | null
           quantity?: number
+          sale_price?: number | null
           updated_at?: string
         }
         Update: {
@@ -147,7 +146,9 @@ export type Database = {
           item_id?: string
           mfg_date?: string | null
           notes?: string | null
+          purchase_price?: number | null
           quantity?: number
+          sale_price?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -222,6 +223,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      business_operations: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          kind: string
+          payload_hash: string
+          result: Json | null
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id: string
+          kind: string
+          payload_hash: string
+          result?: Json | null
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          payload_hash?: string
+          result?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_operations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       business_subscriptions: {
         Row: {
@@ -447,6 +486,38 @@ export type Database = {
           },
         ]
       }
+      function_usage: {
+        Row: {
+          business_id: string
+          feature: string
+          usage_date: string
+          user_id: string
+          uses: number
+        }
+        Insert: {
+          business_id: string
+          feature: string
+          usage_date: string
+          user_id: string
+          uses?: number
+        }
+        Update: {
+          business_id?: string
+          feature?: string
+          usage_date?: string
+          user_id?: string
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "function_usage_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_edit_log: {
         Row: {
           business_id: string
@@ -495,6 +566,7 @@ export type Database = {
       invoice_items: {
         Row: {
           batch_id: string | null
+          cost_is_estimate: boolean
           created_at: string
           discount_pct: number
           hsn_code: string | null
@@ -504,14 +576,17 @@ export type Database = {
           item_name: string
           price: number
           quantity: number
+          source_line_id: string | null
           tax_amount: number
           tax_rate: number
           taxable_amount: number
           total_amount: number
           unit: string | null
+          unit_cost: number | null
         }
         Insert: {
           batch_id?: string | null
+          cost_is_estimate?: boolean
           created_at?: string
           discount_pct?: number
           hsn_code?: string | null
@@ -521,14 +596,17 @@ export type Database = {
           item_name: string
           price?: number
           quantity?: number
+          source_line_id?: string | null
           tax_amount?: number
           tax_rate?: number
           taxable_amount?: number
           total_amount?: number
           unit?: string | null
+          unit_cost?: number | null
         }
         Update: {
           batch_id?: string | null
+          cost_is_estimate?: boolean
           created_at?: string
           discount_pct?: number
           hsn_code?: string | null
@@ -538,11 +616,13 @@ export type Database = {
           item_name?: string
           price?: number
           quantity?: number
+          source_line_id?: string | null
           tax_amount?: number
           tax_rate?: number
           taxable_amount?: number
           total_amount?: number
           unit?: string | null
+          unit_cost?: number | null
         }
         Relationships: [
           {
@@ -564,6 +644,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_source_line_id_fkey"
+            columns: ["source_line_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
             referencedColumns: ["id"]
           },
         ]
@@ -644,6 +731,9 @@ export type Database = {
           is_gst: boolean
           is_inter_state: boolean
           is_online_order: boolean
+          loyalty_discount: number
+          loyalty_earn_rate: number
+          loyalty_redeemed_points: number
           notes: string | null
           paid_amount: number
           party_id: string | null
@@ -652,6 +742,7 @@ export type Database = {
           received_date: string | null
           round_off: number
           sgst_amount: number
+          source_invoice_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
           tax_amount: number
@@ -678,6 +769,9 @@ export type Database = {
           is_gst?: boolean
           is_inter_state?: boolean
           is_online_order?: boolean
+          loyalty_discount?: number
+          loyalty_earn_rate?: number
+          loyalty_redeemed_points?: number
           notes?: string | null
           paid_amount?: number
           party_id?: string | null
@@ -686,6 +780,7 @@ export type Database = {
           received_date?: string | null
           round_off?: number
           sgst_amount?: number
+          source_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax_amount?: number
@@ -712,6 +807,9 @@ export type Database = {
           is_gst?: boolean
           is_inter_state?: boolean
           is_online_order?: boolean
+          loyalty_discount?: number
+          loyalty_earn_rate?: number
+          loyalty_redeemed_points?: number
           notes?: string | null
           paid_amount?: number
           party_id?: string | null
@@ -720,6 +818,7 @@ export type Database = {
           received_date?: string | null
           round_off?: number
           sgst_amount?: number
+          source_invoice_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax_amount?: number
@@ -741,6 +840,13 @@ export type Database = {
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_source_invoice_id_fkey"
+            columns: ["source_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -1056,6 +1162,7 @@ export type Database = {
           notes: string | null
           party_id: string | null
           payment_date: string
+          pos_session_id: string | null
           reference: string | null
           updated_at: string
         }
@@ -1072,6 +1179,7 @@ export type Database = {
           notes?: string | null
           party_id?: string | null
           payment_date?: string
+          pos_session_id?: string | null
           reference?: string | null
           updated_at?: string
         }
@@ -1088,6 +1196,7 @@ export type Database = {
           notes?: string | null
           party_id?: string | null
           payment_date?: string
+          pos_session_id?: string | null
           reference?: string | null
           updated_at?: string
         }
@@ -1111,6 +1220,13 @@ export type Database = {
             columns: ["party_id"]
             isOneToOne: false
             referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_pos_session_id_fkey"
+            columns: ["pos_session_id"]
+            isOneToOne: false
+            referencedRelation: "pos_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1416,36 +1532,48 @@ export type Database = {
       }
       stock_movements: {
         Row: {
+          batch_id: string | null
           business_id: string
           created_at: string
           created_by: string | null
           id: string
+          invoice_id: string | null
+          invoice_number_snapshot: string | null
           item_id: string
           notes: string | null
+          operation_id: string | null
           quantity: number
           reference_id: string | null
           type: Database["public"]["Enums"]["stock_movement_type"]
           warehouse_id: string | null
         }
         Insert: {
+          batch_id?: string | null
           business_id: string
           created_at?: string
           created_by?: string | null
           id?: string
+          invoice_id?: string | null
+          invoice_number_snapshot?: string | null
           item_id: string
           notes?: string | null
+          operation_id?: string | null
           quantity: number
           reference_id?: string | null
           type: Database["public"]["Enums"]["stock_movement_type"]
           warehouse_id?: string | null
         }
         Update: {
+          batch_id?: string | null
           business_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
+          invoice_id?: string | null
+          invoice_number_snapshot?: string | null
           item_id?: string
           notes?: string | null
+          operation_id?: string | null
           quantity?: number
           reference_id?: string | null
           type?: Database["public"]["Enums"]["stock_movement_type"]
@@ -1453,10 +1581,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "stock_movements_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "stock_movements_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
@@ -1789,6 +1931,112 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      account_business_limit: { Args: never; Returns: number }
+      adjust_stock: {
+        Args: {
+          p_batch_id?: string
+          p_business_id: string
+          p_item_id: string
+          p_notes?: string
+          p_operation_id: string
+          p_quantity: number
+          p_type: Database["public"]["Enums"]["stock_movement_type"]
+        }
+        Returns: Json
+      }
+      app_apply_invoice_stock: {
+        Args: { p_invoice_id: string; p_operation_id: string; p_sign: number }
+        Returns: undefined
+      }
+      app_assert_limit: {
+        Args: { p_business_id: string; p_count: number; p_limit: string }
+        Returns: undefined
+      }
+      app_business_limit: { Args: { p_owner: string }; Returns: number }
+      app_can_read_invoice: {
+        Args: {
+          p_business_id: string
+          p_type: Database["public"]["Enums"]["invoice_type"]
+        }
+        Returns: boolean
+      }
+      app_compute_invoice: {
+        Args: {
+          p_extra: number
+          p_gst: boolean
+          p_interstate: boolean
+          p_lines: Json
+        }
+        Returns: Json
+      }
+      app_feature_enabled: {
+        Args: { p_business_id: string; p_feature: string }
+        Returns: boolean
+      }
+      app_finish_operation: {
+        Args: { p_id: string; p_result: Json }
+        Returns: Json
+      }
+      app_has_access: {
+        Args: { p_business_id: string; p_module: string }
+        Returns: boolean
+      }
+      app_is_manager: { Args: { p_business_id: string }; Returns: boolean }
+      app_plan_limits: { Args: { p_business_id: string }; Returns: Json }
+      app_read_access: {
+        Args: { p_business_id: string; p_modules: string[] }
+        Returns: boolean
+      }
+      app_recalculate_invoice: { Args: { p_id: string }; Returns: undefined }
+      app_start_operation: {
+        Args: {
+          p_business_id: string
+          p_id: string
+          p_kind: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
+      app_sync_loyalty: { Args: { p_id: string }; Returns: undefined }
+      app_ticket_access: { Args: { p_id: string }; Returns: boolean }
+      assign_business_staff: {
+        Args: {
+          p_actor_id: string
+          p_business_id: string
+          p_modules: string[]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      business_entitlements: { Args: { p_business_id: string }; Returns: Json }
+      change_invoice_state: {
+        Args: { p_action: string; p_invoice_id: string; p_operation_id: string }
+        Returns: Json
+      }
+      close_pos_session: {
+        Args: {
+          p_closing_cash: number
+          p_operation_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      consume_function_quota: {
+        Args: { p_business_id: string; p_feature: string }
+        Returns: boolean
+      }
+      credit_batch_quantity: {
+        Args: { p_batch_id: string; p_qty: number; p_reference_id: string }
+        Returns: undefined
+      }
+      delete_batch: {
+        Args: {
+          p_batch_id: string
+          p_business_id: string
+          p_operation_id: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _business_id: string
@@ -1797,12 +2045,93 @@ export type Database = {
         }
         Returns: boolean
       }
+      invoice_module: {
+        Args: { p_type: Database["public"]["Enums"]["invoice_type"] }
+        Returns: string
+      }
       is_business_member: {
         Args: { _business_id: string; _user_id: string }
         Returns: boolean
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_support_staff: { Args: { _user_id: string }; Returns: boolean }
+      member_contacts: {
+        Args: { p_business_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
+      open_pos_session: {
+        Args: {
+          p_business_id: string
+          p_opening_cash: number
+          p_operation_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      process_subscription_payment: {
+        Args: {
+          p_amount: number
+          p_currency: string
+          p_method: string
+          p_order_id: string
+          p_payload: Json
+          p_payment_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      record_payment: {
+        Args: { p_operation_id: string; p_payment: Json }
+        Returns: Json
+      }
+      save_batch: {
+        Args: {
+          p_batch: Json
+          p_expected_updated_at?: string
+          p_operation_id: string
+        }
+        Returns: Json
+      }
+      save_invoice: {
+        Args: {
+          p_batches?: Json
+          p_expected_updated_at?: string
+          p_invoice: Json
+          p_lines: Json
+          p_operation_id: string
+          p_payments?: Json
+        }
+        Returns: Json
+      }
+      save_item: {
+        Args: {
+          p_batch?: Json
+          p_expected_updated_at?: string
+          p_item: Json
+          p_operation_id: string
+        }
+        Returns: Json
+      }
+      set_business_pincode: {
+        Args: {
+          p_business_id: string
+          p_operation_id: string
+          p_pincode: string
+        }
+        Returns: Json
+      }
+      ticket_contact: {
+        Args: { p_ticket_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       app_role: "owner" | "staff" | "accountant" | "admin"

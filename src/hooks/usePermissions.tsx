@@ -4,10 +4,11 @@ import { useBusiness } from "./useBusiness";
 import { supabase } from "@/integrations/supabase/client";
 import type { ModuleKey } from "@/lib/modules";
 
-export type Role = "owner" | "admin" | "staff";
+export type Role = "owner" | "admin" | "staff" | "accountant";
 
 interface Perms {
   role: Role | null;
+  features: Record<string,boolean>;
   loading: boolean;
   isOwner: boolean;
   isAdmin: boolean;       // owner OR admin
@@ -22,54 +23,53 @@ interface Perms {
 
 export function usePermissions(): Perms {
   const { user } = useAuth();
+  const userId = user?.id;
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [role, setRole] = useState<Role | null>(null);
+  const [features,setFeatures]=useState<Record<string,boolean>>({});
   const [modules, setModules] = useState<Set<ModuleKey> | null>(null);
   const [loading, setLoading] = useState(true);
+  const scope = `${user?.id ?? ""}:${current?.id ?? ""}`;
+  const [resolvedScope,setResolvedScope]=useState<string|null>(null);
+  const pending=loading || resolvedScope!==scope;
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (!user || !current) { setRole(null); setModules(null); setLoading(false); return; }
+      if (!userId || !currentId) { setRole(null); setModules(new Set());setFeatures({}); setResolvedScope(scope);setLoading(false); return; }
       setLoading(true);
       const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .eq("business_id", current.id)
+        .eq("user_id", userId)
+        .eq("business_id", currentId)
         .maybeSingle();
       if (!alive) return;
       const r = (data?.role as Role) ?? null;
       setRole(r);
 
-      if (r === "staff") {
-        const { data: ma } = await supabase
-          .from("staff_module_access")
-          .select("modules")
-          .eq("user_id", user.id)
-          .eq("business_id", current.id)
-          .maybeSingle();
-        if (!alive) return;
-        setModules(new Set(((ma?.modules ?? []) as ModuleKey[])));
-      } else {
-        setModules(null);
-      }
+      const {data:entitlements,error}=await supabase.rpc("business_entitlements",{p_business_id:currentId});
+      if(!alive)return;
+      const ent=entitlements as {modules?:ModuleKey[];features?:Record<string,boolean>} | null;
+      setModules(new Set(error ? [] : ent?.modules ?? []));
+      setFeatures(error ? {} : ent?.features ?? {});
+      setResolvedScope(scope);
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [user?.id, current?.id]);
+  }, [userId, currentId,scope]);
 
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
-  const isStaff = role === "staff";
+  const isStaff = role === "staff" || role === "accountant";
 
   const canSeeModule = (m: ModuleKey) => {
-    if (!isStaff) return true;
-    return modules ? modules.has(m) : false;
+    return !pending && role!==null && !!modules?.has(m);
   };
 
   return {
-    role, loading, isOwner, isAdmin, isStaff,
+    role, features, loading:pending, isOwner, isAdmin, isStaff,
     canManageTeam: isOwner,
     canEditSettings: isAdmin,
     canDelete: isAdmin,

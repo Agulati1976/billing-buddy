@@ -1,15 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export async function callAdminAction<T = any>(
+export async function callAdminAction<T = unknown>(
   action: string,
   target_id?: string,
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ): Promise<T> {
   const { data, error } = await supabase.functions.invoke("admin-actions", {
     body: { action, target_id, metadata },
   });
   if (error) throw error;
-  if ((data as any)?.error) throw new Error((data as any).error);
+  if ((data)?.error) throw new Error((data).error);
   return data as T;
 }
 

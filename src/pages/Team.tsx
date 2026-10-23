@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +29,7 @@ interface Member {
 }
 
 const ROLE_DESC: Record<Role, string> = {
+  accountant: "Limited to selected accounting modules. Cannot delete records.",
   owner: "Full access — billing, team, delete business",
   admin: "Manage everything except team & billing",
   staff: "Limited to selected modules. Cannot delete records.",
@@ -34,6 +37,7 @@ const ROLE_DESC: Record<Role, string> = {
 
 export default function Team() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const { canManageTeam, role: myRole, loading: permsLoading } = usePermissions();
   const { posEnabled } = usePosAccess();
@@ -54,30 +58,30 @@ export default function Team() {
   const [editModules, setEditModules] = useState<Set<ModuleKey>>(new Set());
   const [savingModules, setSavingModules] = useState(false);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
-    const { data: roles } = await supabase
-      .from("user_roles").select("id,user_id,role").eq("business_id", current.id);
+    const { data: roles } = await allRows(supabase
+      .from("user_roles").select("id,user_id,role").eq("business_id", currentId));
     if (!roles) { setMembers([]); setLoading(false); return; }
     const ids = roles.map((r) => r.user_id);
     const { data: profs } = ids.length
-      ? await supabase.from("profiles").select("user_id,email,full_name").in("user_id", ids)
-      : { data: [] as any[] };
-    const profMap = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
-    setMembers(roles.map((r: any) => ({
+      ? await supabase.rpc("member_contacts",{p_business_id:currentId})
+      : { data: [] };
+    const profMap = new Map((profs ?? []).map((p) => [p.user_id, p]));
+    setMembers(roles.map((r) => ({
       id: r.id, user_id: r.user_id, role: r.role,
       email: profMap.get(r.user_id)?.email ?? null,
       full_name: profMap.get(r.user_id)?.full_name ?? null,
     })));
-    const { data: ma } = await supabase
-      .from("staff_module_access").select("user_id, modules").eq("business_id", current.id);
-    setModuleAccess(Object.fromEntries((ma ?? []).map((m: any) => [m.user_id, m.modules ?? []])));
-    const { data: posAccess } = await supabase.from("pos_user_access").select("user_id").eq("business_id", current.id);
-    setPosUserIds(new Set((posAccess ?? []).map((p: any) => p.user_id)));
+    const { data: ma } = await allRows(supabase
+      .from("staff_module_access").select("user_id, modules").eq("business_id", currentId));
+    setModuleAccess(Object.fromEntries((ma ?? []).map((m) => [m.user_id, (m.modules ?? []).filter((module):module is ModuleKey=>ALL_MODULES.some(entry=>entry.key===module))])));
+    const { data: posAccess } = await allRows(supabase.from("pos_user_access").select("user_id").eq("business_id", currentId));
+    setPosUserIds(new Set((posAccess ?? []).map((p) => p.user_id)));
     setLoading(false);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const togglePosAccess = async (m: Member, next: boolean) => {
     if (!current) return;
@@ -112,12 +116,12 @@ export default function Team() {
         },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data)?.error) throw new Error((data).error);
       toast.success("Staff login created");
       setEmail(""); setPassword(""); setFullName("");
       setNewModules(new Set(DEFAULT_STAFF_MODULES));
       load();
-    } catch (e: any) { toast.error(e.message ?? "Failed to create staff"); }
+    } catch (e: unknown) { toast.error(errorMessage(e) ?? "Failed to create staff"); }
     finally { setCreating(false); }
   };
 

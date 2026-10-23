@@ -1,0 +1,29 @@
+{
+  "backup_time": "2026-10-23",
+  "private_directory": "audit/private/",
+  "restore_verified": true,
+  "restored_engine": "Supabase PostgreSQL 17.6.1.104",
+  "auth_migration_versions_restored_separately": true,
+  "files": [
+    {
+      "name": "pre-release-schema.sql",
+      "bytes": 104797,
+      "sha256": "df822591cb3d680621180dc4b71d1976842fcba39365684bc7a52812880c9718"
+    },
+    {
+      "name": "pre-release-managed-schema.sql",
+      "bytes": 158711,
+      "sha256": "2f8317e00d227560f01d7ff673e79e52646a23491e36cc1716a6bdb3d402a027"
+    },
+    {
+      "name": "pre-release-data.sql",
+      "bytes": 201763,
+      "sha256": "ad6c10ca2a25ee8b4871eb83157394fee6e99609fb926e414b045e4d74c2fbf3"
+    },
+    {
+      "name": "pre-release-roles.sql",
+      "bytes": 358,
+      "sha256": "4350a72b5ec109888e740c17f3eb4da2fcd95ab73af26499538ed0bf615db543"
+    }
+  ]
+}

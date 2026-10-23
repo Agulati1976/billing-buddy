@@ -1,0 +1,3231 @@
+{
+  "columns": [
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "admin_audit_log",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "admin_id",
+      "notnull": true,
+      "table": "admin_audit_log",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "action",
+      "notnull": true,
+      "table": "admin_audit_log",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "target_type",
+      "notnull": false,
+      "table": "admin_audit_log",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "target_id",
+      "notnull": false,
+      "table": "admin_audit_log",
+      "type": "uuid"
+    },
+    {
+      "default": "'{}'::jsonb",
+      "name": "metadata",
+      "notnull": true,
+      "table": "admin_audit_log",
+      "type": "jsonb"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "admin_audit_log",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "barcode",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "brand",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "flavour",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "color",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": "0",
+      "name": "mrp",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "hsn_code",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": "0",
+      "name": "tax_rate",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "numeric"
+    },
+    {
+      "default": "'pcs'::text",
+      "name": "unit",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "description",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "image_url",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "contributed_by",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "contributor_business_id",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "uuid"
+    },
+    {
+      "default": "false",
+      "name": "verified",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "boolean"
+    },
+    {
+      "default": "1",
+      "name": "scan_count",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "integer"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "barcode_catalog",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "unit_size",
+      "notnull": false,
+      "table": "barcode_catalog",
+      "type": "numeric"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "batches",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "batches",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "item_id",
+      "notnull": true,
+      "table": "batches",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "batch_number",
+      "notnull": true,
+      "table": "batches",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "mfg_date",
+      "notnull": false,
+      "table": "batches",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "expiry_date",
+      "notnull": false,
+      "table": "batches",
+      "type": "date"
+    },
+    {
+      "default": "0",
+      "name": "quantity",
+      "notnull": true,
+      "table": "batches",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "batches",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "batches",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "batches",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "batches",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "purchase_price",
+      "notnull": false,
+      "table": "batches",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "sale_price",
+      "notnull": false,
+      "table": "batches",
+      "type": "numeric"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "branches",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "branches",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "branches",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "code",
+      "notnull": true,
+      "table": "branches",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "address",
+      "notnull": false,
+      "table": "branches",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "branches",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "branches",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "branches",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "business_features",
+      "type": "uuid"
+    },
+    {
+      "default": "false",
+      "name": "pos_enabled",
+      "notnull": true,
+      "table": "business_features",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "pos_enabled_at",
+      "notnull": false,
+      "table": "business_features",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "pos_enabled_by",
+      "notnull": false,
+      "table": "business_features",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "business_features",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "business_features",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "'free'::text",
+      "name": "plan",
+      "notnull": true,
+      "table": "business_features",
+      "type": "text"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "business_subscriptions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "business_subscriptions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "plan_id",
+      "notnull": false,
+      "table": "business_subscriptions",
+      "type": "uuid"
+    },
+    {
+      "default": "'active'::text",
+      "name": "status",
+      "notnull": true,
+      "table": "business_subscriptions",
+      "type": "text"
+    },
+    {
+      "default": "now()",
+      "name": "started_at",
+      "notnull": true,
+      "table": "business_subscriptions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "expires_at",
+      "notnull": false,
+      "table": "business_subscriptions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "last_order_id",
+      "notnull": false,
+      "table": "business_subscriptions",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "business_subscriptions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "business_subscriptions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "businesses",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "gstin",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "phone",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "email",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "address",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "state",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "state_code",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "logo_url",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "owner_id",
+      "notnull": true,
+      "table": "businesses",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "businesses",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "businesses",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "pincode",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "pincode_rank",
+      "notnull": false,
+      "table": "businesses",
+      "type": "integer"
+    },
+    {
+      "default": "'active'::text",
+      "name": "status",
+      "notnull": true,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "deleted_at",
+      "notnull": false,
+      "table": "businesses",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "pan",
+      "notnull": false,
+      "table": "businesses",
+      "type": "text"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "cashfree_webhook_events",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "event_type",
+      "notnull": true,
+      "table": "cashfree_webhook_events",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "cf_order_id",
+      "notnull": false,
+      "table": "cashfree_webhook_events",
+      "type": "text"
+    },
+    {
+      "default": "false",
+      "name": "signature_verified",
+      "notnull": true,
+      "table": "cashfree_webhook_events",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "payload",
+      "notnull": true,
+      "table": "cashfree_webhook_events",
+      "type": "jsonb"
+    },
+    {
+      "default": "false",
+      "name": "processed",
+      "notnull": true,
+      "table": "cashfree_webhook_events",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "error",
+      "notnull": false,
+      "table": "cashfree_webhook_events",
+      "type": "text"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "cashfree_webhook_events",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "categories",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "categories",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "categories",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "description",
+      "notnull": false,
+      "table": "categories",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "categories",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "categories",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "categories",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "expenses",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "expenses",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "category",
+      "notnull": true,
+      "table": "expenses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "amount",
+      "notnull": true,
+      "table": "expenses",
+      "type": "numeric"
+    },
+    {
+      "default": "CURRENT_DATE",
+      "name": "expense_date",
+      "notnull": true,
+      "table": "expenses",
+      "type": "date"
+    },
+    {
+      "default": "'cash'::payment_method",
+      "name": "method",
+      "notnull": true,
+      "table": "expenses",
+      "type": "payment_method"
+    },
+    {
+      "default": null,
+      "name": "description",
+      "notnull": false,
+      "table": "expenses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "reference",
+      "notnull": false,
+      "table": "expenses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "expenses",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "expenses",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "expenses",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "invoice_edit_log",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "invoice_id",
+      "notnull": true,
+      "table": "invoice_edit_log",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "invoice_edit_log",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "edited_by",
+      "notnull": false,
+      "table": "invoice_edit_log",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "edited_at",
+      "notnull": true,
+      "table": "invoice_edit_log",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "'{}'::jsonb",
+      "name": "changes",
+      "notnull": true,
+      "table": "invoice_edit_log",
+      "type": "jsonb"
+    },
+    {
+      "default": null,
+      "name": "summary",
+      "notnull": false,
+      "table": "invoice_edit_log",
+      "type": "text"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "invoice_id",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "item_id",
+      "notnull": false,
+      "table": "invoice_items",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "item_name",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "hsn_code",
+      "notnull": false,
+      "table": "invoice_items",
+      "type": "text"
+    },
+    {
+      "default": "1",
+      "name": "quantity",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "unit",
+      "notnull": false,
+      "table": "invoice_items",
+      "type": "text"
+    },
+    {
+      "default": "0",
+      "name": "price",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "discount_pct",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "tax_rate",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "taxable_amount",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "tax_amount",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "total_amount",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "numeric"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "invoice_items",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "batch_id",
+      "notnull": false,
+      "table": "invoice_items",
+      "type": "uuid"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "uuid"
+    },
+    {
+      "default": "'classic'::text",
+      "name": "template",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": "'#2563EB'::text",
+      "name": "accent_color",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "footer_text",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "default_terms",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "default_notes",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": "'Authorised Signatory'::text",
+      "name": "signature_label",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": "true",
+      "name": "show_signature",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "boolean"
+    },
+    {
+      "default": "true",
+      "name": "show_amount_in_words",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "upi_id",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "upi_payee_name",
+      "notnull": false,
+      "table": "invoice_settings",
+      "type": "text"
+    },
+    {
+      "default": "true",
+      "name": "show_upi_qr",
+      "notnull": true,
+      "table": "invoice_settings",
+      "type": "boolean"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "party_id",
+      "notnull": false,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": "'sale'::invoice_type",
+      "name": "type",
+      "notnull": true,
+      "table": "invoices",
+      "type": "invoice_type"
+    },
+    {
+      "default": "'unpaid'::invoice_status",
+      "name": "status",
+      "notnull": true,
+      "table": "invoices",
+      "type": "invoice_status"
+    },
+    {
+      "default": null,
+      "name": "invoice_number",
+      "notnull": true,
+      "table": "invoices",
+      "type": "text"
+    },
+    {
+      "default": "CURRENT_DATE",
+      "name": "invoice_date",
+      "notnull": true,
+      "table": "invoices",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "due_date",
+      "notnull": false,
+      "table": "invoices",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "party_state_code",
+      "notnull": false,
+      "table": "invoices",
+      "type": "text"
+    },
+    {
+      "default": "false",
+      "name": "is_inter_state",
+      "notnull": true,
+      "table": "invoices",
+      "type": "boolean"
+    },
+    {
+      "default": "0",
+      "name": "subtotal",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "discount_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "tax_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "cgst_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "sgst_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "igst_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "round_off",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "total_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "paid_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "balance_amount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "invoices",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "terms",
+      "notnull": false,
+      "table": "invoices",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "invoices",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "invoices",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "true",
+      "name": "is_gst",
+      "notnull": true,
+      "table": "invoices",
+      "type": "boolean"
+    },
+    {
+      "default": "0",
+      "name": "extra_discount",
+      "notnull": true,
+      "table": "invoices",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "pos_session_id",
+      "notnull": false,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "deleted_at",
+      "notnull": false,
+      "table": "invoices",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "false",
+      "name": "is_online_order",
+      "notnull": true,
+      "table": "invoices",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "branch_id",
+      "notnull": false,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "received_date",
+      "notnull": false,
+      "table": "invoices",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "source_invoice_id",
+      "notnull": false,
+      "table": "invoices",
+      "type": "uuid"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "items",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "items",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": "'product'::item_type",
+      "name": "type",
+      "notnull": true,
+      "table": "items",
+      "type": "item_type"
+    },
+    {
+      "default": null,
+      "name": "sku",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "hsn_code",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": "'pcs'::text",
+      "name": "unit",
+      "notnull": true,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": "0",
+      "name": "sale_price",
+      "notnull": true,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "purchase_price",
+      "notnull": true,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "tax_rate",
+      "notnull": true,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "opening_stock",
+      "notnull": true,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "current_stock",
+      "notnull": true,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "low_stock_alert",
+      "notnull": true,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "description",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "items",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "items",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "items",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "barcode",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "category_id",
+      "notnull": false,
+      "table": "items",
+      "type": "uuid"
+    },
+    {
+      "default": "false",
+      "name": "is_batch_tracked",
+      "notnull": true,
+      "table": "items",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "brand",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "flavour",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "color",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "mrp",
+      "notnull": false,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "image_url",
+      "notnull": false,
+      "table": "items",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "catalog_id",
+      "notnull": false,
+      "table": "items",
+      "type": "uuid"
+    },
+    {
+      "default": "false",
+      "name": "allow_decimal_qty",
+      "notnull": true,
+      "table": "items",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "unit_size",
+      "notnull": false,
+      "table": "items",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "uuid"
+    },
+    {
+      "default": "true",
+      "name": "enabled",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "boolean"
+    },
+    {
+      "default": "100",
+      "name": "amount_per_point",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "numeric"
+    },
+    {
+      "default": "1",
+      "name": "point_value",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "numeric"
+    },
+    {
+      "default": "50",
+      "name": "min_redeem_points",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "numeric"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "loyalty_settings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "party_id",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "invoice_id",
+      "notnull": false,
+      "table": "loyalty_transactions",
+      "type": "uuid"
+    },
+    {
+      "default": "0",
+      "name": "points_earned",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "points_redeemed",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "redeem_value",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "loyalty_transactions",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "loyalty_transactions",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "loyalty_transactions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "parties",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "parties",
+      "type": "uuid"
+    },
+    {
+      "default": "'customer'::party_type",
+      "name": "type",
+      "notnull": true,
+      "table": "parties",
+      "type": "party_type"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "phone",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "email",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "gstin",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "billing_address",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "shipping_address",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "state",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "state_code",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": "0",
+      "name": "opening_balance",
+      "notnull": true,
+      "table": "parties",
+      "type": "numeric(14,2)"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "parties",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "parties",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "parties",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "supplies",
+      "notnull": false,
+      "table": "parties",
+      "type": "text"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "party_id",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": "'{}'::uuid[]",
+      "name": "invoice_ids",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "uuid[]"
+    },
+    {
+      "default": "0",
+      "name": "total_overdue",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "recipient_email",
+      "notnull": false,
+      "table": "payment_reminders",
+      "type": "text"
+    },
+    {
+      "default": "'pending'::text",
+      "name": "status",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "text"
+    },
+    {
+      "default": "'email'::text",
+      "name": "channel",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "message",
+      "notnull": false,
+      "table": "payment_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "sent_at",
+      "notnull": false,
+      "table": "payment_reminders",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "payment_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "payment_reminders",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "payments",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "payments",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "party_id",
+      "notnull": false,
+      "table": "payments",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "invoice_id",
+      "notnull": false,
+      "table": "payments",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "direction",
+      "notnull": true,
+      "table": "payments",
+      "type": "payment_direction"
+    },
+    {
+      "default": "'cash'::payment_method",
+      "name": "method",
+      "notnull": true,
+      "table": "payments",
+      "type": "payment_method"
+    },
+    {
+      "default": null,
+      "name": "amount",
+      "notnull": true,
+      "table": "payments",
+      "type": "numeric"
+    },
+    {
+      "default": "CURRENT_DATE",
+      "name": "payment_date",
+      "notnull": true,
+      "table": "payments",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "reference",
+      "notnull": false,
+      "table": "payments",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "payments",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "payments",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "payments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "payments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "deleted_at",
+      "notnull": false,
+      "table": "payments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "platform_admins",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "user_id",
+      "notnull": true,
+      "table": "platform_admins",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "platform_admins",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "platform_admins",
+      "type": "uuid"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "pos_held_carts",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "pos_held_carts",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": true,
+      "table": "pos_held_carts",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "label",
+      "notnull": false,
+      "table": "pos_held_carts",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "party_id",
+      "notnull": false,
+      "table": "pos_held_carts",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "cart",
+      "notnull": true,
+      "table": "pos_held_carts",
+      "type": "jsonb"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "pos_held_carts",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "pos_sessions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "pos_sessions",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "opened_by",
+      "notnull": true,
+      "table": "pos_sessions",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "opened_at",
+      "notnull": true,
+      "table": "pos_sessions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "closed_at",
+      "notnull": false,
+      "table": "pos_sessions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "0",
+      "name": "opening_cash",
+      "notnull": true,
+      "table": "pos_sessions",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "closing_cash",
+      "notnull": false,
+      "table": "pos_sessions",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "expected_cash",
+      "notnull": false,
+      "table": "pos_sessions",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "pos_sessions",
+      "type": "text"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "pos_user_access",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "pos_user_access",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "user_id",
+      "notnull": true,
+      "table": "pos_user_access",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "granted_by",
+      "notnull": false,
+      "table": "pos_user_access",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "pos_user_access",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "profiles",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "user_id",
+      "notnull": true,
+      "table": "profiles",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "full_name",
+      "notnull": false,
+      "table": "profiles",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "email",
+      "notnull": false,
+      "table": "profiles",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "phone",
+      "notnull": false,
+      "table": "profiles",
+      "type": "text"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "profiles",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "profiles",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "invoice_no",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "plan_id",
+      "notnull": false,
+      "table": "saas_invoices",
+      "type": "uuid"
+    },
+    {
+      "default": "'[]'::jsonb",
+      "name": "line_items",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "jsonb"
+    },
+    {
+      "default": "0",
+      "name": "subtotal",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "18",
+      "name": "gst_percent",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "gst_amount",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "0",
+      "name": "total",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "numeric"
+    },
+    {
+      "default": "'draft'::text",
+      "name": "status",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "text"
+    },
+    {
+      "default": "CURRENT_DATE",
+      "name": "issue_date",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "due_date",
+      "notnull": false,
+      "table": "saas_invoices",
+      "type": "date"
+    },
+    {
+      "default": null,
+      "name": "paid_at",
+      "notnull": false,
+      "table": "saas_invoices",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "cf_order_id",
+      "notnull": false,
+      "table": "saas_invoices",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "saas_invoices",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "saas_invoices",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "saas_invoices",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "saas_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "saas_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "reminder_type",
+      "notnull": true,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "channel",
+      "notnull": true,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "subject",
+      "notnull": false,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "body",
+      "notnull": false,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "recipient_email",
+      "notnull": false,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "recipient_phone",
+      "notnull": false,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": "'sent'::text",
+      "name": "status",
+      "notnull": true,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "error",
+      "notnull": false,
+      "table": "saas_reminders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "sent_by",
+      "notnull": false,
+      "table": "saas_reminders",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "sent_at",
+      "notnull": true,
+      "table": "saas_reminders",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "staff_module_access",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "staff_module_access",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "user_id",
+      "notnull": true,
+      "table": "staff_module_access",
+      "type": "uuid"
+    },
+    {
+      "default": "'{}'::text[]",
+      "name": "modules",
+      "notnull": true,
+      "table": "staff_module_access",
+      "type": "text[]"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "staff_module_access",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "staff_module_access",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "item_id",
+      "notnull": true,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "type",
+      "notnull": true,
+      "table": "stock_movements",
+      "type": "stock_movement_type"
+    },
+    {
+      "default": null,
+      "name": "quantity",
+      "notnull": true,
+      "table": "stock_movements",
+      "type": "numeric"
+    },
+    {
+      "default": null,
+      "name": "reference_id",
+      "notnull": false,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "notes",
+      "notnull": false,
+      "table": "stock_movements",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "stock_movements",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "warehouse_id",
+      "notnull": false,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "batch_id",
+      "notnull": false,
+      "table": "stock_movements",
+      "type": "uuid"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "plan_id",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "cf_order_id",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "cf_payment_id",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "order_amount",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "numeric(10,2)"
+    },
+    {
+      "default": "'INR'::text",
+      "name": "order_currency",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": "'CREATED'::text",
+      "name": "status",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "payment_method",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "payment_session_id",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "paid_at",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "raw_response",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "jsonb"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "subscription_orders",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "'production'::text",
+      "name": "mode",
+      "notnull": true,
+      "table": "subscription_orders",
+      "type": "text"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "code",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "description",
+      "notnull": false,
+      "table": "subscription_plans",
+      "type": "text"
+    },
+    {
+      "default": "0",
+      "name": "price_inr",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "numeric(10,2)"
+    },
+    {
+      "default": "30",
+      "name": "duration_days",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "integer"
+    },
+    {
+      "default": "'[]'::jsonb",
+      "name": "features",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "jsonb"
+    },
+    {
+      "default": "true",
+      "name": "is_active",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "boolean"
+    },
+    {
+      "default": "0",
+      "name": "sort_order",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "integer"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": null,
+      "name": "tagline",
+      "notnull": false,
+      "table": "subscription_plans",
+      "type": "text"
+    },
+    {
+      "default": "'{}'::jsonb",
+      "name": "limits",
+      "notnull": true,
+      "table": "subscription_plans",
+      "type": "jsonb"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "support_staff",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "user_id",
+      "notnull": true,
+      "table": "support_staff",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "full_name",
+      "notnull": false,
+      "table": "support_staff",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "email",
+      "notnull": false,
+      "table": "support_staff",
+      "type": "text"
+    },
+    {
+      "default": "true",
+      "name": "active",
+      "notnull": true,
+      "table": "support_staff",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "support_staff",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "support_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "support_staff",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "support_ticket_messages",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "ticket_id",
+      "notnull": true,
+      "table": "support_ticket_messages",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "sender_id",
+      "notnull": true,
+      "table": "support_ticket_messages",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "sender_role",
+      "notnull": true,
+      "table": "support_ticket_messages",
+      "type": "support_sender_role"
+    },
+    {
+      "default": null,
+      "name": "message",
+      "notnull": true,
+      "table": "support_ticket_messages",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "attachment_url",
+      "notnull": false,
+      "table": "support_ticket_messages",
+      "type": "text"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "support_ticket_messages",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "uuid"
+    },
+    {
+      "default": "((('TKT-'::text || to_char(now(), 'YYMMDD'::text)) || '-'::text) || substr(replace((gen_random_uuid())::text, '-'::text, ''::text), 1, 6))",
+      "name": "ticket_number",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": false,
+      "table": "support_tickets",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "assigned_to",
+      "notnull": false,
+      "table": "support_tickets",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "subject",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "description",
+      "notnull": false,
+      "table": "support_tickets",
+      "type": "text"
+    },
+    {
+      "default": "'open'::support_ticket_status",
+      "name": "status",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "support_ticket_status"
+    },
+    {
+      "default": "'medium'::support_ticket_priority",
+      "name": "priority",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "support_ticket_priority"
+    },
+    {
+      "default": "now()",
+      "name": "last_message_at",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "support_tickets",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "user_roles",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "user_id",
+      "notnull": true,
+      "table": "user_roles",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "user_roles",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "role",
+      "notnull": true,
+      "table": "user_roles",
+      "type": "app_role"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "user_roles",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "gen_random_uuid()",
+      "name": "id",
+      "notnull": true,
+      "table": "warehouses",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "business_id",
+      "notnull": true,
+      "table": "warehouses",
+      "type": "uuid"
+    },
+    {
+      "default": null,
+      "name": "name",
+      "notnull": true,
+      "table": "warehouses",
+      "type": "text"
+    },
+    {
+      "default": null,
+      "name": "address",
+      "notnull": false,
+      "table": "warehouses",
+      "type": "text"
+    },
+    {
+      "default": "false",
+      "name": "is_default",
+      "notnull": true,
+      "table": "warehouses",
+      "type": "boolean"
+    },
+    {
+      "default": null,
+      "name": "created_by",
+      "notnull": false,
+      "table": "warehouses",
+      "type": "uuid"
+    },
+    {
+      "default": "now()",
+      "name": "created_at",
+      "notnull": true,
+      "table": "warehouses",
+      "type": "timestamp with time zone"
+    },
+    {
+      "default": "now()",
+      "name": "updated_at",
+      "notnull": true,
+      "table": "warehouses",
+      "type": "timestamp with time zone"
+    }
+  ],
+  "enums": [
+    {
+      "name": "app_role",
+      "value": "owner"
+    },
+    {
+      "name": "app_role",
+      "value": "staff"
+    },
+    {
+      "name": "app_role",
+      "value": "accountant"
+    },
+    {
+      "name": "app_role",
+      "value": "admin"
+    },
+    {
+      "name": "invoice_status",
+      "value": "draft"
+    },
+    {
+      "name": "invoice_status",
+      "value": "unpaid"
+    },
+    {
+      "name": "invoice_status",
+      "value": "partial"
+    },
+    {
+      "name": "invoice_status",
+      "value": "paid"
+    },
+    {
+      "name": "invoice_status",
+      "value": "overdue"
+    },
+    {
+      "name": "invoice_status",
+      "value": "cancelled"
+    },
+    {
+      "name": "invoice_type",
+      "value": "sale"
+    },
+    {
+      "name": "invoice_type",
+      "value": "purchase"
+    },
+    {
+      "name": "invoice_type",
+      "value": "sale_return"
+    },
+    {
+      "name": "invoice_type",
+      "value": "purchase_return"
+    },
+    {
+      "name": "invoice_type",
+      "value": "quotation"
+    },
+    {
+      "name": "invoice_type",
+      "value": "credit_note"
+    },
+    {
+      "name": "invoice_type",
+      "value": "debit_note"
+    },
+    {
+      "name": "invoice_type",
+      "value": "non_inventory"
+    },
+    {
+      "name": "item_type",
+      "value": "product"
+    },
+    {
+      "name": "item_type",
+      "value": "service"
+    },
+    {
+      "name": "party_type",
+      "value": "customer"
+    },
+    {
+      "name": "party_type",
+      "value": "supplier"
+    },
+    {
+      "name": "payment_direction",
+      "value": "in"
+    },
+    {
+      "name": "payment_direction",
+      "value": "out"
+    },
+    {
+      "name": "payment_method",
+      "value": "cash"
+    },
+    {
+      "name": "payment_method",
+      "value": "bank"
+    },
+    {
+      "name": "payment_method",
+      "value": "upi"
+    },
+    {
+      "name": "payment_method",
+      "value": "cheque"
+    },
+    {
+      "name": "payment_method",
+      "value": "card"
+    },
+    {
+      "name": "payment_method",
+      "value": "other"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "opening"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "purchase"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "sale"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "adjustment_in"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "adjustment_out"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "damage"
+    },
+    {
+      "name": "stock_movement_type",
+      "value": "transfer"
+    },
+    {
+      "name": "support_sender_role",
+      "value": "customer"
+    },
+    {
+      "name": "support_sender_role",
+      "value": "admin"
+    },
+    {
+      "name": "support_sender_role",
+      "value": "staff"
+    },
+    {
+      "name": "support_ticket_priority",
+      "value": "low"
+    },
+    {
+      "name": "support_ticket_priority",
+      "value": "medium"
+    },
+    {
+      "name": "support_ticket_priority",
+      "value": "high"
+    },
+    {
+      "name": "support_ticket_priority",
+      "value": "urgent"
+    },
+    {
+      "name": "support_ticket_status",
+      "value": "open"
+    },
+    {
+      "name": "support_ticket_status",
+      "value": "in_progress"
+    },
+    {
+      "name": "support_ticket_status",
+      "value": "waiting_customer"
+    },
+    {
+      "name": "support_ticket_status",
+      "value": "resolved"
+    },
+    {
+      "name": "support_ticket_status",
+      "value": "closed"
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX payment_reminders_pkey ON public.payment_reminders USING btree (id)",
+    "CREATE INDEX idx_payment_reminders_party ON public.payment_reminders USING btree (party_id)",
+    "CREATE INDEX idx_payment_reminders_business ON public.payment_reminders USING btree (business_id)",
+    "CREATE UNIQUE INDEX businesses_pkey ON public.businesses USING btree (id)",
+    "CREATE UNIQUE INDEX user_roles_pkey ON public.user_roles USING btree (id)",
+    "CREATE UNIQUE INDEX user_roles_user_id_business_id_role_key ON public.user_roles USING btree (user_id, business_id, role)",
+    "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)",
+    "CREATE UNIQUE INDEX profiles_user_id_key ON public.profiles USING btree (user_id)",
+    "CREATE UNIQUE INDEX categories_pkey ON public.categories USING btree (id)",
+    "CREATE UNIQUE INDEX categories_business_id_name_key ON public.categories USING btree (business_id, name)",
+    "CREATE UNIQUE INDEX invoice_items_pkey ON public.invoice_items USING btree (id)",
+    "CREATE INDEX idx_invoice_items_invoice ON public.invoice_items USING btree (invoice_id)",
+    "CREATE INDEX idx_invoice_items_item ON public.invoice_items USING btree (item_id)",
+    "CREATE UNIQUE INDEX payments_pkey ON public.payments USING btree (id)",
+    "CREATE INDEX idx_payments_business ON public.payments USING btree (business_id)",
+    "CREATE INDEX idx_payments_invoice ON public.payments USING btree (invoice_id)",
+    "CREATE INDEX idx_payments_party ON public.payments USING btree (party_id)",
+    "CREATE INDEX idx_payments_deleted_at ON public.payments USING btree (business_id, deleted_at)",
+    "CREATE UNIQUE INDEX invoices_pkey ON public.invoices USING btree (id)",
+    "CREATE UNIQUE INDEX invoices_business_id_type_invoice_number_key ON public.invoices USING btree (business_id, type, invoice_number)",
+    "CREATE INDEX idx_invoices_business ON public.invoices USING btree (business_id)",
+    "CREATE INDEX idx_invoices_party ON public.invoices USING btree (party_id)",
+    "CREATE INDEX idx_invoices_date ON public.invoices USING btree (invoice_date)",
+    "CREATE INDEX idx_invoices_pos_session ON public.invoices USING btree (pos_session_id)",
+    "CREATE INDEX idx_invoices_deleted_at ON public.invoices USING btree (business_id, deleted_at)",
+    "CREATE INDEX idx_invoices_online ON public.invoices USING btree (business_id, is_online_order) WHERE (is_online_order = true)",
+    "CREATE INDEX idx_invoices_branch ON public.invoices USING btree (branch_id)",
+    "CREATE INDEX idx_invoices_source_invoice ON public.invoices USING btree (source_invoice_id) WHERE (source_invoice_id IS NOT NULL)",
+    "CREATE UNIQUE INDEX expenses_pkey ON public.expenses USING btree (id)",
+    "CREATE INDEX idx_expenses_business ON public.expenses USING btree (business_id)",
+    "CREATE INDEX idx_expenses_date ON public.expenses USING btree (expense_date)",
+    "CREATE UNIQUE INDEX warehouses_pkey ON public.warehouses USING btree (id)",
+    "CREATE UNIQUE INDEX warehouses_business_id_name_key ON public.warehouses USING btree (business_id, name)",
+    "CREATE UNIQUE INDEX stock_movements_pkey ON public.stock_movements USING btree (id)",
+    "CREATE INDEX idx_stock_movements_item ON public.stock_movements USING btree (item_id)",
+    "CREATE INDEX idx_stock_movements_business ON public.stock_movements USING btree (business_id)",
+    "CREATE UNIQUE INDEX stock_movements_unique_ref_idx ON public.stock_movements USING btree (item_id, type, reference_id) WHERE (reference_id IS NOT NULL)",
+    "CREATE INDEX idx_stock_movements_batch ON public.stock_movements USING btree (batch_id) WHERE (batch_id IS NOT NULL)",
+    "CREATE UNIQUE INDEX platform_admins_pkey ON public.platform_admins USING btree (id)",
+    "CREATE UNIQUE INDEX platform_admins_user_id_key ON public.platform_admins USING btree (user_id)",
+    "CREATE UNIQUE INDEX batches_pkey ON public.batches USING btree (id)",
+    "CREATE UNIQUE INDEX batches_item_id_batch_number_key ON public.batches USING btree (item_id, batch_number)",
+    "CREATE INDEX idx_batches_item ON public.batches USING btree (item_id)",
+    "CREATE INDEX idx_batches_expiry ON public.batches USING btree (business_id, expiry_date) WHERE (expiry_date IS NOT NULL)",
+    "CREATE UNIQUE INDEX pos_user_access_pkey ON public.pos_user_access USING btree (id)",
+    "CREATE UNIQUE INDEX pos_user_access_business_id_user_id_key ON public.pos_user_access USING btree (business_id, user_id)",
+    "CREATE UNIQUE INDEX business_features_pkey ON public.business_features USING btree (business_id)",
+    "CREATE UNIQUE INDEX invoice_settings_pkey ON public.invoice_settings USING btree (id)",
+    "CREATE UNIQUE INDEX invoice_settings_business_id_key ON public.invoice_settings USING btree (business_id)",
+    "CREATE UNIQUE INDEX pos_held_carts_pkey ON public.pos_held_carts USING btree (id)",
+    "CREATE UNIQUE INDEX pos_sessions_pkey ON public.pos_sessions USING btree (id)",
+    "CREATE UNIQUE INDEX loyalty_transactions_pkey ON public.loyalty_transactions USING btree (id)",
+    "CREATE INDEX idx_loyalty_tx_party ON public.loyalty_transactions USING btree (business_id, party_id)",
+    "CREATE INDEX idx_loyalty_tx_invoice ON public.loyalty_transactions USING btree (invoice_id)",
+    "CREATE UNIQUE INDEX parties_pkey ON public.parties USING btree (id)",
+    "CREATE INDEX idx_parties_business ON public.parties USING btree (business_id)",
+    "CREATE INDEX idx_parties_type ON public.parties USING btree (business_id, type)",
+    "CREATE UNIQUE INDEX loyalty_settings_pkey ON public.loyalty_settings USING btree (business_id)",
+    "CREATE UNIQUE INDEX staff_module_access_pkey ON public.staff_module_access USING btree (id)",
+    "CREATE UNIQUE INDEX staff_module_access_business_id_user_id_key ON public.staff_module_access USING btree (business_id, user_id)",
+    "CREATE UNIQUE INDEX barcode_catalog_pkey ON public.barcode_catalog USING btree (id)",
+    "CREATE UNIQUE INDEX barcode_catalog_barcode_key ON public.barcode_catalog USING btree (barcode)",
+    "CREATE INDEX idx_barcode_catalog_barcode ON public.barcode_catalog USING btree (barcode)",
+    "CREATE UNIQUE INDEX items_pkey ON public.items USING btree (id)",
+    "CREATE INDEX idx_items_business ON public.items USING btree (business_id)",
+    "CREATE INDEX idx_items_barcode ON public.items USING btree (business_id, barcode) WHERE (barcode IS NOT NULL)",
+    "CREATE UNIQUE INDEX branches_pkey ON public.branches USING btree (id)",
+    "CREATE UNIQUE INDEX branches_business_id_code_key ON public.branches USING btree (business_id, code)",
+    "CREATE UNIQUE INDEX subscription_plans_pkey ON public.subscription_plans USING btree (id)",
+    "CREATE UNIQUE INDEX subscription_plans_code_key ON public.subscription_plans USING btree (code)",
+    "CREATE UNIQUE INDEX admin_audit_log_pkey ON public.admin_audit_log USING btree (id)",
+    "CREATE INDEX admin_audit_log_created_at_idx ON public.admin_audit_log USING btree (created_at DESC)",
+    "CREATE INDEX admin_audit_log_admin_id_idx ON public.admin_audit_log USING btree (admin_id)",
+    "CREATE INDEX admin_audit_log_target_idx ON public.admin_audit_log USING btree (target_type, target_id)",
+    "CREATE UNIQUE INDEX invoice_edit_log_pkey ON public.invoice_edit_log USING btree (id)",
+    "CREATE INDEX idx_invoice_edit_log_invoice ON public.invoice_edit_log USING btree (invoice_id, edited_at DESC)",
+    "CREATE INDEX idx_invoice_edit_log_business ON public.invoice_edit_log USING btree (business_id, edited_at DESC)",
+    "CREATE UNIQUE INDEX business_subscriptions_pkey ON public.business_subscriptions USING btree (id)",
+    "CREATE UNIQUE INDEX business_subscriptions_business_id_key ON public.business_subscriptions USING btree (business_id)",
+    "CREATE UNIQUE INDEX subscription_orders_pkey ON public.subscription_orders USING btree (id)",
+    "CREATE UNIQUE INDEX subscription_orders_cf_order_id_key ON public.subscription_orders USING btree (cf_order_id)",
+    "CREATE INDEX idx_subscription_orders_business ON public.subscription_orders USING btree (business_id)",
+    "CREATE INDEX idx_subscription_orders_status ON public.subscription_orders USING btree (status)",
+    "CREATE UNIQUE INDEX cashfree_webhook_events_pkey ON public.cashfree_webhook_events USING btree (id)",
+    "CREATE UNIQUE INDEX saas_invoices_pkey ON public.saas_invoices USING btree (id)",
+    "CREATE UNIQUE INDEX saas_invoices_invoice_no_key ON public.saas_invoices USING btree (invoice_no)",
+    "CREATE INDEX saas_invoices_business_idx ON public.saas_invoices USING btree (business_id)",
+    "CREATE INDEX saas_invoices_status_idx ON public.saas_invoices USING btree (status)",
+    "CREATE UNIQUE INDEX saas_reminders_pkey ON public.saas_reminders USING btree (id)",
+    "CREATE INDEX saas_reminders_business_idx ON public.saas_reminders USING btree (business_id)",
+    "CREATE INDEX saas_reminders_sent_at_idx ON public.saas_reminders USING btree (sent_at DESC)",
+    "CREATE UNIQUE INDEX support_staff_pkey ON public.support_staff USING btree (id)",
+    "CREATE UNIQUE INDEX support_staff_user_id_key ON public.support_staff USING btree (user_id)",
+    "CREATE UNIQUE INDEX support_tickets_pkey ON public.support_tickets USING btree (id)",
+    "CREATE UNIQUE INDEX support_tickets_ticket_number_key ON public.support_tickets USING btree (ticket_number)",
+    "CREATE INDEX support_tickets_business_idx ON public.support_tickets USING btree (business_id)",
+    "CREATE INDEX support_tickets_created_by_idx ON public.support_tickets USING btree (created_by)",
+    "CREATE INDEX support_tickets_assigned_idx ON public.support_tickets USING btree (assigned_to)",
+    "CREATE UNIQUE INDEX support_ticket_messages_pkey ON public.support_ticket_messages USING btree (id)",
+    "CREATE INDEX support_ticket_messages_ticket_idx ON public.support_ticket_messages USING btree (ticket_id, created_at)"
+  ],
+  "sequences": null,
+  "triggers": [
+    "CREATE TRIGGER trg_profiles_updated BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_businesses_updated BEFORE UPDATE ON public.businesses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_parties_updated BEFORE UPDATE ON public.parties FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER on_business_created AFTER INSERT ON public.businesses FOR EACH ROW EXECUTE FUNCTION handle_new_business()",
+    "CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON public.items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON public.invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON public.expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_categories_updated_at BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_warehouses_updated_at BEFORE UPDATE ON public.warehouses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_batches_updated_at BEFORE UPDATE ON public.batches FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_invoice_settings_updated_at BEFORE UPDATE ON public.invoice_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_business_features_updated BEFORE UPDATE ON public.business_features FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER update_barcode_catalog_updated_at BEFORE UPDATE ON public.barcode_catalog FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER update_loyalty_settings_updated_at BEFORE UPDATE ON public.loyalty_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER staff_module_access_updated_at BEFORE UPDATE ON public.staff_module_access FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_assign_business_pincode_rank BEFORE INSERT OR UPDATE OF pincode ON public.businesses FOR EACH ROW EXECUTE FUNCTION assign_business_pincode_rank()",
+    "CREATE TRIGGER update_branches_updated_at BEFORE UPDATE ON public.branches FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_items_set_opening BEFORE INSERT ON public.items FOR EACH ROW EXECUTE FUNCTION handle_new_item()",
+    "CREATE TRIGGER trg_items_log_opening AFTER INSERT ON public.items FOR EACH ROW EXECUTE FUNCTION log_opening_stock()",
+    "CREATE TRIGGER trg_stock_movements_apply AFTER INSERT ON public.stock_movements FOR EACH ROW EXECUTE FUNCTION apply_stock_movement()",
+    "CREATE TRIGGER trg_invoice_items_stock AFTER INSERT ON public.invoice_items FOR EACH ROW EXECUTE FUNCTION handle_invoice_item_stock()",
+    "CREATE TRIGGER trg_invoice_items_batch AFTER INSERT ON public.invoice_items FOR EACH ROW EXECUTE FUNCTION handle_invoice_item_batch()",
+    "CREATE TRIGGER trg_batches_sync AFTER INSERT OR DELETE OR UPDATE ON public.batches FOR EACH ROW EXECUTE FUNCTION sync_item_stock_from_batches()",
+    "CREATE TRIGGER trg_subscription_plans_updated BEFORE UPDATE ON public.subscription_plans FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_business_subscriptions_updated BEFORE UPDATE ON public.business_subscriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_subscription_orders_updated BEFORE UPDATE ON public.subscription_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_saas_invoices_updated BEFORE UPDATE ON public.saas_invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_items_prevent_negative_stock BEFORE INSERT OR UPDATE OF opening_stock, current_stock ON public.items FOR EACH ROW EXECUTE FUNCTION prevent_negative_item_stock()",
+    "CREATE TRIGGER trg_batches_prevent_negative_stock BEFORE INSERT OR UPDATE OF quantity ON public.batches FOR EACH ROW EXECUTE FUNCTION prevent_negative_batch_stock()",
+    "CREATE TRIGGER trg_apply_payment_to_invoice AFTER INSERT OR DELETE OR UPDATE ON public.payments FOR EACH ROW EXECUTE FUNCTION apply_payment_to_invoice()",
+    "CREATE TRIGGER support_tickets_updated_at BEFORE UPDATE ON public.support_tickets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+    "CREATE TRIGGER trg_bump_ticket_last_message AFTER INSERT ON public.support_ticket_messages FOR EACH ROW EXECUTE FUNCTION bump_ticket_last_message()"
+  ]
+}

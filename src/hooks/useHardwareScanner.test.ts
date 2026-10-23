@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useHardwareScanner } from "./useHardwareScanner";
+const access=vi.hoisted(()=>({features:{barcode:true},loading:false}));
+vi.mock("./usePermissions",()=>({usePermissions:()=>access}));
 
 function dispatchKey(key: string) {
   document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
@@ -9,10 +11,18 @@ function dispatchKey(key: string) {
 describe("useHardwareScanner", () => {
   let now = 0;
   beforeEach(() => {
+    access.features.barcode=true;
     now = 1000;
     vi.spyOn(performance, "now").mockImplementation(() => now);
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it("does not handle scans after plan access is removed",()=>{
+    const onScan=vi.fn();access.features.barcode=false;
+    renderHook(()=>useHardwareScanner(onScan));
+    for(const character of "8901030875649"){dispatchKey(character);now+=8;}dispatchKey("Enter");
+    expect(onScan).not.toHaveBeenCalled();
+  });
 
   it("fires onScan for a fast keystroke burst + Enter (real scanner behavior)", () => {
     const onScan = vi.fn();

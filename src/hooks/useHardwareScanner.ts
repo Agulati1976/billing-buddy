@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { usePermissions } from "./usePermissions";
 
 interface Options {
   /** Only listens while true — pass e.g. a dialog's `open` state. Defaults to true. */
@@ -22,6 +23,8 @@ interface Options {
  * element has focus (or none) — no need to click into a specific field first.
  */
 export function useHardwareScanner(onScan: (code: string) => void, options: Options = {}) {
+  const {features,loading}=usePermissions();
+  const licensed=!loading && !!features.barcode;
   const { enabled = true, minLength = 4, maxIntervalMs = 40 } = options;
   const bufferRef = useRef("");
   const lastTimeRef = useRef(0);
@@ -29,7 +32,7 @@ export function useHardwareScanner(onScan: (code: string) => void, options: Opti
   onScanRef.current = onScan;
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !licensed) return;
 
     const finish = (e: KeyboardEvent) => {
       const code = bufferRef.current;
@@ -69,5 +72,5 @@ export function useHardwareScanner(onScan: (code: string) => void, options: Opti
     // Enter handler), avoiding double-handling the same scan.
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [enabled, minLength, maxIntervalMs]);
+  }, [enabled, licensed, minLength, maxIntervalMs]);
 }

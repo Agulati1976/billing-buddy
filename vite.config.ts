@@ -1,11 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
     host: "::",
     port: 8080,
@@ -15,7 +14,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: false, // we register manually with iframe/preview guard
@@ -67,6 +65,19 @@ export default defineConfig(({ mode }) => ({
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request }) => {
+                  let userId = "anonymous";
+                  try {
+                    const token = request.headers.get("Authorization")?.split(" ")[1];
+                    const encoded = token?.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/");
+                    if (encoded) userId = JSON.parse(atob(encoded)).sub || "anonymous";
+                  } catch { /* Public responses use their own cache partition. */ }
+                  const key = new URL(request.url);
+                  key.searchParams.set("__offline_account", userId);
+                  return key.href;
+                },
+              }],
             },
           },
           {
@@ -88,4 +99,4 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
   },
-}));
+});

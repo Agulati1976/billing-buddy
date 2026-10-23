@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -36,6 +37,7 @@ function ItemDetails({ item, compact }: { item: ItemRow; compact?: boolean }) {
 
 export default function Items() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [items, setItems] = useState<ItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -68,19 +70,19 @@ export default function Items() {
   // while the item dialog is open so a stray scan can't switch what's being edited.
   useHardwareScanner(handleScan, { enabled: !dialogOpen });
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await allRows(supabase
       .from("items").select("*")
-      .eq("business_id", current.id)
-      .order("created_at", { ascending: false });
+      .eq("business_id", currentId)
+      .order("created_at", { ascending: false }));
     if (error) toast.error(error.message);
     else setItems((data ?? []) as ItemRow[]);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { load(); }, [current?.id]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const filtered = items.filter((i) =>
     [i.name, i.sku, i.hsn_code].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
@@ -91,7 +93,7 @@ export default function Items() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this item?")) return;
     const res = await omDelete("items", { column: "id", value: id });
-    if (res.error) toast.error((res.error as any).message ?? "Failed");
+    if (res.error) toast.error((res.error).message ?? "Failed");
     else { toast.success(res.queued ? "Deletion queued — will sync" : "Item deleted"); load(); }
   };
 
@@ -148,7 +150,7 @@ export default function Items() {
             const low = i.type === "product" && i.current_stock <= i.low_stock_alert && i.low_stock_alert > 0;
             return (
               <div key={i.id} className="mobile-card flex items-center gap-3">
-                <div className="h-12 w-12 rounded-md border bg-muted/30 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-md border bg-muted/30 overflow-hidden shrink-0 flex items-center justify-center">
                   {i.image_url ? (
                     <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" loading="lazy" />
                   ) : (
@@ -171,8 +173,8 @@ export default function Items() {
                 <div className="flex flex-col gap-1">
                   {i.type === "product" && (
                     <>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i.is_batch_tracked}
-                        title={i.is_batch_tracked ? "Batch-tracked — adjust stock from Batches instead" : "Adjust stock"}
+                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                        title="Adjust stock"
                         onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
@@ -216,7 +218,7 @@ export default function Items() {
                   <TableRow key={i.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-md border bg-muted/30 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-md border bg-muted/30 overflow-hidden shrink-0 flex items-center justify-center">
                           {i.image_url ? (
                             <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" loading="lazy" />
                           ) : (
@@ -249,8 +251,8 @@ export default function Items() {
                       <div className="flex justify-end gap-1">
                         {i.type === "product" && (
                           <>
-                            <Button size="icon" variant="ghost" disabled={i.is_batch_tracked}
-                              title={i.is_batch_tracked ? "Batch-tracked — adjust stock from Batches instead" : "Adjust stock"}
+                            <Button size="icon" variant="ghost"
+                              title="Adjust stock"
                               onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
                               <ArrowUpDown className="h-4 w-4" />
                             </Button>

@@ -1,0 +1,135 @@
+[
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.apply_payment_to_invoice()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  inv_id UUID;\n  total_paid NUMERIC;\n  inv_total NUMERIC;\n  new_balance NUMERIC;\n  new_status public.invoice_status;\nBEGIN\n  inv_id := COALESCE(NEW.invoice_id, OLD.invoice_id);\n  IF inv_id IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;\n\n  SELECT total_amount INTO inv_total FROM public.invoices WHERE id = inv_id;\n  IF NOT FOUND THEN RETURN COALESCE(NEW, OLD); END IF;\n\n  SELECT COALESCE(SUM(amount), 0) INTO total_paid\n  FROM public.payments\n  WHERE invoice_id = inv_id AND deleted_at IS NULL;\n\n  new_balance := GREATEST(0, inv_total - total_paid);\n  IF new_balance <= 0 THEN new_status := 'paid';\n  ELSIF total_paid > 0 THEN new_status := 'partial';\n  ELSE new_status := 'unpaid';\n  END IF;\n\n  UPDATE public.invoices\n  SET paid_amount = total_paid, balance_amount = new_balance, status = new_status\n  WHERE id = inv_id;\n\n  RETURN COALESCE(NEW, OLD);\nEND;\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "apply_payment_to_invoice",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.apply_stock_movement()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  delta NUMERIC;\n  updated_stock NUMERIC;\n  item_rec RECORD;\nBEGIN\n  IF COALESCE(NEW.quantity, 0) <= 0 THEN\n    RAISE EXCEPTION 'Quantity must be greater than zero.' USING ERRCODE = '23514';\n  END IF;\n\n  IF NEW.type = 'opening' THEN\n    RETURN NEW;\n  END IF;\n\n  IF NEW.type IN ('purchase', 'adjustment_in') THEN\n    delta := NEW.quantity;\n  ELSIF NEW.type IN ('sale', 'adjustment_out', 'damage', 'transfer') THEN\n    delta := -NEW.quantity;\n  ELSE\n    delta := 0;\n  END IF;\n\n  IF delta < 0 THEN\n    UPDATE public.items\n    SET current_stock = current_stock + delta\n    WHERE id = NEW.item_id\n      AND current_stock + delta >= 0\n    RETURNING current_stock INTO updated_stock;\n\n    IF NOT FOUND THEN\n      SELECT name, current_stock, unit INTO item_rec\n      FROM public.items\n      WHERE id = NEW.item_id;\n\n      RAISE EXCEPTION 'Out of stock: % has only % % in stock.',\n        COALESCE(item_rec.name, 'item'),\n        GREATEST(COALESCE(item_rec.current_stock, 0), 0),\n        COALESCE(item_rec.unit, '')\n        USING ERRCODE = 'P0001';\n    END IF;\n  ELSIF delta > 0 THEN\n    UPDATE public.items\n    SET current_stock = current_stock + delta\n    WHERE id = NEW.item_id;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "proname": "apply_stock_movement",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.assign_business_pincode_rank()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.pincode IS NOT NULL AND length(trim(NEW.pincode)) > 0 THEN\n    IF TG_OP = 'INSERT' OR OLD.pincode IS DISTINCT FROM NEW.pincode THEN\n      SELECT COUNT(*) + 1 INTO NEW.pincode_rank\n      FROM public.businesses\n      WHERE pincode = NEW.pincode\n        AND id <> NEW.id\n        AND created_at < COALESCE(NEW.created_at, now());\n    END IF;\n  ELSE\n    NEW.pincode_rank := NULL;\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "assign_business_pincode_rank",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.bump_ticket_last_message()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  UPDATE public.support_tickets\n  SET last_message_at = NEW.created_at,\n      status = CASE\n        WHEN status = 'closed' THEN 'open'\n        WHEN NEW.sender_role = 'customer' AND status = 'waiting_customer' THEN 'in_progress'\n        WHEN NEW.sender_role IN ('admin','staff') AND status = 'open' THEN 'in_progress'\n        ELSE status\n      END\n  WHERE id = NEW.ticket_id;\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "bump_ticket_last_message",
+    "prosecdef": true
+  },
+  {
+    "args": "p_batch_id uuid, p_qty numeric, p_reference_id uuid",
+    "definition": "CREATE OR REPLACE FUNCTION public.credit_batch_quantity(p_batch_id uuid, p_qty numeric, p_reference_id uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF p_qty <= 0 THEN RAISE EXCEPTION 'Quantity must be greater than zero.' USING ERRCODE = '23514'; END IF;\n  IF NOT EXISTS (\n    SELECT 1 FROM public.batches b WHERE b.id = p_batch_id AND public.is_business_member(auth.uid(), b.business_id)\n  ) THEN\n    RAISE EXCEPTION 'Not authorized' USING ERRCODE = '42501';\n  END IF;\n\n  PERFORM set_config('app.stock_movement_reference_id', p_reference_id::text, true);\n  PERFORM set_config('app.stock_movement_type', 'purchase', true);\n\n  UPDATE public.batches SET quantity = quantity + p_qty WHERE id = p_batch_id;\nEND;\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "credit_batch_quantity",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_invoice_item_batch()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  inv_type public.invoice_type;\n  delta NUMERIC;\n  updated_qty NUMERIC;\n  batch_rec RECORD;\n  mv_type public.stock_movement_type;\nBEGIN\n  IF NEW.batch_id IS NULL THEN RETURN NEW; END IF;\n  IF COALESCE(NEW.quantity, 0) <= 0 THEN\n    RAISE EXCEPTION 'Quantity must be greater than zero.' USING ERRCODE = '23514';\n  END IF;\n\n  SELECT type INTO inv_type FROM public.invoices WHERE id = NEW.invoice_id;\n\n  IF inv_type = 'sale' THEN delta := -NEW.quantity; mv_type := 'sale';\n  ELSIF inv_type = 'sale_return' THEN delta := NEW.quantity; mv_type := 'adjustment_in';\n  ELSIF inv_type = 'purchase_return' THEN delta := -NEW.quantity; mv_type := 'adjustment_out';\n  ELSIF inv_type = 'purchase' THEN\n    -- The batch row itself is created with its received quantity, or credited via\n    -- credit_batch_quantity() for a reused batch (see that function) — either path\n    -- already lets sync_item_stock_from_batches() log the movement. Nothing to do here.\n    RETURN NEW;\n  ELSE RETURN NEW;\n  END IF;\n\n  -- Tell the nested sync_item_stock_from_batches() (fired by the UPDATE below) to\n  -- label its row with the real type and link it back to this invoice line, instead\n  -- of inserting a second, separate row here (which double-counted every movement).\n  PERFORM set_config('app.stock_movement_reference_id', NEW.id::text, true);\n  PERFORM set_config('app.stock_movement_type', mv_type::text, true);\n\n  IF delta < 0 THEN\n    UPDATE public.batches\n    SET quantity = quantity + delta\n    WHERE id = NEW.batch_id\n      AND quantity + delta >= 0\n    RETURNING quantity INTO updated_qty;\n\n    IF NOT FOUND THEN\n      SELECT b.batch_number, b.quantity, i.name AS item_name, i.unit\n      INTO batch_rec\n      FROM public.batches b\n      LEFT JOIN public.items i ON i.id = b.item_id\n      WHERE b.id = NEW.batch_id;\n\n      RAISE EXCEPTION 'Out of stock: batch % of % has only % % available. Select another batch.',\n        COALESCE(batch_rec.batch_number, 'selected'),\n        COALESCE(batch_rec.item_name, 'item'),\n        GREATEST(COALESCE(batch_rec.quantity, 0), 0),\n        COALESCE(batch_rec.unit, '')\n        USING ERRCODE = 'P0001';\n    END IF;\n  ELSIF delta > 0 THEN\n    UPDATE public.batches\n    SET quantity = quantity + delta\n    WHERE id = NEW.batch_id;\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "proname": "handle_invoice_item_batch",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_invoice_item_stock()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  inv_type public.invoice_type;\n  inv_business UUID;\n  inv_creator UUID;\n  mv_type public.stock_movement_type;\n  is_tracked BOOLEAN;\n  is_product BOOLEAN;\n  item_name TEXT;\nBEGIN\n  IF NEW.item_id IS NULL THEN RETURN NEW; END IF;\n\n  SELECT type, business_id, created_by INTO inv_type, inv_business, inv_creator\n  FROM public.invoices WHERE id = NEW.invoice_id;\n\n  SELECT (type = 'product'), COALESCE(is_batch_tracked, FALSE), name\n    INTO is_product, is_tracked, item_name\n  FROM public.items WHERE id = NEW.item_id;\n\n  IF NOT COALESCE(is_product, FALSE) THEN\n    RETURN NEW;\n  END IF;\n\n  -- Batch-tracked stock must always move through a selected batch.\n  IF is_tracked THEN\n    IF NEW.batch_id IS NULL AND inv_type IN ('sale', 'purchase', 'sale_return', 'purchase_return') THEN\n      RAISE EXCEPTION 'Pick a batch for % before saving. Batch-tracked stock must be changed batch-wise.', COALESCE(item_name, NEW.item_name, 'this item')\n        USING ERRCODE = 'P0001';\n    END IF;\n    RETURN NEW;\n  END IF;\n\n  IF NEW.batch_id IS NOT NULL THEN RETURN NEW; END IF;\n\n  IF inv_type = 'sale' THEN mv_type := 'sale';\n  ELSIF inv_type = 'purchase' THEN mv_type := 'purchase';\n  ELSIF inv_type = 'sale_return' THEN mv_type := 'adjustment_in';\n  ELSIF inv_type = 'purchase_return' THEN mv_type := 'adjustment_out';\n  ELSE RETURN NEW;\n  END IF;\n\n  INSERT INTO public.stock_movements\n    (business_id, item_id, type, quantity, reference_id, notes, created_by)\n  VALUES\n    (inv_business, NEW.item_id, mv_type, NEW.quantity, NEW.id,\n     'Invoice line ' || NEW.id, inv_creator)\n  ON CONFLICT DO NOTHING;\n\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "proname": "handle_invoice_item_stock",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_new_business()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  INSERT INTO public.user_roles (user_id, business_id, role)\n  VALUES (NEW.owner_id, NEW.id, 'owner');\n  RETURN NEW;\nEND; $function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "handle_new_business",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_new_item()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  NEW.current_stock := NEW.opening_stock;\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "handle_new_item",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  INSERT INTO public.profiles (user_id, full_name, email)\n  VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name', NEW.email);\n  RETURN NEW;\nEND; $function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "handle_new_user",
+    "prosecdef": true
+  },
+  {
+    "args": "_user_id uuid, _business_id uuid, _role app_role",
+    "definition": "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _business_id uuid, _role app_role)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1 FROM public.user_roles\n    WHERE user_id = _user_id AND business_id = _business_id AND role = _role\n  )\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "has_role",
+    "prosecdef": true
+  },
+  {
+    "args": "_user_id uuid, _business_id uuid",
+    "definition": "CREATE OR REPLACE FUNCTION public.is_business_member(_user_id uuid, _business_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (\n    SELECT 1 FROM public.user_roles\n    WHERE user_id = _user_id AND business_id = _business_id\n  )\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "is_business_member",
+    "prosecdef": true
+  },
+  {
+    "args": "_user_id uuid",
+    "definition": "CREATE OR REPLACE FUNCTION public.is_platform_admin(_user_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.platform_admins WHERE user_id = _user_id)\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "is_platform_admin",
+    "prosecdef": true
+  },
+  {
+    "args": "_user_id uuid",
+    "definition": "CREATE OR REPLACE FUNCTION public.is_support_staff(_user_id uuid)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  SELECT EXISTS (SELECT 1 FROM public.support_staff WHERE user_id = _user_id AND active = true)\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "is_support_staff",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.log_opening_stock()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF NEW.type = 'product' AND NEW.opening_stock <> 0 THEN\n    INSERT INTO public.stock_movements (business_id, item_id, type, quantity, notes, created_by)\n    VALUES (NEW.business_id, NEW.id, 'opening', NEW.opening_stock, 'Opening stock', NEW.created_by);\n  END IF;\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "log_opening_stock",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.prevent_negative_batch_stock()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF COALESCE(NEW.quantity, 0) < 0 THEN\n    RAISE EXCEPTION 'Out of stock: batch stock cannot go negative. Available batch stock is %.', GREATEST(COALESCE(OLD.quantity, 0), 0)\n      USING ERRCODE = '23514';\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "proname": "prevent_negative_batch_stock",
+    "prosecdef": false
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.prevent_negative_item_stock()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN\n  IF COALESCE(NEW.opening_stock, 0) < 0 THEN\n    RAISE EXCEPTION 'Opening stock cannot be negative.' USING ERRCODE = '23514';\n  END IF;\n\n  IF COALESCE(NEW.current_stock, 0) < 0 THEN\n    RAISE EXCEPTION 'Out of stock: stock cannot go negative. Available stock is %.', GREATEST(COALESCE(OLD.current_stock, 0), 0)\n      USING ERRCODE = '23514';\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "proname": "prevent_negative_item_stock",
+    "prosecdef": false
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.sync_item_stock_from_batches()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\nDECLARE\n  delta NUMERIC := 0;\n  target_item UUID;\n  target_business UUID;\n  target_batch UUID;\n  mv_type public.stock_movement_type;\n  note TEXT;\n  batch_label TEXT;\n  ctx_ref_id UUID;\n  ctx_type TEXT;\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    delta := COALESCE(NEW.quantity, 0);\n    target_item := NEW.item_id;\n    target_business := NEW.business_id;\n    target_batch := NEW.id;\n    batch_label := COALESCE(NULLIF(NEW.batch_number, ''), 'batch');\n    note := 'Batch ' || batch_label || ' added';\n  ELSIF TG_OP = 'UPDATE' THEN\n    delta := COALESCE(NEW.quantity, 0) - COALESCE(OLD.quantity, 0);\n    target_item := NEW.item_id;\n    target_business := NEW.business_id;\n    target_batch := NEW.id;\n    batch_label := COALESCE(NULLIF(NEW.batch_number, ''), 'batch');\n    IF delta > 0 THEN\n      note := 'Batch ' || batch_label || ' qty increased';\n    ELSE\n      note := 'Batch ' || batch_label || ' consumed / qty decreased';\n    END IF;\n  ELSE\n    delta := -COALESCE(OLD.quantity, 0);\n    target_item := OLD.item_id;\n    target_business := OLD.business_id;\n    target_batch := OLD.id;\n    batch_label := COALESCE(NULLIF(OLD.batch_number, ''), 'batch');\n    note := 'Batch ' || batch_label || ' removed';\n  END IF;\n\n  IF delta = 0 THEN\n    RETURN COALESCE(NEW, OLD);\n  END IF;\n\n  -- Optional context set by handle_invoice_item_batch() (or credit_batch_quantity())\n  -- right before the UPDATE that fired this trigger, transaction-local only. Lets a\n  -- single row carry the real movement type + a link back to the invoice line instead\n  -- of a generic, untraceable \"adjustment\".\n  ctx_ref_id := NULLIF(current_setting('app.stock_movement_reference_id', true), '')::uuid;\n  ctx_type := NULLIF(current_setting('app.stock_movement_type', true), '');\n\n  IF ctx_type IS NOT NULL THEN\n    mv_type := ctx_type::public.stock_movement_type;\n  ELSIF delta > 0 THEN\n    mv_type := 'adjustment_in';\n  ELSE\n    mv_type := 'adjustment_out';\n  END IF;\n\n  IF ctx_ref_id IS NOT NULL THEN\n    note := 'Invoice line ' || ctx_ref_id;\n  END IF;\n\n  INSERT INTO public.stock_movements\n    (business_id, item_id, type, quantity, reference_id, batch_id, notes)\n  VALUES\n    (target_business, target_item, mv_type, ABS(delta), ctx_ref_id, target_batch, note)\n  ON CONFLICT DO NOTHING;\n\n  RETURN COALESCE(NEW, OLD);\nEND;\n$function$\n",
+    "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+    "proname": "sync_item_stock_from_batches",
+    "prosecdef": true
+  },
+  {
+    "args": "",
+    "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$\nBEGIN NEW.updated_at = now(); RETURN NEW; END; $function$\n",
+    "proacl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "proname": "update_updated_at_column",
+    "prosecdef": false
+  }
+]

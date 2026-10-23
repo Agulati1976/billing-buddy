@@ -1,3 +1,8 @@
+import type { LucideIcon } from "lucide-react";
+import { businessDate } from "@/lib/dates";
+import { financialSummary } from "@/lib/reporting";
+import { invoiceCostLines } from "@/lib/invoiceData";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -6,13 +11,14 @@ import { formatINR } from "@/lib/states";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { DashboardChart } from "@/components/DashboardChart";
-import { DateRangeFilter, rangeFor, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, type DatePreset } from "@/hooks/useDateFilter";
 import { ModuleGrid } from "@/components/ModuleGrid";
 import { startOfMonth, format } from "date-fns";
 
 const StatCard = ({
   label, value, icon: Icon, tone = "primary", to,
-}: { label: string; value: string; icon: any; tone?: "primary" | "success" | "warning" | "danger"; to?: string }) => {
+}: { label: string; value: string; icon: LucideIcon; tone?: "primary" | "success" | "warning" | "danger"; to?: string }) => {
   const toneMap = {
     primary: "bg-primary-soft text-primary",
     success: "bg-success-soft text-success",
@@ -36,6 +42,7 @@ const StatCard = ({
 };
 
 interface Stats {
+  profit:number;
   todaySales: number;
   rangeSales: number;
   rangePurchases: number;
@@ -51,6 +58,7 @@ interface Stats {
 
 export default function Dashboard() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [stats, setStats] = useState<Stats | null>(null);
 
   // Date filter
@@ -73,65 +81,68 @@ export default function Dashboard() {
 
 
 
+
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = businessDate();
       const since = range.from ? format(range.from, "yyyy-MM-dd") : null;
       const until = range.to ? format(range.to, "yyyy-MM-dd") : null;
 
       const inN = new Date(); inN.setDate(inN.getDate() + Math.max(0, expiryDays));
-      const inNStr = inN.toISOString().slice(0, 10);
+      const inNStr = businessDate(inN);
 
 
       let rangeQuery = supabase.from("invoices")
-        .select("total_amount, party_id, parties(name)")
-        .eq("business_id", current.id).eq("type", "sale").is("deleted_at", null);
+        .select("id,type,total_amount,subtotal,discount_amount,party_id,parties(name)")
+        .eq("business_id", currentId).in("type", ["sale","non_inventory","sale_return"]).is("deleted_at", null);
       if (since) rangeQuery = rangeQuery.gte("invoice_date", since);
       if (until) rangeQuery = rangeQuery.lte("invoice_date", until);
 
       let purchQuery = supabase.from("invoices")
         .select("total_amount")
-        .eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null);
+        .eq("business_id", currentId).eq("type", "purchase").is("deleted_at", null);
       if (since) purchQuery = purchQuery.gte("invoice_date", since);
       if (until) purchQuery = purchQuery.lte("invoice_date", until);
 
       let expQuery = supabase.from("expenses")
         .select("amount")
-        .eq("business_id", current.id);
+        .eq("business_id", currentId);
       if (since) expQuery = expQuery.gte("expense_date", since);
       if (until) expQuery = expQuery.lte("expense_date", until);
 
       // To Receive / To Pay — unpaid balances for invoices issued within the selected date range.
-      let recvQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gt("balance_amount", 0);
+      let recvQuery = supabase.from("invoices").select("balance_amount").eq("business_id", currentId).in("type", ["sale","non_inventory"]).is("deleted_at", null).gt("balance_amount", 0);
       if (since) recvQuery = recvQuery.gte("invoice_date", since);
       if (until) recvQuery = recvQuery.lte("invoice_date", until);
-      let payQuery = supabase.from("invoices").select("balance_amount").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0);
+      let payQuery = supabase.from("invoices").select("balance_amount").eq("business_id", currentId).eq("type", "purchase").is("deleted_at", null).gt("balance_amount", 0);
       if (since) payQuery = payQuery.gte("invoice_date", since);
       if (until) payQuery = payQuery.lte("invoice_date", until);
 
       const [todayR, rangeR, purchR, expenseR, recvR, payR, recentR, lowR, redR, expR] = await Promise.all([
-        supabase.from("invoices").select("total_amount").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).eq("invoice_date", today),
-        rangeQuery,
-        purchQuery,
-        expQuery,
-        recvQuery,
-        payQuery,
-        supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
-        supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", current.id).eq("type", "product").gt("low_stock_alert", 0).order("current_stock", { ascending: true }),
-        supabase.from("items").select("name, current_stock, unit").eq("business_id", current.id).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("current_stock", { ascending: true }),
-        supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", current.id).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
+        allRows(supabase.from("invoices").select("total_amount").eq("business_id", currentId).in("type", ["sale","non_inventory"]).is("deleted_at", null).eq("invoice_date", today)),
+        allRows(rangeQuery),
+        allRows(purchQuery),
+        allRows(expQuery),
+        allRows(recvQuery),
+        allRows(payQuery),
+        supabase.from("invoices").select("id, invoice_number, total_amount, status, parties(name)").eq("business_id", currentId).in("type", ["sale","non_inventory"]).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
+        allRows(supabase.from("items").select("name, current_stock, unit, low_stock_alert").eq("business_id", currentId).eq("type", "product").gt("low_stock_alert", 0).order("current_stock", { ascending: true })),
+        allRows(supabase.from("items").select("name, current_stock, unit").eq("business_id", currentId).eq("type", "product").lt("current_stock", LOW_STOCK_THRESHOLD).order("current_stock", { ascending: true })),
+        supabase.from("batches").select("id, batch_number, expiry_date, quantity, items(name)").eq("business_id", currentId).gt("quantity", 0).not("expiry_date", "is", null).lte("expiry_date", inNStr).order("expiry_date").limit(50),
       ]);
 
-      const todaySales = (todayR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
-      const rangeSales = (rangeR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
-      const rangePurchases = (purchR.data ?? []).reduce((s, r: any) => s + Number(r.total_amount), 0);
-      const rangeExpenses = (expenseR.data ?? []).reduce((s, r: any) => s + Number(r.amount), 0);
-      const toReceive = (recvR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
-      const toPay = (payR.data ?? []).reduce((s, r: any) => s + Number(r.balance_amount), 0);
+      const todaySales = (todayR.data ?? []).reduce((s, r) => s + Number(r.total_amount), 0);
+      const rangeSales = (rangeR.data ?? []).reduce((s, r) => s + (r.type==="sale_return"?-1:1)*Number(r.total_amount), 0);
+      let costs;try{costs=await invoiceCostLines((rangeR.data??[]).map(invoice=>invoice.id));}catch{return;}
+      const financials=financialSummary(rangeR.data??[],costs,expenseR.data??[]);
+      const rangePurchases = (purchR.data ?? []).reduce((s, r) => s + Number(r.total_amount), 0);
+      const rangeExpenses = (expenseR.data ?? []).reduce((s, r) => s + Number(r.amount), 0);
+      const toReceive = (recvR.data ?? []).reduce((s, r) => s + Number(r.balance_amount), 0);
+      const toPay = (payR.data ?? []).reduce((s, r) => s + Number(r.balance_amount), 0);
 
       const customerMap = new Map<string, number>();
-      (rangeR.data ?? []).forEach((r: any) => {
+      (rangeR.data ?? []).forEach((r) => {
         const name = r.parties?.name;
         if (!name) return;
         customerMap.set(name, (customerMap.get(name) ?? 0) + Number(r.total_amount));
@@ -141,23 +152,23 @@ export default function Dashboard() {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-      const lowStock = ((lowR.data as any[]) ?? []).filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert));
-      const redStock = ((redR.data as any[]) ?? []);
+      const lowStock = ((lowR.data) ?? []).filter((i) => Number(i.current_stock) <= Number(i.low_stock_alert));
+      const redStock = ((redR.data) ?? []);
 
-      const recentInvoices = ((recentR.data as any[]) ?? []).map((r) => ({
+      const recentInvoices = ((recentR.data) ?? []).map((r) => ({
         id: r.id, invoice_number: r.invoice_number,
         total_amount: Number(r.total_amount), status: r.status,
         party: r.parties?.name ?? null,
       }));
 
-      const expiringBatches = ((expR.data as any[]) ?? []).map((b) => ({
+      const expiringBatches = ((expR.data) ?? []).map((b) => ({
         id: b.id, batch_number: b.batch_number, expiry_date: b.expiry_date,
         quantity: Number(b.quantity), item: b.items?.name ?? "—",
       }));
 
-      setStats({ todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, redStock, expiringBatches, recentInvoices });
+      setStats({ profit:financials.net,todaySales, rangeSales, rangePurchases, rangeExpenses, toReceive, toPay, topCustomers, lowStock, redStock, expiringBatches, recentInvoices });
     })();
-  }, [current?.id, range.from, range.to, expiryDays]);
+  }, [currentId, range.from, range.to, expiryDays]);
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-7xl">
@@ -179,7 +190,7 @@ export default function Dashboard() {
         <StatCard label={`Sales · ${range.label}`} value={formatINR(stats?.rangeSales ?? 0)} icon={ArrowUpRight} tone="success" to="/sales" />
         <StatCard label={`Purchases · ${range.label}`} value={formatINR(stats?.rangePurchases ?? 0)} icon={ShoppingCart} tone="primary" to="/purchases" />
         <StatCard label={`Expenses · ${range.label}`} value={formatINR(stats?.rangeExpenses ?? 0)} icon={Receipt} tone="danger" to="/expenses" />
-        <StatCard label={`Profit · ${range.label}`} value={formatINR((stats?.rangeSales ?? 0) - (stats?.rangePurchases ?? 0) - (stats?.rangeExpenses ?? 0))} icon={TrendingUp} tone="success" to="/reports" />
+        <StatCard label={`Profit · ${range.label}`} value={formatINR(stats?.profit ?? 0)} icon={TrendingUp} tone="success" to="/reports" />
         <StatCard label={`To Receive · ${range.label}`} value={formatINR(stats?.toReceive ?? 0)} icon={ArrowDownRight} tone="warning" to="/payments" />
         <StatCard label={`To Pay · ${range.label}`} value={formatINR(stats?.toPay ?? 0)} icon={Wallet} tone="danger" to="/payments" />
 

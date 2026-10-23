@@ -1,3 +1,7 @@
+import { financialSummary } from "@/lib/reporting";
+import { invoiceCostLines } from "@/lib/invoiceData";
+import { usePermissions } from "@/hooks/usePermissions";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,11 +23,11 @@ import { cn } from "@/lib/utils";
 type Inv = {
   id: string; invoice_date: string; total_amount: number; tax_amount: number;
   cgst_amount: number; sgst_amount: number; igst_amount: number;
-  subtotal: number; type: string; status: string; party_id: string | null;
+  discount_amount:number; subtotal: number; type: string; status: string; party_id: string | null;
   is_inter_state: boolean; party_state_code: string | null;
   paid_amount: number; balance_amount: number;
 };
-type Item = { invoice_id: string; item_name: string; quantity: number; total_amount: number; taxable_amount: number; tax_rate: number; };
+type Item = { unit_cost:number|null;cost_is_estimate:boolean;invoice_id: string; item_name: string; quantity: number; total_amount: number; taxable_amount: number; tax_rate: number; };
 type Exp = { category: string; amount: number; expense_date: string; };
 
 const fmtDate = (d: Date) => format(d, "yyyy-MM-dd");
@@ -55,8 +59,11 @@ function rangeFor(preset: Preset, custom: { from: Date; to: Date }): { from: Dat
 
 export default function Reports() {
   const { current } = useBusiness();
+  const currentId = current?.id;
+  const {features}=usePermissions();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Inv[]>([]);
+  const [purchaseReturns,setPurchaseReturns]=useState<Inv[]>([]);
   const [saleReturns, setSaleReturns] = useState<Inv[]>([]);
   const [purchases, setPurchases] = useState<Inv[]>([]);
   const [quickInvoices, setQuickInvoices] = useState<Inv[]>([]);
@@ -74,27 +81,24 @@ export default function Reports() {
   );
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
       setLoading(true);
       const since = fmtDate(range.from);
       const until = fmtDate(range.to);
-      const [s, p, e, sr, qi] = await Promise.all([
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
-        supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since).lte("expense_date", until),
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale_return").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
-        supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "non_inventory").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until),
+      const [s, p, e, sr, qi, pr] = await Promise.all([
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "sale").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "purchase").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("expenses").select("category,amount,expense_date").eq("business_id", currentId).gte("expense_date", since).lte("expense_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "sale_return").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "non_inventory").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id",currentId).eq("type","purchase_return").is("deleted_at",null).gte("invoice_date",since).lte("invoice_date",until)),
       ]);
-      if (s.error || p.error || e.error || sr.error || qi.error) toast.error("Failed to load reports");
-      const allInvIds = [...(s.data ?? []), ...(p.data ?? [])].map((i: any) => i.id);
-      let it: Item[] = [];
-      if (allInvIds.length) {
-        const { data } = await supabase.from("invoice_items")
-          .select("invoice_id,item_name,quantity,total_amount,taxable_amount,tax_rate")
-          .in("invoice_id", allInvIds);
-        it = (data ?? []) as Item[];
-      }
+      if(s.error || p.error || e.error || sr.error || qi.error || pr.error){toast.error("Failed to load reports");setLoading(false);return;}
+      const allInvIds=[...(s.data??[]),...(sr.data??[]),...(qi.data??[])].map(invoice=>invoice.id);
+      let it:Item[]=[];
+      try{it=await invoiceCostLines(allInvIds) as Item[];}catch{toast.error("Failed to load invoice costs");setLoading(false);return;}
+      setPurchaseReturns((pr.data??[]) as Inv[]);
       setSales((s.data ?? []) as Inv[]);
       setPurchases((p.data ?? []) as Inv[]);
       setExpenses((e.data ?? []) as Exp[]);
@@ -103,20 +107,20 @@ export default function Reports() {
       setItems(it);
       setLoading(false);
     })();
-  }, [current?.id, range.from, range.to]);
+  }, [currentId, range.from, range.to]);
 
   /* ------------------------- aggregations ------------------------- */
 
   // Totals for the selected range
   const totals = useMemo(() => {
-    const salesTotal = sales.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const salesTotal = [...sales,...quickInvoices].reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const returnsTotal = saleReturns.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const netSales = salesTotal - returnsTotal;
-    const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const purchasesTotal = purchases.reduce((s, i) => s + Number(i.total_amount || 0), 0)-purchaseReturns.reduce((s,i)=>s+Number(i.total_amount || 0),0);
     const expensesTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
     const quickTotal = quickInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
     const quickOutstanding = quickInvoices.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
-    const creditSales = sales.filter((i) => i.status === "unpaid" || i.status === "partial");
+    const creditSales = [...sales,...quickInvoices].filter((i) => i.status === "unpaid" || i.status === "partial");
     const creditOutstanding = creditSales.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     return {
       sales: salesTotal,
@@ -125,7 +129,7 @@ export default function Reports() {
       purchases: purchasesTotal,
       expenses: expensesTotal,
       net: netSales - purchasesTotal - expensesTotal,
-      salesCount: sales.length,
+      salesCount: sales.length+quickInvoices.length,
       returnsCount: saleReturns.length,
       purchasesCount: purchases.length,
       creditOutstanding,
@@ -134,53 +138,30 @@ export default function Reports() {
       quickCount: quickInvoices.length,
       quickOutstanding,
     };
-  }, [sales, saleReturns, purchases, expenses, quickInvoices]);
+  }, [sales, saleReturns, purchases, purchaseReturns, expenses, quickInvoices]);
 
-  // P&L for the selected range
-  const pnl = useMemo(() => {
-    const revenue = sales.reduce((s, i) => s + Number(i.subtotal || 0), 0); // pre-tax
-    const cogs = purchases.reduce((s, i) => s + Number(i.subtotal || 0), 0);
-    const opex = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-    const gross = revenue - cogs;
-    const net = gross - opex;
-    return { revenue, cogs, gross, opex, net };
-  }, [sales, purchases, expenses]);
-
-  // GST
-  const gst = useMemo(() => {
-    const out = { cgst: 0, sgst: 0, igst: 0, taxable: 0 };
-    const inp = { cgst: 0, sgst: 0, igst: 0, taxable: 0 };
-    sales.forEach((i) => {
-      out.cgst += Number(i.cgst_amount || 0);
-      out.sgst += Number(i.sgst_amount || 0);
-      out.igst += Number(i.igst_amount || 0);
-      out.taxable += Number(i.subtotal || 0);
-    });
-    purchases.forEach((i) => {
-      inp.cgst += Number(i.cgst_amount || 0);
-      inp.sgst += Number(i.sgst_amount || 0);
-      inp.igst += Number(i.igst_amount || 0);
-      inp.taxable += Number(i.subtotal || 0);
-    });
-    const liability = (out.cgst + out.sgst + out.igst) - (inp.cgst + inp.sgst + inp.igst);
-    return { out, inp, liability };
-  }, [sales, purchases]);
+  const pnl=useMemo(()=>financialSummary([...sales,...quickInvoices,...saleReturns,...purchases,...purchaseReturns],items,expenses),[sales,quickInvoices,saleReturns,purchases,purchaseReturns,items,expenses]);
+  const gst=pnl.gst;
 
   // Top selling products
   const topProducts = useMemo(() => {
-    const saleIds = new Set(sales.map((s) => s.id));
+    const invoicesById = new Map([...sales,...quickInvoices,...saleReturns].map(invoice=>[invoice.id,invoice]));
+    const returnIds=new Set(saleReturns.map(invoice=>invoice.id));
     const map = new Map<string, { qty: number; revenue: number }>();
-    items.filter((it) => saleIds.has(it.invoice_id)).forEach((it) => {
+    items.filter((it) => invoicesById.has(it.invoice_id)).forEach((it) => {
       const cur = map.get(it.item_name) ?? { qty: 0, revenue: 0 };
-      cur.qty += Number(it.quantity || 0);
-      cur.revenue += Number(it.total_amount || 0);
+      const sign=returnIds.has(it.invoice_id)?-1:1;
+      cur.qty += sign*Number(it.quantity || 0);
+      const invoice=invoicesById.get(it.invoice_id)!;
+      const factor=invoice.subtotal>0?Math.max(0,(invoice.subtotal-invoice.discount_amount)/invoice.subtotal):0;
+      cur.revenue += sign*Number(it.taxable_amount || 0)*factor;
       map.set(it.item_name, cur);
     });
     return Array.from(map.entries())
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
-  }, [items, sales]);
+  }, [items, sales,quickInvoices,saleReturns]);
 
   // Expense breakdown
   const expBreakdown = useMemo(() => {
@@ -201,13 +182,15 @@ export default function Reports() {
       if (!v) { v = { sales: 0, purchases: 0, expenses: 0 }; byDate.set(k, v); }
       return v;
     };
-    sales.forEach((i) => { ensure(i.invoice_date).sales += Number(i.total_amount || 0); });
+    [...sales,...quickInvoices].forEach((i) => { ensure(i.invoice_date).sales += Number(i.total_amount || 0); });
+    saleReturns.forEach(i=>{ensure(i.invoice_date).sales-=Number(i.total_amount || 0);});
     purchases.forEach((i) => { ensure(i.invoice_date).purchases += Number(i.total_amount || 0); });
+    purchaseReturns.forEach(i=>{ensure(i.invoice_date).purchases-=Number(i.total_amount || 0);});
     expenses.forEach((e) => { ensure(e.expense_date).expenses += Number(e.amount || 0); });
     return Array.from(byDate.entries())
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([date, v]) => ({ date, ...v, net: v.sales - v.purchases - v.expenses }));
-  }, [sales, purchases, expenses]);
+  }, [sales, quickInvoices, saleReturns, purchases, purchaseReturns, expenses]);
 
   /* ------------------------- ui helpers ------------------------- */
   const Stat = ({ label, value, tone = "primary" }: { label: string; value: string; tone?: string }) => (
@@ -299,7 +282,7 @@ export default function Reports() {
               ["Overview", "Sales", totals.sales],
               ["Overview", "Purchases", totals.purchases],
               ["Overview", "Expenses", totals.expenses],
-              ["Overview", "Net", totals.net],
+              ["Overview", "Net Profit", pnl.net],
               ["Overview", "Sales Invoices", totals.salesCount],
               ["Overview", "Purchase Invoices", totals.purchasesCount],
               ["Overview", "Sales on Credit (Outstanding)", totals.creditOutstanding],
@@ -324,15 +307,16 @@ export default function Reports() {
               ["GST", "Input IGST", gst.inp.igst],
               ["GST", "Net Liability", gst.liability],
               [],
-              ["Daily", "Date", "Sales", "Purchases", "Expenses", "Net"] as any,
-              ...daily.map((d) => ["Daily", d.date, d.sales, d.purchases, d.expenses, d.net] as any),
+              ["Daily", "Date", "Sales", "Purchases", "Expenses", "Trading balance (incl. tax)"],
+              ...daily.map((d) => ["Daily", d.date, d.sales, d.purchases, d.expenses, d.net]),
               [],
-              ["Top Products", "Item", "Qty", "Revenue"] as any,
-              ...topProducts.map((p) => ["Top Products", p.name, p.qty, p.revenue] as any),
+              ["Top Products", "Item", "Qty", "Revenue"],
+              ...topProducts.map((p) => ["Top Products", p.name, p.qty, p.revenue]),
               [],
-              ["Expenses", "Category", "Amount"] as any,
-              ...expBreakdown.map((e) => ["Expenses", e.category, e.total] as any),
+              ["Expenses", "Category", "Amount"],
+              ...expBreakdown.map((e) => ["Expenses", e.category, e.total]),
             ];
+            if(!features.reports_export){toast.error("CSV export is not included in this plan");return;}
             downloadCsv(`report_${tag}.csv`, summary);
             toast.success("Report downloaded");
           }} className="gap-1.5">
@@ -362,7 +346,7 @@ export default function Reports() {
             <Stat label="Total Sales" value={formatINR(totals.sales)} tone="success" />
             <Stat label="Sale Returns" value={formatINR(totals.saleReturns)} tone={totals.saleReturns > 0 ? "danger" : undefined} />
             <Stat label="Net Sales" value={formatINR(totals.netSales)} tone="success" />
-            <Stat label="Net Profit" value={formatINR(totals.net)} tone={totals.net >= 0 ? "success" : "danger"} />
+            <Stat label="Net Profit" value={formatINR(pnl.net)} tone={pnl.net >= 0 ? "success" : "danger"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Stat label="Purchases" value={formatINR(totals.purchases)} />
@@ -397,7 +381,7 @@ export default function Reports() {
                     <TableHead className="text-right">Sales</TableHead>
                     <TableHead className="text-right">Purchases</TableHead>
                     <TableHead className="text-right">Expenses</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
+                    <TableHead className="text-right">Trading balance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -426,7 +410,7 @@ export default function Reports() {
               <Table>
                 <TableBody>
                   <TableRow><TableCell>Revenue (Sales)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">{formatINR(pnl.revenue)}</TableCell></TableRow>
-                  <TableRow><TableCell>Cost of Goods (Purchases)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.cogs)}</TableCell></TableRow>
+                  <TableRow><TableCell>Cost of Goods Sold (recorded costs)</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.cogs)}</TableCell></TableRow>
                   <TableRow className="font-semibold border-t-2"><TableCell>Gross Profit</TableCell><TableCell className={`text-right tabular-nums whitespace-nowrap ${pnl.gross >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.gross)}</TableCell></TableRow>
                   <TableRow><TableCell>Operating Expenses</TableCell><TableCell className="text-right tabular-nums whitespace-nowrap">- {formatINR(pnl.opex)}</TableCell></TableRow>
                   <TableRow className="font-bold border-t-2 text-base"><TableCell>Net Profit</TableCell><TableCell className={`text-right tabular-nums whitespace-nowrap ${pnl.net >= 0 ? "text-success" : "text-danger"}`}>{formatINR(pnl.net)}</TableCell></TableRow>
@@ -434,7 +418,7 @@ export default function Reports() {
               </Table>
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              Note: Revenue and COGS are pre-tax (subtotal). Excludes payment timing.
+              Revenue is after discounts and returns, excluding GST. Cost of goods sold uses sale-line cost snapshots and reverses returned quantities. Excludes payment timing. {pnl.estimated && "Some historical costs are estimates from the available item/batch prices."}
             </p>
           </Card>
         </TabsContent>

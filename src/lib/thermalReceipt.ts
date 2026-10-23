@@ -59,7 +59,7 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
   const COL_QTY = COL_RATE - 18;    // right edge for Qty
   const NAME_W = COL_QTY - M - 14;  // wrap width for item name (gap before qty)
 
-  const showQr = !!(upi && (upi.show_upi_qr ?? true) && upi.upi_id && r.balance_amount >= 0 && r.total_amount > 0);
+  const showQr = !!(upi && (upi.show_upi_qr ?? true) && upi.upi_id && r.balance_amount > 0 && r.total_amount > 0);
   let qrDataUrl: string | null = null;
   if (showQr) {
     try {
@@ -78,14 +78,19 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
 
   // Estimate height (extra padding so nothing clips)
   const qrBlock = qrDataUrl ? 38 : 0;
-  const estHeight = 100 + r.lines.length * 10 + (r.party_name ? 6 : 0) + (r.party_gstin ? 4 : 0) + (r.footer ? 12 : 0) + qrBlock;
-  const doc = new jsPDF({ unit: "mm", format: [W, estHeight] });
+  const measure=new jsPDF({unit:"mm",format:[W,200]});measure.setFontSize(8);
+  const lineHeight=r.lines.reduce((sum,line)=>sum+Math.max(measure.splitTextToSize(line.item_name,NAME_W).length*3.2,3.2)+2,0);
+  const estHeight = 125 + lineHeight + (biz.address ? measure.splitTextToSize(biz.address,innerW).length*3 : 0) + (r.party_name ? 8 : 0) + (r.party_gstin ? 4 : 0) + (r.footer ? measure.splitTextToSize(r.footer,innerW).length*3.2 : 0) + qrBlock;
+  const pageHeight=Math.min(1000,estHeight);
+  const doc = new jsPDF({ unit: "mm", format: [W, pageHeight] });
 
   let y = M + 3;
+  const room=(height:number)=>{if(y+height>pageHeight-M){doc.addPage([W,pageHeight]);y=M+4;}};
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(biz.name, W / 2, y, { align: "center" });
-  y += 4;
+  const businessLines:string[]=doc.splitTextToSize(biz.name,innerW);
+  doc.text(businessLines, W / 2, y, { align: "center" });
+  y += Math.max(4,businessLines.length*4);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   if (biz.address) {
@@ -102,11 +107,15 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
   doc.setLineDashPattern([], 0);
 
   doc.setFontSize(8);
-  doc.text(`Bill: ${r.invoice_number}`, M, y);
-  doc.text(r.invoice_date, W - M, y, { align: "right" }); y += 4;
-  if (r.party_name) { doc.text(`Customer: ${r.party_name}${r.party_phone ? ` · ${r.party_phone}` : ""}`, M, y); y += 3.5; }
-  if (r.party_gstin) { doc.text(`GSTIN: ${r.party_gstin}`, M, y); y += 3.5; }
-  if (r.cashier) { doc.text(`Cashier: ${r.cashier}`, M, y); y += 3.5; }
+  const metadata=(text:string)=>{
+    const wrapped:string[]=doc.splitTextToSize(text,innerW);
+    for(const line of wrapped){room(4);doc.text(line,M,y);y+=3.5;}
+  };
+  metadata(`Bill: ${r.invoice_number}`);
+  metadata(r.invoice_date);
+  if (r.party_name) metadata(`Customer: ${r.party_name}${r.party_phone ? ` · ${r.party_phone}` : ""}`);
+  if (r.party_gstin) metadata(`GSTIN: ${r.party_gstin}`);
+  if (r.cashier) metadata(`Cashier: ${r.cashier}`);
 
   y += 1;
   doc.setLineDashPattern([0.5, 0.5], 0);
@@ -129,14 +138,17 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
   // Items
   for (const ln of r.lines) {
     const nameLines = doc.splitTextToSize(ln.item_name, NAME_W);
+    const lineH = Math.max(nameLines.length * 3.2, 3.2);
+    room(lineH+3);
     const qty = `${ln.quantity}${ln.unit ? " " + ln.unit : ""}`;
     doc.text(nameLines, M, y);
     doc.text(qty, COL_QTY, y, { align: "right" });
     doc.text(formatRs(ln.price).replace("Rs.", ""), COL_RATE, y, { align: "right" });
     doc.text(formatRs(ln.total_amount).replace("Rs.", ""), COL_AMT, y, { align: "right" });
-    const lineH = Math.max(nameLines.length * 3.2, 3.2);
     y += lineH + 2;
   }
+
+  room(70+qrBlock+(r.footer?doc.splitTextToSize(r.footer,innerW).length*3.2:0));
 
   doc.setLineDashPattern([0.5, 0.5], 0);
   doc.line(M, y, W - M, y); y += 3.5;
@@ -144,9 +156,11 @@ export async function generateThermalReceipt(biz: ThermalBusiness, r: ThermalRec
 
   const row = (label: string, val: string, bold = false) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.text(label, M, y);
+    const labels:string[]=doc.splitTextToSize(label,innerW-25);
+    room(Math.max(labels.length*3.2,4.2));
+    doc.text(labels, M, y);
     doc.text(val, W - M, y, { align: "right" });
-    y += bold ? 4.2 : 3.6;
+    y += Math.max(labels.length*3.2,bold ? 4.2 : 3.6);
   };
   doc.setFontSize(8);
   row("Subtotal", formatRs(r.subtotal));

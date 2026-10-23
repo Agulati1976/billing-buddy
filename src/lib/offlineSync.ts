@@ -1,33 +1,32 @@
 // Drains the outbox FIFO when online.
 import { supabase } from "@/integrations/supabase/client";
-import { listOutbox, deleteOutbox, updateOutbox, type OutboxOp } from "./offlineDb";
+import { listOutbox, deleteOutbox, updateOutbox, offlineAccount, type OutboxOp } from "./offlineDb";
+import { callBillingRpc, networkFailure, type BillingRpc } from "./billingTransactions";
+import { mutationTable } from "./offlineMutate";
+import type { RpcArgs } from "./billingTransactions";
 import { toast } from "sonner";
+import { errorMessage } from "./errors";
 
 let draining = false;
 const MAX_ATTEMPTS = 6;
 
-const isNetworkErr = (err: any) => {
-  if (!err) return false;
-  const m = String(err.message || err).toLowerCase();
-  return (
-    m.includes("failed to fetch") ||
-    m.includes("networkerror") ||
-    m.includes("load failed") ||
-    m.includes("network request failed") ||
-    err.name === "TypeError"
-  );
-};
+const isNetworkErr = networkFailure;
 
-async function runOne(op: OutboxOp): Promise<{ ok: boolean; networkErr?: boolean; error?: any }> {
-  const t: any = supabase.from(op.table as any);
+async function runOne(op: OutboxOp): Promise<{ ok: boolean; networkErr?: boolean; error?: unknown }> {
   try {
+    if (!op.ownerId || op.ownerId !== offlineAccount()) return {ok:false,error:new Error("Account mismatch")};
+    if (op.op === "rpc") {
+      const {error} = await callBillingRpc(op.table as BillingRpc,op.payload as RpcArgs);
+      return error ? {ok:false,networkErr:isNetworkErr(error),error} : {ok:true};
+    }
+    const t = mutationTable(op.table);
     if (op.op === "insert") {
-      const { error } = await t.insert(op.payload);
+      const { error } = await t.upsert(op.payload,{onConflict:"id",ignoreDuplicates:true});
       if (error) return { ok: false, networkErr: isNetworkErr(error), error };
       return { ok: true };
     }
     if (op.op === "insertMany") {
-      const { error } = await t.insert(op.payload);
+      const { error } = await t.upsert(op.payload,{onConflict:"id",ignoreDuplicates:true});
       if (error) return { ok: false, networkErr: isNetworkErr(error), error };
       return { ok: true };
     }
@@ -42,7 +41,7 @@ async function runOne(op: OutboxOp): Promise<{ ok: boolean; networkErr?: boolean
       return { ok: true };
     }
     return { ok: false, error: new Error("Unknown op") };
-  } catch (e: any) {
+  } catch (e: unknown) {
     return { ok: false, networkErr: isNetworkErr(e), error: e };
   }
 }
@@ -56,7 +55,7 @@ export async function drainOutbox(opts?: { silent?: boolean }) {
   try {
     const ops = await listOutbox(); // FIFO by createdAt
     for (const op of ops) {
-      if (op.failed) continue;
+      if (op.failed || !op.ownerId || op.ownerId!==offlineAccount()) break;
       const r = await runOne(op);
       if (r.ok) {
         await deleteOutbox(op.id);
@@ -65,10 +64,12 @@ export async function drainOutbox(opts?: { silent?: boolean }) {
         // Stop and try later
         break;
       } else {
-        const next = { ...op, attempts: op.attempts + 1, lastError: String(r.error?.message || r.error) };
+        const next = { ...op, attempts: op.attempts + 1, lastError: errorMessage(r.error) || String(r.error) };
         if (next.attempts >= MAX_ATTEMPTS) next.failed = true;
         await updateOutbox(next);
         failed++;
+        // Later requests may depend on this one. Never skip a failed parent.
+        break;
       }
     }
   } finally {

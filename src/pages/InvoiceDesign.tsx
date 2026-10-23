@@ -1,3 +1,4 @@
+import { businessDate } from "@/lib/dates";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ const DEFAULTS: Settings = {
 
 export default function InvoiceDesign() {
   const { current, refresh } = useBusiness();
+  const currentId = current?.id;
   const { canEditSettings, loading: permsLoading } = usePermissions();
   const [s, setS] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -91,24 +93,24 @@ export default function InvoiceDesign() {
   };
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
       setLoading(true);
       const { data } = await supabase
-        .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
+        .from("invoice_settings").select("*").eq("business_id", currentId).maybeSingle();
       if (data) setS({
         template: data.template, accent_color: data.accent_color,
         footer_text: data.footer_text ?? "", default_terms: data.default_terms ?? "",
         default_notes: data.default_notes ?? "",
         signature_label: data.signature_label ?? "Authorised Signatory",
         show_signature: data.show_signature, show_amount_in_words: data.show_amount_in_words,
-        upi_id: (data as any).upi_id ?? "",
-        upi_payee_name: (data as any).upi_payee_name ?? "",
-        show_upi_qr: (data as any).show_upi_qr ?? true,
+        upi_id: (data).upi_id ?? "",
+        upi_payee_name: (data).upi_payee_name ?? "",
+        show_upi_qr: (data).show_upi_qr ?? true,
       });
       setLoading(false);
     })();
-  }, [current?.id]);
+  }, [currentId]);
 
   const save = async () => {
     if (!current) return;
@@ -128,7 +130,7 @@ export default function InvoiceDesign() {
       {
         name: current.name, gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
-        logo_url: (current as any).logo_url,
+        logo_url: (current).logo_url,
       },
       {
         name: "Sample Customer", gstin: "07AABCU9603R1ZX",
@@ -138,7 +140,7 @@ export default function InvoiceDesign() {
       },
       {
         type: "sale", invoice_number: "PREVIEW-001",
-        invoice_date: new Date().toISOString().slice(0, 10),
+        invoice_date: businessDate(),
         due_date: null, is_inter_state: true,
         subtotal: 10000, discount_amount: 500, taxable_total: 9500,
         cgst_amount: 0, sgst_amount: 0, igst_amount: 1710,
@@ -206,8 +208,8 @@ export default function InvoiceDesign() {
           <p className="text-xs text-muted-foreground mb-3">Shown at the top-left of every invoice PDF. PNG/JPG, under 2 MB.</p>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="h-20 w-20 rounded-lg border-2 border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden shrink-0">
-              {(current as any)?.logo_url ? (
-                <img src={(current as any).logo_url} alt="Logo" className="h-full w-full object-contain" />
+              {(current)?.logo_url ? (
+                <img src={(current).logo_url} alt="Logo" className="h-full w-full object-contain" />
               ) : (
                 <ImageIcon className="h-8 w-8 text-muted-foreground" />
               )}
@@ -218,9 +220,9 @@ export default function InvoiceDesign() {
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogoFile(f); e.target.value = ""; }}
               />
               <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !canEditSettings}>
-                <Upload className="h-4 w-4" /> {uploading ? "Uploading…" : (current as any)?.logo_url ? "Replace" : "Upload logo"}
+                <Upload className="h-4 w-4" /> {uploading ? "Uploading…" : (current)?.logo_url ? "Replace" : "Upload logo"}
               </Button>
-              {(current as any)?.logo_url && (
+              {(current)?.logo_url && (
                 <Button variant="ghost" onClick={removeLogo} disabled={uploading || !canEditSettings}>
                   <Trash2 className="h-4 w-4" /> Remove
                 </Button>

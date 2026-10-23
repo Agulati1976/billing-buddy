@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import { errorMessage } from "@/lib/errors";
+import { featureFlags, planLimits } from "@/lib/planValues";
+import { usePermissions } from "@/hooks/usePermissions";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { load } from "@cashfreepayments/cashfree-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +18,7 @@ import { format } from "date-fns";
 
 interface Plan {
   id: string; code: string; name: string; description: string | null;
-  price_inr: number; duration_days: number; features: string[]; sort_order: number;
+  price_inr: number; duration_days: number; features: string[] | Record<string,boolean>; sort_order: number; limits: Record<string,number>;
 }
 interface Subscription {
   plan_id: string | null; status: string; started_at: string;
@@ -33,12 +37,12 @@ const STATUS_COLOR: Record<string, string> = {
   DROPPED: "bg-muted text-muted-foreground",
 };
 
-const getFunctionErrorMessage = async (error: any, fallback = "Payment failed to start") => {
-  const response = error?.context;
+const getFunctionErrorMessage = async (error: unknown, fallback = "Payment failed to start") => {
+  const response = (error as {context?:Response})?.context;
   if (response?.clone) {
     try {
       const payload = await response.clone().json();
-      return payload?.hint || payload?.error || payload?.details?.message || error?.message || fallback;
+      return payload?.hint || payload?.error || payload?.details?.message || errorMessage(error) || fallback;
     } catch {
       try {
         const text = await response.clone().text();
@@ -48,40 +52,43 @@ const getFunctionErrorMessage = async (error: any, fallback = "Payment failed to
       }
     }
   }
-  return error?.message || fallback;
+  return errorMessage(error) || fallback;
 };
 
 export default function Billing() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
+  const {isAdmin}=usePermissions();
+  const payingRef=useRef(false);
   const [params, setParams] = useSearchParams();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState<string | null>(null);
-  const [testMode, setTestMode] = useState<boolean>(() => localStorage.getItem("cf_test_mode") === "1");
 
-  const loadAll = async () => {
-    if (!current) return;
+
+  const loadAll = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const [pRes, sRes, oRes] = await Promise.all([
-      supabase.from("subscription_plans").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("business_subscriptions").select("*").eq("business_id", current.id).maybeSingle(),
-      supabase.from("subscription_orders").select("*").eq("business_id", current.id).order("created_at", { ascending: false }).limit(20),
+      allRows(supabase.from("subscription_plans").select("*").eq("is_active", true).order("sort_order")),
+      supabase.from("business_subscriptions").select("*").eq("business_id", currentId).maybeSingle(),
+      supabase.from("subscription_orders").select("*").eq("business_id", currentId).order("created_at", { ascending: false }).limit(20),
     ]);
-    if (pRes.data) setPlans(pRes.data as any);
-    if (sRes.data) setSubscription(sRes.data as any);
-    if (oRes.data) setOrders(oRes.data as any);
+    if (pRes.data) setPlans(pRes.data.map(plan=>({...plan,limits:planLimits(plan.limits),features:Array.isArray(plan.features)?plan.features.filter((feature):feature is string=>typeof feature==="string"):featureFlags(plan.features)})));
+    if (sRes.data) setSubscription(sRes.data);
+    if (oRes.data) setOrders(oRes.data);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [current?.id]);
+  useEffect(() => { loadAll();   }, [currentId, loadAll]);
 
   // After return from Cashfree redirect
   useEffect(() => {
     const orderId = params.get("order_id");
-    if (!orderId || !current) return;
+    if (!orderId || !currentId) return;
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke("cashfree-verify-order", {
@@ -91,7 +98,7 @@ export default function Billing() {
           toast.error(await getFunctionErrorMessage(error, "Unable to verify payment"));
           return;
         }
-        if (data?.status === "PAID") {
+        if (data?.status === "PAID" && data?.activated === true) {
           toast.success("Payment successful! Your plan is now active.");
         } else if (data?.status === "ACTIVE") {
           toast.info("Payment is being processed.");
@@ -105,15 +112,16 @@ export default function Billing() {
       }
     })();
     // eslint-disable-next-line
-  }, [params, current?.id]);
+  }, [params, currentId]);
 
   const handleSubscribe = async (plan: Plan) => {
-    if (!current) return;
+    if (!current || payingRef.current || !isAdmin) return;
+    if (!current.phone || current.phone.replace(/\D/g,"").length<10){toast.error("Add a valid business phone in Settings before subscribing");return;}
     if (Number(plan.price_inr) <= 0) {
       toast.info("Free plan is active by default.");
       return;
     }
-    setPaying(plan.id);
+    payingRef.current=true;setPaying(plan.id);
     try {
       const { data, error } = await supabase.functions.invoke("cashfree-create-order", {
         body: {
@@ -121,9 +129,9 @@ export default function Billing() {
           plan_id: plan.id,
           customer_name: current.name,
           customer_email: current.email || user?.email,
-          customer_phone: current.phone || "9999999999",
+          customer_phone: current.phone,
           return_url: `${window.location.origin}/billing?order_id={order_id}`,
-          mode: testMode ? "test" : "production",
+          mode: "production",
         },
       });
       if (error) {
@@ -132,15 +140,15 @@ export default function Billing() {
       }
       if (!data?.payment_session_id) throw new Error(data?.error || "Failed to create order");
 
-      const cashfree = await load({ mode: testMode ? "sandbox" : "production" });
+      const cashfree = await load({ mode: "production" });
       await cashfree.checkout({
         paymentSessionId: data.payment_session_id,
         redirectTarget: "_self",
       });
-    } catch (e: any) {
-      toast.error(e?.message || "Payment failed to start");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Payment failed to start");
     } finally {
-      setPaying(null);
+      payingRef.current=false;setPaying(null);
     }
   };
 
@@ -159,17 +167,7 @@ export default function Billing() {
           <h1 className="text-3xl font-bold">Billing & Plans</h1>
           <p className="text-muted-foreground">Manage your Bill Look subscription</p>
         </div>
-        <label className="flex items-center gap-2 text-sm border rounded-md px-3 py-2 bg-muted/40 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={testMode}
-            onChange={(e) => {
-              setTestMode(e.target.checked);
-              localStorage.setItem("cf_test_mode", e.target.checked ? "1" : "0");
-            }}
-          />
-          <span>Cashfree Test Mode {testMode ? "(Sandbox)" : "(Live)"}</span>
-        </label>
+
       </div>
 
       {/* Current plan card */}
@@ -251,7 +249,8 @@ export default function Billing() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <ul className="space-y-2 text-sm">
-                      {(Array.isArray(plan.features) ? plan.features : []).map((f, i) => (
+                      {Object.entries(plan.limits).map(([key,value])=>(<li key={key} className="flex gap-2"><Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0"/><span>{value > 0 ? value : "Unlimited"} {({max_users:"users including owner",max_invoices_per_month:"invoices/month",max_businesses:"businesses"} as Record<string,string>)[key] ?? key.replace(/_/g," ")}</span></li>))}
+                      {(Array.isArray(plan.features) ? plan.features : Object.entries(plan.features).filter(([,enabled])=>enabled).map(([key])=>key.replace(/_/g," "))).map((f, i) => (
                         <li key={i} className="flex gap-2">
                           <Check className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
                           <span>{f}</span>
@@ -261,12 +260,12 @@ export default function Billing() {
                     <Button
                       className="w-full"
                       variant={isCurrent ? "secondary" : isHighlight ? "default" : "outline"}
-                      disabled={isCurrent || paying === plan.id || Number(plan.price_inr) <= 0}
+                      disabled={!isAdmin || paying !== null || Number(plan.price_inr) <= 0}
                       onClick={() => handleSubscribe(plan)}
                     >
                       {paying === plan.id ? (
                         <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Redirecting...</>
-                      ) : isCurrent ? "Current Plan"
+                      ) : isCurrent && Number(plan.price_inr)>0 ? "Renew" : isCurrent ? "Current Plan"
                         : Number(plan.price_inr) <= 0 ? "Free"
                         : subscription?.plan_id === plan.id ? "Renew" : "Upgrade"}
                     </Button>

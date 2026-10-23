@@ -1,3 +1,5 @@
+import type { Tables } from "@/integrations/supabase/types";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -6,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
 
 export default function AdminAuditLog() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [admins, setAdmins] = useState<Record<string, any>>({});
+  const [rows, setRows] = useState<Tables<"admin_audit_log">[]>([]);
+  const [admins, setAdmins] = useState<Record<string,Pick<Tables<"profiles">,"user_id"|"full_name"|"email">>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,12 +19,12 @@ export default function AdminAuditLog() {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
-      const ids = Array.from(new Set((data ?? []).map((r: any) => r.admin_id)));
+      const ids = Array.from(new Set((data ?? []).map((r) => r.admin_id)));
       const { data: profs } = ids.length
-        ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids)
-        : { data: [] as any[] };
-      const map: Record<string, any> = {};
-      (profs ?? []).forEach((p: any) => { map[p.user_id] = p; });
+        ? await allRows(supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids))
+        : { data: [] };
+      const map: Record<string,Pick<Tables<"profiles">,"user_id"|"full_name"|"email">> = {};
+      (profs ?? []).forEach((p) => { map[p.user_id] = p; });
       setAdmins(map);
       setRows(data ?? []);
       setLoading(false);
@@ -55,7 +57,7 @@ export default function AdminAuditLog() {
                   <div className="text-sm font-medium">{admins[r.admin_id]?.full_name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">{admins[r.admin_id]?.email ?? r.admin_id.slice(0, 8)}</div>
                 </TableCell>
-                <TableCell><Badge variant="outline" className="capitalize">{r.action.replaceAll("_", " ")}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className="capitalize">{r.action.replace(/_/g, " ")}</Badge></TableCell>
                 <TableCell className="text-sm">
                   <div className="capitalize">{r.target_type ?? "—"}</div>
                   <div className="text-xs text-muted-foreground font-mono">{r.target_id?.slice(0, 8) ?? "—"}</div>

@@ -3,10 +3,11 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/useAuth";
-import { BusinessProvider } from "@/hooks/useBusiness";
+import { AuthProvider } from "@/hooks/AuthProvider";
+import { BusinessProvider } from "@/hooks/BusinessProvider";
 import AppLayout from "@/components/AppLayout";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Parties from "./pages/Parties";
@@ -66,6 +67,7 @@ const App = () => (
           <BusinessProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/i/:id" element={<PublicInvoiceView />} />

@@ -45,7 +45,7 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
         state_code: party.state_code ?? "",
         opening_balance: String(party.opening_balance ?? 0),
         notes: party.notes ?? "",
-        supplies: (party as any).supplies ?? "",
+        supplies: (party).supplies ?? "",
       });
     } else {
       setForm(empty);
@@ -78,7 +78,7 @@ export function PartyDialog({ open, onOpenChange, type, party, onSaved }: Props)
       ? await omUpdate("parties", { column: "id", value: party.id }, payload)
       : await omInsert("parties", { ...payload, created_by: user.id });
     setBusy(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(
       res.queued
         ? "Saved offline — will sync when online"

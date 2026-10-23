@@ -1,3 +1,8 @@
+import { toast } from "sonner";
+import { toCsv } from "@/lib/csv";
+import type { Tables } from "@/integrations/supabase/types";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,10 +18,10 @@ import { Wallet, TrendingUp, Users, RotateCw, Download } from "lucide-react";
 import { formatINR } from "@/lib/admin/api";
 
 export default function AdminPayments() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Tables<"subscription_orders">[]>([]);
   const [businesses, setBusinesses] = useState<{ id: string; name: string; email?: string | null }[]>([]);
   const [plans, setPlans] = useState<{ id: string; name: string; price_inr: number }[]>([]);
-  const [subs, setSubs] = useState<any[]>([]);
+  const [subs, setSubs] = useState<Tables<"business_subscriptions">[]>([]);
   const [loading, setLoading] = useState(true);
   const [bizId, setBizId] = useState("all");
   const [status, setStatus] = useState("all");
@@ -27,9 +32,9 @@ export default function AdminPayments() {
   const load = async () => {
     setLoading(true);
     const [{ data: b }, { data: p }, { data: s }] = await Promise.all([
-      supabase.from("businesses").select("id, name, email").order("name"),
-      supabase.from("subscription_plans").select("id, name, price_inr").order("price_inr"),
-      supabase.from("business_subscriptions").select("*"),
+      allRows(supabase.from("businesses").select("id, name, email").order("name")),
+      allRows(supabase.from("subscription_plans").select("id, name, price_inr").order("price_inr")),
+      allRows(supabase.from("business_subscriptions").select("*")),
     ]);
     setBusinesses(b ?? []);
     setPlans(p ?? []);
@@ -41,13 +46,14 @@ export default function AdminPayments() {
 
   useEffect(() => {
     (async () => {
-      let q = supabase.from("subscription_orders").select("*").order("created_at", { ascending: false }).limit(1000);
+      let q = supabase.from("subscription_orders").select("*").order("created_at", { ascending: false });
       if (bizId !== "all") q = q.eq("business_id", bizId);
       if (status !== "all") q = q.eq("status", status);
       if (planId !== "all") q = q.eq("plan_id", planId);
       if (from) q = q.gte("created_at", from);
       if (to) q = q.lte("created_at", to + "T23:59:59");
-      const { data } = await q;
+      const { data, error } = await allRows(q);
+      if(error){toast.error("Could not load all payment orders");return;}
       setOrders(data ?? []);
     })();
   }, [bizId, status, planId, from, to]);
@@ -79,12 +85,14 @@ export default function AdminPayments() {
         o.cf_order_id ?? "",
       ];
     });
-    const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = toCsv([header,...rows]);
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `saas-revenue-${new Date().toISOString().slice(0, 10)}.csv`;
+    const url=URL.createObjectURL(blob);
+    a.href = url;
+    a.download = `saas-revenue-${businessDate()}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const statusColor = (s: string) =>

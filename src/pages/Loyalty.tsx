@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface LoyaltySettings {
 
 export default function Loyalty() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [settings, setSettings] = useState<LoyaltySettings>({
     business_id: "", enabled: true, amount_per_point: 100, point_value: 1, min_redeem_points: 50,
   });
@@ -30,31 +32,31 @@ export default function Loyalty() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
-      const { data } = await supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle();
-      if (data) setSettings(data as any);
-      else setSettings((s) => ({ ...s, business_id: current.id }));
+      const { data } = await supabase.from("loyalty_settings").select("*").eq("business_id", currentId).maybeSingle();
+      if (data) setSettings(data);
+      else setSettings((s) => ({ ...s, business_id: currentId }));
 
       const [{ data: tx }, { data: parties }] = await Promise.all([
-        supabase.from("loyalty_transactions").select("party_id, points_earned, points_redeemed").eq("business_id", current.id),
-        supabase.from("parties").select("id, name").eq("business_id", current.id).eq("type", "customer"),
+        allRows(supabase.from("loyalty_transactions").select("party_id, points_earned, points_redeemed").eq("business_id", currentId)),
+        allRows(supabase.from("parties").select("id, name").eq("business_id", currentId).eq("type", "customer")),
       ]);
       const map = new Map<string, { earned: number; redeemed: number }>();
-      (tx ?? []).forEach((t: any) => {
+      (tx ?? []).forEach((t) => {
         const cur = map.get(t.party_id) ?? { earned: 0, redeemed: 0 };
         cur.earned += Number(t.points_earned || 0);
         cur.redeemed += Number(t.points_redeemed || 0);
         map.set(t.party_id, cur);
       });
-      const rows = (parties ?? []).map((p: any) => {
+      const rows = (parties ?? []).map((p) => {
         const v = map.get(p.id) ?? { earned: 0, redeemed: 0 };
         return { party_id: p.id, name: p.name, earned: v.earned, redeemed: v.redeemed, balance: v.earned - v.redeemed };
       }).filter((r) => r.balance > 0 || r.earned > 0)
         .sort((a, b) => b.balance - a.balance);
       setMembers(rows);
     })();
-  }, [current?.id]);
+  }, [currentId]);
 
   const filtered = useMemo(
     () => members.filter((m) => m.name.toLowerCase().includes(q.toLowerCase())),

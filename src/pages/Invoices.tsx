@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { allRows } from "@/lib/pagination";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { omDelete, omInsert } from "@/lib/offlineMutate";
+import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
+import { businessDate } from "@/lib/dates";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,8 @@ import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
 import { format, startOfMonth } from "date-fns";
-import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, useDateFilter, type DatePreset } from "@/hooks/useDateFilter";
 
 interface Props {
   type: InvoiceType;
@@ -40,6 +43,7 @@ interface InvoiceRow {
 
 export default function Invoices({ type }: Props) {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<InvoiceRow[]>([]);
@@ -48,6 +52,7 @@ export default function Invoices({ type }: Props) {
   const [payRow, setPayRow] = useState<InvoiceRow | null>(null);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<string>("cash");
+  const paySavingRef=useRef(false);
   const [paySaving, setPaySaving] = useState(false);
   const [shareRow, setShareRow] = useState<InvoiceRow | null>(null);
   const [shareView, setShareView] = useState<"invoice" | "pos">("invoice");
@@ -85,22 +90,25 @@ export default function Invoices({ type }: Props) {
   };
 
   const submitPay = async () => {
-    if (!payRow || !current || !user) return;
+    if (!payRow || !current || !user || paySavingRef.current) return;
     const amt = Number(payAmount);
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    paySavingRef.current=true;
     setPaySaving(true);
-    const res = await omInsert("payments", {
+    const payment = {
       business_id: current.id,
       direction: (type === "sale" || type === "non_inventory") ? "in" : "out",
-      method: payMethod as any,
+      method: payMethod,
       amount: amt,
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: businessDate(),
       party_id: payRow.party_id,
       invoice_id: payRow.id,
       created_by: user.id,
-    });
+    };
+    const res=await billingTransaction("record_payment",current.id,{p_operation_id:crypto.randomUUID(),p_payment:jsonValue(payment)},payment);
+    paySavingRef.current=false;
     setPaySaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
     setPayRow(null);
     load();
@@ -109,13 +117,13 @@ export default function Invoices({ type }: Props) {
   const meta = INVOICE_TYPE_META[type];
   const [view, setView] = useState<"active" | "trash">("active");
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     let query = supabase
       .from("invoices")
       .select("id, invoice_number, invoice_date, created_at, total_amount, paid_amount, balance_amount, status, party_id, parties(name, phone, email), deleted_at")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .eq("type", type);
     if (view === "active") {
       query = query.is("deleted_at", null).order("invoice_date", { ascending: false }).order("created_at", { ascending: false });
@@ -123,13 +131,13 @@ export default function Invoices({ type }: Props) {
       const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
       query = query.not("deleted_at", "is", null).gte("deleted_at", cutoff).order("deleted_at", { ascending: false });
     }
-    const { data, error } = await query;
+    const { data, error } = await allRows(query);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    setRows((data as any) ?? []);
-  };
+    setRows((data) ?? []);
+  }, [currentId, type, view]);
 
-  useEffect(() => { load(); }, [current?.id, type, view]);
+  useEffect(() => { load(); }, [currentId, load, type, view]);
 
   const [preset, setPreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
@@ -152,92 +160,19 @@ export default function Invoices({ type }: Props) {
     return { total, balance, count: dateFiltered.length };
   }, [dateFiltered]);
 
-  // Soft-deleting/restoring an invoice previously only touched deleted_at on
-  // invoices/payments — the stock it moved (and, for a sale_return, the
-  // balance it credited back to the original sale) stayed applied forever,
-  // permanently mis-counting inventory and overstating receivables. This
-  // mirrors the same reversal deltas InvoiceEditor's edit path already uses.
-  const reverseStock = async (invoiceId: string, mode: "reverse" | "reapply") => {
-    const { data: lines } = await supabase.from("invoice_items")
-      .select("item_id, batch_id, quantity").eq("invoice_id", invoiceId);
-    for (const ol of (lines as any[]) ?? []) {
-      let delta = 0;
-      if (type === "sale") delta = Number(ol.quantity);
-      else if (type === "purchase") delta = -Number(ol.quantity);
-      else if (type === "sale_return") delta = -Number(ol.quantity);
-      else if (type === "purchase_return") delta = Number(ol.quantity);
-      else continue;
-      if (!delta) continue;
-      const applied = mode === "reverse" ? delta : -delta;
-
-      if (!ol.batch_id && ol.item_id) {
-        const { data: item } = await supabase.from("items")
-          .select("id, current_stock, is_batch_tracked, type").eq("id", ol.item_id).maybeSingle();
-        if ((item as any)?.type === "product" && !(item as any)?.is_batch_tracked) {
-          const next = Math.max(0, Number((item as any).current_stock ?? 0) + applied);
-          await supabase.from("items").update({ current_stock: next } as any).eq("id", ol.item_id);
-        }
-        continue;
-      }
-      if (!ol.batch_id) continue;
-      const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
-      if (b) {
-        const next = Math.max(0, Number((b as any).quantity) + applied);
-        await supabase.from("batches").update({ quantity: next }).eq("id", ol.batch_id);
-      }
-    }
+  const changeState = async (id:string,action:"delete"|"restore"|"purge") => {
+    if (!current) return;
+    const result=await billingTransaction("change_invoice_state",current.id,{p_operation_id:crypto.randomUUID(),p_invoice_id:id,p_action:action},{id});
+    if (result.error) {toast.error(result.error.message);return;}
+    toast.success(result.queued ? "Change saved offline — pending validation" : action==="restore" ? "Invoice restored" : action==="purge" ? "Permanently deleted" : "Moved to Deleted");
+    await load();
   };
-
-  // Undo/redo a sale_return's netting against the original sale's balance.
-  const reverseReturnNetting = async (invoiceId: string, mode: "reverse" | "reapply") => {
-    if (type !== "sale_return") return;
-    const { data: inv } = await supabase.from("invoices")
-      .select("source_invoice_id, total_amount").eq("id", invoiceId).maybeSingle();
-    const srcId = (inv as any)?.source_invoice_id;
-    if (!srcId) return;
-    const { data: src } = await supabase.from("invoices")
-      .select("total_amount, paid_amount, balance_amount").eq("id", srcId).maybeSingle();
-    if (!src) return;
-    const s = src as any;
-    const returnTotal = Number((inv as any).total_amount) || 0;
-    // "reverse" = deleting the return, give the balance back to the source.
-    // "reapply" = restoring the return, net it against the source again.
-    const newBalance = mode === "reverse"
-      ? Math.min(Number(s.total_amount), Number(s.balance_amount) + returnTotal)
-      : Math.max(0, Number(s.balance_amount) - returnTotal);
-    const newStatus = newBalance <= 0 ? "paid" : Number(s.paid_amount) > 0 ? "partial" : "unpaid";
-    await supabase.from("invoices").update({ balance_amount: newBalance, status: newStatus }).eq("id", srcId);
+  const remove = async (id:string) => {
+    if(confirm("Move this invoice to Deleted? You can recover it within 180 days.")) await changeState(id,"delete");
   };
-
-  const remove = async (id: string) => {
-    if (!confirm("Move this invoice to Deleted? You can recover it within 180 days.")) return;
-    const now = new Date().toISOString();
-    await reverseStock(id, "reverse");
-    await reverseReturnNetting(id, "reverse");
-    const { error: e1 } = await supabase.from("invoices").update({ deleted_at: now }).eq("id", id);
-    if (e1) { toast.error(e1.message); return; }
-    await supabase.from("payments").update({ deleted_at: now }).eq("invoice_id", id).is("deleted_at", null);
-    toast.success("Moved to Deleted");
-    load();
-  };
-
-  const restore = async (id: string) => {
-    const { error: e1 } = await supabase.from("invoices").update({ deleted_at: null }).eq("id", id);
-    if (e1) { toast.error(e1.message); return; }
-    await supabase.from("payments").update({ deleted_at: null }).eq("invoice_id", id);
-    await reverseStock(id, "reapply");
-    await reverseReturnNetting(id, "reapply");
-    toast.success("Invoice restored");
-    load();
-  };
-
-  const purge = async (id: string) => {
-    if (!confirm("Permanently delete this invoice? This cannot be undone.")) return;
-    await supabase.from("payments").delete().eq("invoice_id", id);
-    const res = await omDelete("invoices", { column: "id", value: id });
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    toast.success("Permanently deleted");
-    load();
+  const restore = (id:string) => changeState(id,"restore");
+  const purge = async (id:string) => {
+    if(confirm("Permanently delete this invoice? This cannot be undone.")) await changeState(id,"purge");
   };
 
   const daysLeft = (deletedAt: string | null) => {

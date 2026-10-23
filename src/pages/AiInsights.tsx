@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+import { errorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ interface InsightDef {
   kind: Kind;
   title: string;
   desc: string;
-  icon: any;
+  icon: LucideIcon;
   tone: string;
 }
 
@@ -56,8 +58,8 @@ export default function AiInsights() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setResults((s) => ({ ...s, [kind]: data.content || "_No response._" }));
-    } catch (e: any) {
-      const msg = e?.message ?? "Failed to generate insight";
+    } catch (e: unknown) {
+      const msg = errorMessage(e) ?? "Failed to generate insight";
       if (msg.includes("Rate limit")) toast.error("Rate limit reached. Try again in a minute.");
       else if (msg.includes("credits")) toast.error("AI credits exhausted. Add credits in Workspace settings.");
       else toast.error(msg);
