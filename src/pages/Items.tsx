@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -37,6 +37,7 @@ function ItemDetails({ item, compact }: { item: ItemRow; compact?: boolean }) {
 
 export default function Items() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [items, setItems] = useState<ItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -69,19 +70,19 @@ export default function Items() {
   // while the item dialog is open so a stray scan can't switch what's being edited.
   useHardwareScanner(handleScan, { enabled: !dialogOpen });
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const { data, error } = await allRows(supabase
       .from("items").select("*")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .order("created_at", { ascending: false }));
     if (error) toast.error(error.message);
     else setItems((data ?? []) as ItemRow[]);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { load(); }, [current?.id]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const filtered = items.filter((i) =>
     [i.name, i.sku, i.hsn_code].some((f) => f?.toLowerCase().includes(q.toLowerCase()))
@@ -149,7 +150,7 @@ export default function Items() {
             const low = i.type === "product" && i.current_stock <= i.low_stock_alert && i.low_stock_alert > 0;
             return (
               <div key={i.id} className="mobile-card flex items-center gap-3">
-                <div className="h-12 w-12 rounded-md border bg-muted/30 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-md border bg-muted/30 overflow-hidden shrink-0 flex items-center justify-center">
                   {i.image_url ? (
                     <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" loading="lazy" />
                   ) : (
@@ -217,7 +218,7 @@ export default function Items() {
                   <TableRow key={i.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-md border bg-muted/30 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-md border bg-muted/30 overflow-hidden shrink-0 flex items-center justify-center">
                           {i.image_url ? (
                             <img src={i.image_url} alt={i.name} className="h-full w-full object-cover" loading="lazy" />
                           ) : (

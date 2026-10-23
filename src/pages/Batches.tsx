@@ -1,7 +1,7 @@
 import { businessDate } from "@/lib/dates";
 import { allRows } from "@/lib/pagination";
 import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +31,7 @@ interface Batch {
 
 export default function Batches() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [rows, setRows] = useState<Batch[]>([]);
@@ -53,20 +54,20 @@ export default function Batches() {
     return rows.filter((r) => [r.batch_number, r.items?.name, r.notes].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
   }, [rows, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const [b, it] = await Promise.all([
       allRows(supabase.from("batches")
         .select("id, updated_at, item_id, batch_number, mfg_date, expiry_date, quantity, notes, purchase_price, sale_price, items(name, unit)")
-        .eq("business_id", current.id).order("expiry_date", { ascending: true, nullsFirst: false })),
+        .eq("business_id", currentId).order("expiry_date", { ascending: true, nullsFirst: false })),
       allRows(supabase.from("items")
         .select("id, name, unit, is_batch_tracked, barcode")
-        .eq("business_id", current.id).eq("is_batch_tracked", true).order("name")),
+        .eq("business_id", currentId).eq("is_batch_tracked", true).order("name")),
     ]);
     setRows((b.data) ?? []);
     setItems((it.data) ?? []);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const openNew = () => {
     setEditing(null); setItemId(""); setBatchNumber(""); setMfgDate("");

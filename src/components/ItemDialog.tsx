@@ -72,6 +72,7 @@ const emptyForm = {
 
 export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }: Props) {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -86,10 +87,10 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
   const lookupTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!current) return;
-    allRows(supabase.from("categories").select("id, name").eq("business_id", current.id).order("name"))
+    if (!currentId) return;
+    allRows(supabase.from("categories").select("id, name").eq("business_id", currentId).order("name"))
       .then(({ data }) => setCategories((data ?? [])));
-  }, [current?.id, open]);
+  }, [currentId, open]);
 
   useEffect(() => {
     if (!open) return;

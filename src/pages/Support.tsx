@@ -1,6 +1,6 @@
 import type { Database } from "@/integrations/supabase/types";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -28,6 +28,7 @@ type Message = {
 
 export default function Support() {
   const { user } = useAuth();
+  const userId = user?.id;
   const { current } = useBusiness();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,19 +40,19 @@ export default function Support() {
 
   const selected = useMemo(() => tickets.find((t) => t.id === selectedId) ?? null, [tickets, selectedId]);
 
-  const load = async () => {
-    if (!user) return;
+  const load = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     const { data } = await allRows(supabase
       .from("support_tickets")
       .select("*")
-      .eq("created_by", user.id)
+      .eq("created_by", userId)
       .order("last_message_at", { ascending: false }));
     setTickets((data ?? []) as Ticket[]);
     setLoading(false);
-  };
+  }, [userId]);
 
-  useEffect(() => { load(); }, [user?.id]);
+  useEffect(() => { load(); }, [load, userId]);
 
   useEffect(() => {
     if (!selectedId) { setMessages([]); return; }

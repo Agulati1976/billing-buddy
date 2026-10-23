@@ -54,22 +54,24 @@ Additional fixes include atomic item/opening batch creation, versioned batch edi
 
 ## Verification scope
 
-The maintained command is `npm run check`. It runs lint, unit/PDF/offline tests, PostgreSQL billing/concurrency tests, strict Deno checks for every function, real edge handlers with isolated mocks, and browser tests against the type-checked production build. Browser tests block live external writes. CI supplies PostgreSQL 16 and Chromium. The historical `audit/reproduce.mjs` asserts old faulty behavior and is not the post-fix suite.
+The maintained command is `npm run check`. It runs lint, unit/PDF/offline tests, PostgreSQL billing/concurrency tests, strict Deno checks for every function, real edge handlers with isolated mocks, and browser tests against the type-checked production build. Browser tests block live external writes. CI supplies PostgreSQL 17 and Chromium. The historical `audit/reproduce.mjs` asserts old faulty behavior and is not the post-fix suite.
 
-A clean `npm ci --no-audit` succeeded. Production dependency audit reports zero vulnerabilities. The full development tree retains one unpatched braces nested-pattern exhaustion advisory propagated through six Tailwind 3/watch/tagger packages. Compile trusted sources only; a Tailwind 4 migration needs separate visual compatibility work. Lint has zero errors and 55 hook/Fast Refresh warnings. The large production main-chunk warning remains performance maintenance work.
+A clean `npm ci --no-audit` and `npm run check` succeeded. The complete dependency tree now reports zero npm vulnerabilities. The Tailwind 4 migration and removal of the obsolete tagger cleared all six advisory packages. Lint has zero errors and zero warnings, enforced with `--max-warnings=0`. The large frontend chunk remains performance maintenance work.
+
+Real-service staging also found and fixed a PostgREST retry loop: application edit conflicts now use `PT409`, not engine serialization-failure code `40001`. All three invoice/item/batch conflict endpoints return HTTP 409 in integration tests. The CI fixture now serializes cluster role bootstrap and closes connections on setup failure.
 
 Long invoice, thermal receipt and both delivery copy PDFs were rendered and inspected. Final results and command outcomes are recorded in `verification-results.json` after the frozen-source check completes.
 
 ## Live release gates
 
-- The original live audit found one batch-total mismatch and five movement-history mismatches. Establish authoritative stock counts and preserve reconciliation evidence; do not guess or silently overwrite quantities.
+- Stock reconciliation is complete for the six items confirmed by the user to be TEST DATA. Existing batches were the authority; six explicit ledger corrections and one item-total correction leave both mismatch counts at zero. Original history is preserved.
 - Local/remote historical migration timestamps differ. Apply only the new reviewed migration under a coordinated rollout; never reset production or replay historical migrations blindly.
-- Rehearse against an isolated hosted staging restore, including Auth/gateway/storage, real recovery email and provider settlement. Local mocked provider tests do not certify external services.
+- Migration rehearsal passed on a full backup restore and the actual hosted database with rollback. Real Auth/REST, frontend checkout, recovery-token verification and password update passed on the restore. Actual recovery-email delivery, external provider settlement/webhook delivery and deployed edge acceptance remain release gates.
 - Database, edge functions and frontend must deploy together because raw financial writes are revoked. Old outbox entries without account identities need manual review.
 - Historical cost backfill is marked as an estimate. Ambiguous legacy return lines need review before restoration.
 
 ## Continuation checkpoint
 
-The frozen-source release check passed: 26 unit, 27 native PostgreSQL, 15 edge and 12 production-build browser tests; application/Deno checks and PWA build passed. The 40 owner/admin routes rendered without an uncaught exception. Final PDF bounds covered 18 pages with zero out-of-bounds characters; receipt header/totals were visually rechecked. Generated types came from disposable database `billlook_schema5`. See `verification-results.json`. The branch is ready for code review; live rollout gates above remain open.
+The final local release check passed: 26 unit, 28 native PostgreSQL, 15 edge and 14 production-build browser tests. The 40 owner/admin routes and mobile/desktop light/dark checkout passed. Fifteen real-service integration/cleanup checks passed, including actual signed GoTrue sessions and PostgREST transactions. Eleven hosted transaction checks passed with the release migration rolled back. See `verification-results.json` and `STAGING_RESULTS.md`.
 
-Docker container `billlook-stabilization-db` runs isolated PostgreSQL 16 on localhost 15439. It is not the production database. Use `BILLLOOK_TEST_POSTGRES=postgresql://postgres@127.0.0.1:15439/postgres` for meaningful concurrent-connection tests.
+Use isolated PostgreSQL 17 container `billlook-release-pg17` at `postgresql://postgres@127.0.0.1:15440/postgres` for future native/concurrency checks. It is not production. The original PostgreSQL 16 test container is separate. Auth/REST/backup-restore containers used for the rehearsal are disposable and contain no persistent release deployment.

@@ -1,0 +1,50 @@
+{
+  "target": "Actual linked production project, rollback only",
+  "migration_permanently_applied": false,
+  "checks": [
+    {
+      "check_name": "batch purchase and adjustment remain synchronized",
+      "passed": true
+    },
+    {
+      "check_name": "insufficient stock rolls back the entire invoice",
+      "passed": true
+    },
+    {
+      "check_name": "later payment preserves return netting",
+      "passed": true
+    },
+    {
+      "check_name": "linked return restores stock and reduces receivable",
+      "passed": true
+    },
+    {
+      "check_name": "outsider is denied by both RLS and RPC authorization",
+      "passed": true
+    },
+    {
+      "check_name": "owner opens till through authorized RPC",
+      "passed": true
+    },
+    {
+      "check_name": "raw financial writes are denied",
+      "passed": true
+    },
+    {
+      "check_name": "sale/payment/stock replay is idempotent",
+      "passed": true
+    },
+    {
+      "check_name": "staff module restriction is enforced",
+      "passed": true
+    },
+    {
+      "check_name": "stale invoice returns an explicit HTTP conflict",
+      "passed": true
+    },
+    {
+      "check_name": "till expected cash agrees with actual payments",
+      "passed": true
+    }
+  ]
+}

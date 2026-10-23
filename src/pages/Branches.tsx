@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -18,6 +18,7 @@ interface Branch { id: string; name: string; code: string; address: string | nul
 
 export default function Branches() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [rows, setRows] = useState<Branch[]>([]);
   const [open, setOpen] = useState(false);
@@ -34,13 +35,13 @@ export default function Branches() {
     return rows.filter((r) => [r.name, r.code, r.address].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
   }, [rows, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const { data } = await allRows(supabase.from("branches").select("id, name, code, address")
-      .eq("business_id", current.id).order("name"));
+      .eq("business_id", currentId).order("name"));
     setRows((data ?? []));
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const [codeTouched, setCodeTouched] = useState(false);
 

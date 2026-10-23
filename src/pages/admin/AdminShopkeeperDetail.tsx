@@ -1,7 +1,7 @@
 import type { Tables } from "@/integrations/supabase/types";
 import { errorMessage } from "@/lib/errors";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -35,7 +35,7 @@ export default function AdminShopkeeperDetail() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     const { data: b } = await supabase.from("businesses").select("*").eq("id", id).maybeSingle();
@@ -74,9 +74,9 @@ export default function AdminShopkeeperDetail() {
       setMembers((roles.data ?? []).map((r) => ({ ...r, ...(map.get(r.user_id) ?? {}) })));
     } else setMembers([]);
     setLoading(false);
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [id, load]);
 
   const togglePos = async (next: boolean) => {
     if (!id || !user) return;

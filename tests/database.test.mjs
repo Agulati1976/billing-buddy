@@ -5,6 +5,10 @@ import { database, asUser } from './database-helpers.mjs';
 const owner = '10000000-0000-4000-8000-000000000001';
 const other = '10000000-0000-4000-8000-000000000002';
 const business = '20000000-0000-4000-8000-000000000001';
+
+test('failed fixture initialization closes its database connections', {timeout:10000}, async () => {
+  await assert.rejects(database({onStatement(){throw new Error('fixture initialization failed');}}), /fixture initialization failed/);
+});
 test('live-schema fixture and stabilization migration compile in PostgreSQL', async () => {
   const db = await database();
   await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2),($3,$4)',[owner,'owner@example.invalid',other,'other@example.invalid']);

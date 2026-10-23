@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/errors";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ const ROLE_DESC: Record<Role, string> = {
 
 export default function Team() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const { canManageTeam, role: myRole, loading: permsLoading } = usePermissions();
   const { posEnabled } = usePosAccess();
@@ -57,15 +58,15 @@ export default function Team() {
   const [editModules, setEditModules] = useState<Set<ModuleKey>>(new Set());
   const [savingModules, setSavingModules] = useState(false);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const { data: roles } = await allRows(supabase
-      .from("user_roles").select("id,user_id,role").eq("business_id", current.id));
+      .from("user_roles").select("id,user_id,role").eq("business_id", currentId));
     if (!roles) { setMembers([]); setLoading(false); return; }
     const ids = roles.map((r) => r.user_id);
     const { data: profs } = ids.length
-      ? await supabase.rpc("member_contacts",{p_business_id:current.id})
+      ? await supabase.rpc("member_contacts",{p_business_id:currentId})
       : { data: [] };
     const profMap = new Map((profs ?? []).map((p) => [p.user_id, p]));
     setMembers(roles.map((r) => ({
@@ -74,13 +75,13 @@ export default function Team() {
       full_name: profMap.get(r.user_id)?.full_name ?? null,
     })));
     const { data: ma } = await allRows(supabase
-      .from("staff_module_access").select("user_id, modules").eq("business_id", current.id));
+      .from("staff_module_access").select("user_id, modules").eq("business_id", currentId));
     setModuleAccess(Object.fromEntries((ma ?? []).map((m) => [m.user_id, (m.modules ?? []).filter((module):module is ModuleKey=>ALL_MODULES.some(entry=>entry.key===module))])));
-    const { data: posAccess } = await allRows(supabase.from("pos_user_access").select("user_id").eq("business_id", current.id));
+    const { data: posAccess } = await allRows(supabase.from("pos_user_access").select("user_id").eq("business_id", currentId));
     setPosUserIds(new Set((posAccess ?? []).map((p) => p.user_id)));
     setLoading(false);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const togglePosAccess = async (m: Member, next: boolean) => {
     if (!current) return;

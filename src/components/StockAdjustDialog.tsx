@@ -22,6 +22,9 @@ interface Props {
 
 export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) {
   const { current } = useBusiness();
+  const currentId = current?.id;
+  const itemId = item?.id;
+  const batchTracked = item?.is_batch_tracked;
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [type, setType] = useState<"adjustment_in" | "adjustment_out" | "damage" | "transfer">("adjustment_in");
@@ -32,14 +35,14 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
   const [batches,setBatches]=useState<Array<{id:string;batch_number:string;quantity:number}>>([]);
   useEffect(()=>{
     setBatchId("");setBatches([]);
-    if(!open || !current || !item?.is_batch_tracked) return;
+    if(!open || !currentId || !itemId || !batchTracked) return;
     let active=true;
-    void allRows(supabase.from("batches").select("id,batch_number,quantity").eq("business_id",current.id).eq("item_id",item.id).order("batch_number")).then(({data,error})=>{
+    void allRows(supabase.from("batches").select("id,batch_number,quantity").eq("business_id",currentId).eq("item_id",itemId).order("batch_number")).then(({data,error})=>{
       if(!active)return;
       if(error)toast.error(error.message);else setBatches(data??[]);
     });
     return()=>{active=false;};
-  },[open,current?.id,item?.id,item?.is_batch_tracked]);
+  },[open, currentId, batchTracked, itemId]);
 
   const submit = async () => {
     if (!current || !user || !item || savingRef.current) return;

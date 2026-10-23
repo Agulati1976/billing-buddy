@@ -1,7 +1,157 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap')
+layer(base);
+@import 'tailwindcss' source('./');
+
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme inline {
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-hover: hsl(var(--primary-hover));
+  --color-primary-soft: hsl(var(--primary-soft));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-success-soft: hsl(var(--success-soft));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-warning-soft: hsl(var(--warning-soft));
+
+  --color-danger: hsl(var(--danger));
+  --color-danger-soft: hsl(var(--danger-soft));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility table-scroll {
+  /* Make any table scroll horizontally on mobile when wrapped in this */
+  @apply -mx-3 sm:mx-0 overflow-x-auto;
+}
+
+@utility mobile-card {
+  /* App-like list cards */
+  @apply bg-card border rounded-xl p-3 active:scale-[0.99] active:bg-muted/40 transition-all;
+}
+
+@utility sticky-action-bar {
+  /* Sticky bottom action bar (sits above the bottom nav on mobile) */
+  @apply fixed inset-x-0 z-30 bg-card border-t p-3 flex items-center gap-2 md:static md:border-0 md:p-0 md:bg-transparent;
+  bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+@utility safe-pt {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility safe-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility no-scrollbar {
+  /* Hide native scrollbars but keep scrolling */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* Vyapar-style billing app design system. All colors HSL. */
 
@@ -142,30 +292,6 @@
   }
   /* tabular numerals for amounts */
   .num { font-variant-numeric: tabular-nums; }
-}
-
-@layer components {
-  /* Make any table scroll horizontally on mobile when wrapped in this */
-  .table-scroll { @apply -mx-3 sm:mx-0 overflow-x-auto; }
-
-  /* App-like list cards */
-  .mobile-card {
-    @apply bg-card border rounded-xl p-3 active:scale-[0.99] active:bg-muted/40 transition-all;
-  }
-
-  /* Sticky bottom action bar (sits above the bottom nav on mobile) */
-  .sticky-action-bar {
-    @apply fixed inset-x-0 z-30 bg-card border-t p-3 flex items-center gap-2 md:static md:border-0 md:p-0 md:bg-transparent;
-    bottom: calc(56px + env(safe-area-inset-bottom));
-  }
-}
-
-@layer utilities {
-  .safe-pt { padding-top: env(safe-area-inset-top); }
-  .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
-  /* Hide native scrollbars but keep scrolling */
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 /* ===== Mobile app-like polish ===== */

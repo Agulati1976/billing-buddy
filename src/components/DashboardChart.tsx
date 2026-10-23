@@ -14,7 +14,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { formatINR } from "@/lib/states";
-import { DateRangeFilter, rangeFor, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, type DatePreset } from "@/hooks/useDateFilter";
 import { startOfDay, subDays } from "date-fns";
 
 type ChartKind = "bar" | "line" | "area";
@@ -39,6 +40,7 @@ const SERIES_KEYS = ["Sales", "Purchases", "Expenses", "Profit"] as const;
 
 export function DashboardChart() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [kind, setKind] = useState<ChartKind>("bar");
   const [preset, setPreset] = useState<DatePreset>("today");
   const [customFrom, setCustomFrom] = useState<Date>(startOfDay(subDays(new Date(), 29)));
@@ -49,7 +51,7 @@ export function DashboardChart() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
       setLoading(true);
 
@@ -65,14 +67,14 @@ export function DashboardChart() {
       const [invR, expR] = await Promise.all([
         allRows(supabase.from("invoices")
           .select("id,invoice_date,type,total_amount,subtotal,discount_amount")
-          .eq("business_id", current.id)
+          .eq("business_id", currentId)
           .in("type", ["sale", "non_inventory","sale_return","purchase","purchase_return"])
           .is("deleted_at", null)
           .gte("invoice_date", sinceStr)
           .lte("invoice_date", untilStr)),
         allRows(supabase.from("expenses")
           .select("expense_date, amount")
-          .eq("business_id", current.id)
+          .eq("business_id", currentId)
           .gte("expense_date", sinceStr)
           .lte("expense_date", untilStr)),
       ]);
@@ -127,7 +129,7 @@ export function DashboardChart() {
       setData(buckets);
       setLoading(false);
     })();
-  }, [current?.id, range.from, range.to]);
+  }, [currentId, range.from, range.to]);
 
   const totals = useMemo(() => {
     return data.reduce(

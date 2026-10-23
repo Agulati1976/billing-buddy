@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -18,6 +18,7 @@ interface Cat { id: string; name: string; description: string | null; }
 
 export default function Categories() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [rows, setRows] = useState<Cat[]>([]);
   const [open, setOpen] = useState(false);
@@ -32,13 +33,13 @@ export default function Categories() {
     return rows.filter((r) => [r.name, r.description].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
   }, [rows, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const { data } = await allRows(supabase.from("categories").select("id, name, description")
-      .eq("business_id", current.id).order("name"));
+      .eq("business_id", currentId).order("name"));
     setRows((data ?? []) as Cat[]);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const openNew = () => { setEditing(null); setName(""); setDescription(""); setOpen(true); };
   const openEdit = (c: Cat) => { setEditing(c); setName(c.name); setDescription(c.description ?? ""); setOpen(true); };

@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
 import { businessDate } from "@/lib/dates";
@@ -19,7 +19,8 @@ import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
 import { format, startOfMonth } from "date-fns";
-import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, useDateFilter, type DatePreset } from "@/hooks/useDateFilter";
 
 interface PaymentRow {
   id: string;
@@ -40,7 +41,9 @@ interface Invoice { id: string; invoice_number: string; balance_amount: number; 
 
 export default function Payments() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
+  const userId = user?.id;
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -62,11 +65,11 @@ export default function Payments() {
   const [useTill,setUseTill]=useState(false);
   useEffect(()=>{
     setTillId(null);setUseTill(false);
-    if(!current || !user)return;
+    if(!currentId || !userId)return;
     let active=true;
-    void supabase.from("pos_sessions").select("id").eq("business_id",current.id).eq("opened_by",user.id).is("closed_at",null).order("opened_at",{ascending:false}).limit(1).then(({data})=>{if(active)setTillId(data?.[0]?.id??null);});
+    void supabase.from("pos_sessions").select("id").eq("business_id",currentId).eq("opened_by",userId).is("closed_at",null).order("opened_at",{ascending:false}).limit(1).then(({data})=>{if(active)setTillId(data?.[0]?.id??null);});
     return()=>{active=false;};
-  },[current?.id,user?.id,open]);
+  },[currentId,userId,open]);
   const [preset, setPreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
   const [customTo, setCustomTo] = useState<Date>(new Date());
@@ -84,30 +87,30 @@ export default function Payments() {
     return dateFiltered.filter((r) => [partyLabel(r), r.invoices?.invoice_number, r.method, r.reference, r.notes].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [dateFiltered, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const [pays, prt] = await Promise.all([
       allRows(supabase.from("payments")
         .select("id, direction, method, amount, payment_date, reference, notes, party_id, invoice_id, parties(name), invoices(invoice_number, pos_session_id, type)")
-        .eq("business_id", current.id).is("deleted_at", null).order("payment_date", { ascending: false })),
-      allRows(supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name")),
+        .eq("business_id", currentId).is("deleted_at", null).order("payment_date", { ascending: false })),
+      allRows(supabase.from("parties").select("id, name, type").eq("business_id", currentId).order("name")),
     ]);
     setRows((pays.data) ?? []);
     setParties((prt.data) ?? []);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   // Load invoices: party-linked OR walk-in (when partyId is "WALKIN")
   useEffect(() => {
     let active=true;
     setInvoiceId("");
-    if (!current) { setInvoices([]); return; }
+    if (!currentId) { setInvoices([]); return; }
     const customer=partyId==="WALKIN" || parties.find(party=>party.id===partyId)?.type==="customer";
     const refund=(direction==="out" && customer)||(direction==="in" && !customer);
     const types=refund ? [customer?"sale_return":"purchase_return"] : customer?["sale","non_inventory"]:["purchase"];
     let q = supabase.from("invoices")
       .select("id, invoice_number, balance_amount, total_amount, paid_amount, type, pos_session_id")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .in("type", types as Array<"sale"|"purchase"|"non_inventory"|"sale_return"|"purchase_return">)
       .is("deleted_at", null);
     if (partyId === "WALKIN") q = q.is("party_id", null);
@@ -115,7 +118,7 @@ export default function Payments() {
     else { setInvoices([]); return; }
     allRows(q.order("invoice_date", { ascending: false })).then(({ data }) => {if(active)setInvoices((data??[]).map(invoice=>({...invoice,balance_amount:refund ? Number(invoice.total_amount)-Number(invoice.paid_amount):Number(invoice.balance_amount)})).filter(invoice=>invoice.balance_amount>0));});
     return()=>{active=false;};
-  }, [partyId, direction, current?.id,parties]);
+  }, [partyId, direction, currentId,parties]);
 
   const submit = async () => {
     if (!current || !user || savingRef.current) return;

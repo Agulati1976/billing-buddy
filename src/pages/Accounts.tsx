@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { businessDate } from "@/lib/dates";
 import { allRows } from "@/lib/pagination";
 import { recordPayment } from "@/lib/billingTransactions";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -21,7 +21,8 @@ import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
 import { format, startOfMonth } from "date-fns";
-import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, useDateFilter, type DatePreset } from "@/hooks/useDateFilter";
 
 type Direction = "in" | "out";
 type Method = "cash" | "bank" | "upi" | "cheque" | "card" | "other";
@@ -67,6 +68,7 @@ const METHOD_META: { key: Method; label: string; icon: LucideIcon; tone: string 
 
 export default function Accounts() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [parties, setParties] = useState<Party[]>([]);
@@ -92,17 +94,17 @@ export default function Accounts() {
   const [customTo, setCustomTo] = useState<Date>(new Date());
   const range = useMemo(() => rangeFor(preset, { from: customFrom, to: customTo }), [preset, customFrom, customTo]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const [pays, exps, prt] = await Promise.all([
       allRows(supabase.from("payments")
         .select("id, direction, method, amount, payment_date, reference, notes, parties(name), invoices(invoice_number)")
-        .eq("business_id", current.id).is("deleted_at", null)),
+        .eq("business_id", currentId).is("deleted_at", null)),
       allRows(supabase.from("expenses")
         .select("id, category, method, amount, expense_date, reference, description")
-        .eq("business_id", current.id)),
-      allRows(supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name")),
+        .eq("business_id", currentId)),
+      allRows(supabase.from("parties").select("id, name, type").eq("business_id", currentId).order("name")),
     ]);
     const p: PaymentRow[] = ((pays.data) ?? []).map((r) => {
       // Manual entries store category prefix in notes as "[Category] rest"
@@ -132,8 +134,8 @@ export default function Accounts() {
     setRows(merged);
     setParties((prt.data) ?? []);
     setLoading(false);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const dateFiltered = useDateFilter(rows, (r) => r.date, range);
   const methodFiltered = useMemo(

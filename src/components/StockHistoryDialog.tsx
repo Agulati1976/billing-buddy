@@ -56,21 +56,23 @@ export function StockHistoryDialog({
   const {features}=usePermissions();
   const navigate = useNavigate();
 
+  const itemId = item?.id;
+
   useEffect(() => {
-    if (!open || !item) return;
+    if (!open || !itemId) return;
     (async () => {
       setLoading(true);
       const { data, error } = await allRows(supabase
         .from("stock_movements")
         .select("id, type, quantity, notes, reference_id, invoice_id, invoice_number_snapshot, batch_id, created_at, batches(batch_number)")
-        .eq("item_id", item.id)
+        .eq("item_id", itemId)
         .order("created_at", { ascending: true }));
       if (error) toast.error(error.message);
       else setRows((data ?? []) as Movement[]);
       setLinks(await fetchInvoiceLinksForMovements(data??[]));
       setLoading(false);
     })();
-  }, [open, item?.id]);
+  }, [open, itemId]);
 
   // Reverse for display (newest first) but compute running balance forward
   const withBalance = useMemo(() => {

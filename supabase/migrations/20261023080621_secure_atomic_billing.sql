@@ -494,7 +494,7 @@ BEGIN
  is_edit:=FOUND;
  IF is_edit THEN
   IF old.business_id<>biz OR old.type<>desired_type OR old.deleted_at IS NOT NULL THEN RAISE EXCEPTION 'Invoice does not match this business or document type'; END IF;
-  IF p_expected_updated_at IS NULL OR old.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'This invoice changed. Reload it before saving.' USING ERRCODE='40001'; END IF;
+  IF p_expected_updated_at IS NULL OR old.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'This invoice changed. Reload it before saving.' USING ERRCODE='PT409'; END IF;
   IF old.source_invoice_id IS DISTINCT FROM nullif(p_invoice->>'source_invoice_id','')::uuid THEN RAISE EXCEPTION 'The source invoice of an existing document cannot be changed'; END IF;
   IF old.party_id IS DISTINCT FROM nullif(p_invoice->>'party_id','')::uuid AND (EXISTS(SELECT 1 FROM public.payments WHERE public.payments.invoice_id=old.id) OR EXISTS(SELECT 1 FROM public.loyalty_transactions WHERE public.loyalty_transactions.invoice_id=old.id) OR EXISTS(SELECT 1 FROM public.invoices WHERE source_invoice_id=old.id)) THEN RAISE EXCEPTION 'Party cannot change after payments, loyalty or returns have been recorded'; END IF;
  ELSE
@@ -788,7 +788,7 @@ BEGIN
  result:=public.app_start_operation(p_operation_id,biz,'save_item',jsonb_build_object('item',p_item,'batch',p_batch,'version',p_expected_updated_at)); IF result IS NOT NULL THEN RETURN result; END IF;
  SELECT * INTO old FROM public.items WHERE id=item_id FOR UPDATE;
  IF FOUND THEN
-  IF old.business_id<>biz OR p_expected_updated_at IS NULL OR old.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'Item changed. Reload before saving.' USING ERRCODE='40001'; END IF;
+  IF old.business_id<>biz OR p_expected_updated_at IS NULL OR old.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'Item changed. Reload before saving.' USING ERRCODE='PT409'; END IF;
   IF coalesce((p_item->>'opening_stock')::numeric,old.opening_stock)<>old.opening_stock THEN RAISE EXCEPTION 'Use a stock adjustment to change inventory'; END IF;
  ELSE
   IF p_expected_updated_at IS NOT NULL THEN RAISE EXCEPTION 'Item no longer exists'; END IF;
@@ -815,7 +815,7 @@ BEGIN
  result:=public.app_start_operation(p_operation_id,biz,'save_batch',jsonb_build_object('batch',p_batch,'version',p_expected_updated_at)); IF result IS NOT NULL THEN RETURN result; END IF;
  SELECT * INTO old FROM public.batches WHERE id=batch_id FOR UPDATE;
  IF FOUND THEN
-  IF old.business_id<>biz OR p_expected_updated_at IS NULL OR old.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'Batch stock changed. Reload before saving.' USING ERRCODE='40001'; END IF;
+  IF old.business_id<>biz OR p_expected_updated_at IS NULL OR old.updated_at<>p_expected_updated_at THEN RAISE EXCEPTION 'Batch stock changed. Reload before saving.' USING ERRCODE='PT409'; END IF;
  ELSIF p_expected_updated_at IS NOT NULL THEN RAISE EXCEPTION 'Batch no longer exists'; END IF;
  INSERT INTO public.batches(id,business_id,item_id,batch_number,mfg_date,expiry_date,quantity,purchase_price,sale_price,notes,created_by)
  VALUES(batch_id,biz,(p_batch->>'item_id')::uuid,p_batch->>'batch_number',nullif(p_batch->>'mfg_date','')::date,nullif(p_batch->>'expiry_date','')::date,coalesce((p_batch->>'quantity')::numeric,0),nullif(p_batch->>'purchase_price','')::numeric,nullif(p_batch->>'sale_price','')::numeric,p_batch->>'notes',auth.uid())

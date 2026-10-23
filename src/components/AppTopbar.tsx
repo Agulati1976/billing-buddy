@@ -60,7 +60,7 @@ export function AppTopbar() {
 
   return (
     <header
-      className="app-chrome border-b bg-card sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+      className="app-chrome border-b bg-card sticky top-0 z-30 backdrop-blur-sm supports-backdrop-filter:bg-card/85"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="h-14 flex items-center gap-2 sm:gap-3 px-2 sm:px-4">

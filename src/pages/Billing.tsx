@@ -2,7 +2,7 @@ import { errorMessage } from "@/lib/errors";
 import { featureFlags, planLimits } from "@/lib/planValues";
 import { usePermissions } from "@/hooks/usePermissions";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { load } from "@cashfreepayments/cashfree-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +57,7 @@ const getFunctionErrorMessage = async (error: unknown, fallback = "Payment faile
 
 export default function Billing() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const {isAdmin}=usePermissions();
   const payingRef=useRef(false);
@@ -68,26 +69,26 @@ export default function Billing() {
   const [paying, setPaying] = useState<string | null>(null);
 
 
-  const loadAll = async () => {
-    if (!current) return;
+  const loadAll = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const [pRes, sRes, oRes] = await Promise.all([
       allRows(supabase.from("subscription_plans").select("*").eq("is_active", true).order("sort_order")),
-      supabase.from("business_subscriptions").select("*").eq("business_id", current.id).maybeSingle(),
-      supabase.from("subscription_orders").select("*").eq("business_id", current.id).order("created_at", { ascending: false }).limit(20),
+      supabase.from("business_subscriptions").select("*").eq("business_id", currentId).maybeSingle(),
+      supabase.from("subscription_orders").select("*").eq("business_id", currentId).order("created_at", { ascending: false }).limit(20),
     ]);
     if (pRes.data) setPlans(pRes.data.map(plan=>({...plan,limits:planLimits(plan.limits),features:Array.isArray(plan.features)?plan.features.filter((feature):feature is string=>typeof feature==="string"):featureFlags(plan.features)})));
     if (sRes.data) setSubscription(sRes.data);
     if (oRes.data) setOrders(oRes.data);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { loadAll();   }, [current?.id]);
+  useEffect(() => { loadAll();   }, [currentId, loadAll]);
 
   // After return from Cashfree redirect
   useEffect(() => {
     const orderId = params.get("order_id");
-    if (!orderId || !current) return;
+    if (!orderId || !currentId) return;
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke("cashfree-verify-order", {
@@ -111,7 +112,7 @@ export default function Billing() {
       }
     })();
     // eslint-disable-next-line
-  }, [params, current?.id]);
+  }, [params, currentId]);
 
   const handleSubscribe = async (plan: Plan) => {
     if (!current || payingRef.current || !isAdmin) return;

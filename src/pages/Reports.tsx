@@ -59,6 +59,7 @@ function rangeFor(preset: Preset, custom: { from: Date; to: Date }): { from: Dat
 
 export default function Reports() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const {features}=usePermissions();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Inv[]>([]);
@@ -80,18 +81,18 @@ export default function Reports() {
   );
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
       setLoading(true);
       const since = fmtDate(range.from);
       const until = fmtDate(range.to);
       const [s, p, e, sr, qi, pr] = await Promise.all([
-        allRows(supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
-        allRows(supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "purchase").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
-        allRows(supabase.from("expenses").select("category,amount,expense_date").eq("business_id", current.id).gte("expense_date", since).lte("expense_date", until)),
-        allRows(supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "sale_return").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
-        allRows(supabase.from("invoices").select("*").eq("business_id", current.id).eq("type", "non_inventory").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
-        allRows(supabase.from("invoices").select("*").eq("business_id",current.id).eq("type","purchase_return").is("deleted_at",null).gte("invoice_date",since).lte("invoice_date",until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "sale").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "purchase").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("expenses").select("category,amount,expense_date").eq("business_id", currentId).gte("expense_date", since).lte("expense_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "sale_return").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id", currentId).eq("type", "non_inventory").is("deleted_at", null).gte("invoice_date", since).lte("invoice_date", until)),
+        allRows(supabase.from("invoices").select("*").eq("business_id",currentId).eq("type","purchase_return").is("deleted_at",null).gte("invoice_date",since).lte("invoice_date",until)),
       ]);
       if(s.error || p.error || e.error || sr.error || qi.error || pr.error){toast.error("Failed to load reports");setLoading(false);return;}
       const allInvIds=[...(s.data??[]),...(sr.data??[]),...(qi.data??[])].map(invoice=>invoice.id);
@@ -106,7 +107,7 @@ export default function Reports() {
       setItems(it);
       setLoading(false);
     })();
-  }, [current?.id, range.from, range.to]);
+  }, [currentId, range.from, range.to]);
 
   /* ------------------------- aggregations ------------------------- */
 

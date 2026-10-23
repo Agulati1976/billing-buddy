@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -19,6 +19,7 @@ interface Wh { id: string; name: string; address: string | null; is_default: boo
 
 export default function Warehouses() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [rows, setRows] = useState<Wh[]>([]);
   const [open, setOpen] = useState(false);
@@ -34,13 +35,13 @@ export default function Warehouses() {
     return rows.filter((r) => [r.name, r.address].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
   }, [rows, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const { data } = await allRows(supabase.from("warehouses").select("id, name, address, is_default")
-      .eq("business_id", current.id).order("name"));
+      .eq("business_id", currentId).order("name"));
     setRows((data ?? []) as Wh[]);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const openNew = () => { setEditing(null); setName(""); setAddress(""); setIsDefault(false); setOpen(true); };
   const openEdit = (w: Wh) => { setEditing(w); setName(w.name); setAddress(w.address ?? ""); setIsDefault(w.is_default); setOpen(true); };

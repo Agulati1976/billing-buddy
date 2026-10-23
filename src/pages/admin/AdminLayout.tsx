@@ -54,7 +54,7 @@ export default function AdminLayout() {
     cn(
       "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
       isActive
-        ? "bg-primary text-primary-foreground font-medium shadow-sm"
+        ? "bg-primary text-primary-foreground font-medium shadow-xs"
         : "text-muted-foreground hover:bg-muted hover:text-foreground"
     );
 
@@ -118,7 +118,7 @@ export default function AdminLayout() {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-auto">
         {/* Mobile top bar */}
-        <header className="md:hidden sticky top-0 z-30 flex items-center gap-2 h-14 px-3 border-b bg-background/95 backdrop-blur">
+        <header className="md:hidden sticky top-0 z-30 flex items-center gap-2 h-14 px-3 border-b bg-background/95 backdrop-blur-sm">
           <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -145,7 +145,7 @@ export default function AdminLayout() {
         </div>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur-sm safe-pb">
           <div className="grid grid-cols-5 h-16">
             {bottomNav.map((item) => (
               <NavLink

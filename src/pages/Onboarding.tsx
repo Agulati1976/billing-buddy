@@ -16,6 +16,7 @@ import { Building2, Sparkles } from "lucide-react";
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const userId = user?.id;
   const { refresh, businesses } = useBusiness();
   const [businessLimit,setBusinessLimit]=useState<number|null>(null);
   const FREE_LIMIT=businessLimit ?? 1;
@@ -23,9 +24,9 @@ export default function Onboarding() {
   const blocked=businessLimit!==null && businessLimit>0 && ownedCount>=businessLimit;
   useEffect(()=>{
     let active=true;
-    if(user)void supabase.rpc("account_business_limit").then(({data,error})=>{if(active){setBusinessLimit(error ? 1 : data);if(error)toast.error(error.message);}});
+    if(userId)void supabase.rpc("account_business_limit").then(({data,error})=>{if(active){setBusinessLimit(error ? 1 : data);if(error)toast.error(error.message);}});
     return()=>{active=false;};
-  },[user?.id]);
+  },[userId]);
 
   const [name, setName] = useState("");
   const [gstin, setGstin] = useState("");

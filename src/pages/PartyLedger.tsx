@@ -1,7 +1,7 @@
 import { businessDate } from "@/lib/dates";
 import { allRows } from "@/lib/pagination";
 import { recordPayment } from "@/lib/billingTransactions";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -137,6 +137,7 @@ function computeLedger(party: PartyLite, invoices: InvoiceRow[], payments: Payme
 
 export default function PartyLedger() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [search, setSearch] = useSearchParams();
   const [parties, setParties] = useState<PartyLite[]>([]);
@@ -157,19 +158,19 @@ export default function PartyLedger() {
   const [payReference, setPayReference] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const [pRes, iRes, payRes] = await Promise.all([
       allRows(supabase.from("parties").select("id,name,type,phone,opening_balance")
-        .eq("business_id", current.id).order("name")),
+        .eq("business_id", currentId).order("name")),
       allRows(supabase.from("invoices")
         .select("id,invoice_number,invoice_date,total_amount,balance_amount,type,party_id")
-        .eq("business_id", current.id).is("deleted_at", null)
+        .eq("business_id", currentId).is("deleted_at", null)
         .neq("type", "quotation").not("party_id", "is", null).order("invoice_date")),
       allRows(supabase.from("payments")
         .select("id,payment_date,amount,method,reference,invoice_id,direction,notes,party_id")
-        .eq("business_id", current.id).is("deleted_at", null)
+        .eq("business_id", currentId).is("deleted_at", null)
         .not("party_id", "is", null).order("payment_date")),
     ]);
     if (pRes.error) toast.error(pRes.error.message);
@@ -177,9 +178,9 @@ export default function PartyLedger() {
     setAllInvoices((iRes.data as InvoiceRow[]) ?? []);
     setAllPayments((payRes.data as PaymentRow[]) ?? []);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { load();   }, [current?.id]);
+  useEffect(() => { load();   }, [currentId, load]);
 
   useEffect(() => {
     setSearch((s) => {
@@ -187,7 +188,7 @@ export default function PartyLedger() {
       if (partyId) n.set("party", partyId); else n.delete("party");
       return n;
     }, { replace: true });
-  }, [partyId]);
+  }, [partyId, setSearch]);
 
   // Per-party computed totals
   const summary = useMemo(() => {

@@ -99,7 +99,7 @@ test('billing authorization, transactions, returns and subscriptions', async (t)
   await t.test('edits require current version and preserve immutable reversals',async()=>{
     const item=await product('Edit',10),inv=header(),lines=[line(item,2)];
     const first=await save(inv,lines);
-    await assert.rejects(save(inv,[{...lines[0],quantity:3}]),/changed/i);
+    await assert.rejects(save(inv,[{...lines[0],quantity:3}]),error=>/changed/i.test(error.message)&&error.cause?.code==='PT409');
     const updated=await save(inv,[{...lines[0],quantity:3}],[],[],first.updated_at);
     assert.equal(Number(updated.total_amount),300);
     assert.equal(await stock(item),7);
@@ -183,6 +183,8 @@ test('billing authorization, transactions, returns and subscriptions', async (t)
     await rpc('save_item',{op,item:JSON.stringify(item),batch:JSON.stringify(batch)});
     await rpc('save_item',{op,item:JSON.stringify(item),batch:JSON.stringify(batch)});
     assert.equal(await stock(id),3);
+    await assert.rejects(rpc('save_item',{op:uuid(),item:JSON.stringify(item)}),error=>error.cause?.code==='PT409');
+    await assert.rejects(rpc('save_batch',{op:uuid(),batch:JSON.stringify({...batch,business_id:biz,item_id:id})}),error=>error.cause?.code==='PT409');
     const invalid={...item,id:uuid(),name:'Invalid batch item'};
     await assert.rejects(rpc('save_item',{op:uuid(),item:JSON.stringify(invalid),batch:JSON.stringify({...batch,id:uuid(),quantity:-1})}),/negative|invalid/i);
     assert.equal(Number((await row('SELECT count(*) n FROM items WHERE id=$1',[invalid.id])).n),0);

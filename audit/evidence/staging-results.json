@@ -1,0 +1,66 @@
+{
+  "time": "2026-10-23T12:20:28.061Z",
+  "target": "local restore of hosted backup; real GoTrue/PostgREST; no external providers",
+  "results": [
+    {
+      "name": "real GoTrue creates and signs in owner, staff and outsider",
+      "passed": true
+    },
+    {
+      "name": "real PostgREST RPC creates an item and opening batch exactly once",
+      "passed": true
+    },
+    {
+      "name": "real RLS/RPC denies outsiders, staff purchases and raw financial writes",
+      "passed": true
+    },
+    {
+      "name": "stale item and batch edits return HTTP 409 without retries",
+      "passed": true
+    },
+    {
+      "name": "real HTTP replay commits one sale, payment and stock deduction",
+      "passed": true
+    },
+    {
+      "name": "partial payment settles through the real gateway",
+      "passed": true
+    },
+    {
+      "name": "real invoice edit reverses stock and rejects a stale version",
+      "passed": true
+    },
+    {
+      "name": "linked return and refund reconcile actual stock and cash",
+      "passed": true
+    },
+    {
+      "name": "delete and restore replay preserve both stock and payment history",
+      "passed": true
+    },
+    {
+      "name": "concurrent real HTTP checkouts cannot oversell the last unit",
+      "passed": true
+    },
+    {
+      "name": "suspended business loses real REST and RPC access",
+      "passed": true
+    },
+    {
+      "name": "production frontend checks out against real GoTrue and PostgREST services",
+      "passed": true
+    },
+    {
+      "name": "rehearsal batch, item and movement ledger balances all agree",
+      "passed": true
+    },
+    {
+      "name": "real recovery token reaches the password form and changes the Auth password",
+      "passed": true
+    },
+    {
+      "name": "isolated rehearsal users and business data removed",
+      "passed": true
+    }
+  ]
+}

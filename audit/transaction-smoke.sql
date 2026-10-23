@@ -1,0 +1,76 @@
+-- Run only inside a transaction that will ROLLBACK. Inserts isolated synthetic
+-- users/businesses, exercises the actual schema, and leaves no test records.
+CREATE TEMP TABLE smoke_results(check_name text PRIMARY KEY) ON COMMIT DROP;
+GRANT ALL ON TABLE smoke_results TO authenticated;
+DO $$
+DECLARE owner_id uuid:=gen_random_uuid(); staff_id uuid:=gen_random_uuid(); outsider_id uuid:=gen_random_uuid();
+ biz uuid:=gen_random_uuid(); item uuid:=gen_random_uuid(); batch_item uuid:=gen_random_uuid(); batch uuid:=gen_random_uuid();
+ inv uuid:=gen_random_uuid(); line_id uuid:=gen_random_uuid(); returned uuid:=gen_random_uuid(); session_id uuid:=gen_random_uuid();
+ operation uuid:=gen_random_uuid(); header jsonb; lines jsonb; result jsonb; repeated jsonb; denied boolean; failed_invoice uuid:=gen_random_uuid();
+BEGIN
+ INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES(owner_id,'release-owner-'||owner_id||'@example.invalid','{}'),(staff_id,'release-staff-'||staff_id||'@example.invalid','{}'),(outsider_id,'release-outsider-'||outsider_id||'@example.invalid','{}');
+ INSERT INTO public.businesses(id,owner_id,name,state_code) VALUES(biz,owner_id,'RELEASE SMOKE TEST - ROLLBACK','07');
+ INSERT INTO public.business_subscriptions(business_id,plan_id,status,expires_at) SELECT biz,id,'active',now()+interval '30 days' FROM public.subscription_plans WHERE upper(code)='PRO';
+ INSERT INTO public.user_roles(user_id,business_id,role) VALUES(staff_id,biz,'staff');
+ INSERT INTO public.staff_module_access(user_id,business_id,modules) VALUES(staff_id,biz,ARRAY['sales']);
+ INSERT INTO public.items(id,business_id,name,opening_stock,type) VALUES(item,biz,'Rehearsal product',5,'product');
+ INSERT INTO public.items(id,business_id,name,opening_stock,type,is_batch_tracked) VALUES(batch_item,biz,'Rehearsal batch product',0,'product',true);
+ PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
+ SET LOCAL ROLE authenticated;
+ PERFORM public.open_pos_session(gen_random_uuid(),biz,session_id,200);
+ INSERT INTO pg_temp.smoke_results VALUES('owner opens till through authorized RPC');
+ header:=jsonb_build_object('id',inv,'business_id',biz,'type','sale','invoice_number','RELEASE-'||inv,'invoice_date',current_date,'is_gst',false,'pos_session_id',session_id,'channel','pos');
+ lines:=jsonb_build_array(jsonb_build_object('id',line_id,'item_id',item,'item_name','Rehearsal product','quantity',2,'price',100,'unit','pcs','tax_rate',0));
+ result:=public.save_invoice(operation,header,lines,'[{"amount":50,"method":"cash"}]');
+ repeated:=public.save_invoice(operation,header,lines,'[{"amount":50,"method":"cash"}]');
+ IF result<>repeated OR (SELECT current_stock FROM public.items WHERE id=item)<>3 OR (SELECT count(*) FROM public.payments WHERE invoice_id=inv)<>1 THEN RAISE EXCEPTION 'Atomic sale/replay invariant failed'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('sale/payment/stock replay is idempotent');
+ denied:=false;
+ BEGIN PERFORM public.save_invoice(gen_random_uuid(),header,lines);
+ EXCEPTION WHEN SQLSTATE 'PT409' THEN denied:=true;END;
+ IF NOT denied THEN RAISE EXCEPTION 'Stale invoice did not return a non-retryable conflict'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('stale invoice returns an explicit HTTP conflict');
+ denied:=false;
+ BEGIN
+  PERFORM public.save_invoice(gen_random_uuid(),header||jsonb_build_object('id',failed_invoice,'invoice_number','RELEASE-FAILED-'||failed_invoice),jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'item_id',item,'item_name','Rehearsal product','quantity',99,'price',100,'unit','pcs','tax_rate',0)));
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM NOT ILIKE '%out of stock%' THEN RAISE; END IF;denied:=true;
+ END;
+ IF NOT denied OR EXISTS(SELECT 1 FROM public.invoices WHERE id=failed_invoice) OR (SELECT current_stock FROM public.items WHERE id=item)<>3 THEN RAISE EXCEPTION 'Insufficient-stock rollback failed'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('insufficient stock rolls back the entire invoice');
+ PERFORM public.save_invoice(gen_random_uuid(),jsonb_build_object('id',returned,'business_id',biz,'type','sale_return','source_invoice_id',inv,'invoice_number','RELEASE-RETURN-'||returned,'invoice_date',current_date,'is_gst',false),jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'source_line_id',line_id,'item_id',item,'item_name','Rehearsal product','quantity',1,'price',100,'unit','pcs','tax_rate',0)));
+ IF (SELECT current_stock FROM public.items WHERE id=item)<>4 OR (SELECT balance_amount FROM public.invoices WHERE id=inv)<>50 THEN RAISE EXCEPTION 'Linked return balance failed'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('linked return restores stock and reduces receivable');
+ PERFORM public.record_payment(gen_random_uuid(),jsonb_build_object('business_id',biz,'invoice_id',inv,'direction','in','method','cash','amount',50,'payment_date',current_date,'pos_session_id',session_id));
+ IF (SELECT balance_amount FROM public.invoices WHERE id=inv)<>0 THEN RAISE EXCEPTION 'Later payment lost the linked return'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('later payment preserves return netting');
+ result:=public.close_pos_session(gen_random_uuid(),session_id,300);
+ IF (result->>'expected_cash')::numeric<>300 THEN RAISE EXCEPTION 'Till cash reconciliation failed'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('till expected cash agrees with actual payments');
+ denied:=false;
+ BEGIN INSERT INTO public.invoices(business_id,invoice_number,type) VALUES(biz,'RAW','sale');
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;
+ IF NOT denied THEN RAISE EXCEPTION 'Unsafe raw invoice insert was allowed'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('raw financial writes are denied');
+ PERFORM set_config('request.jwt.claim.sub',staff_id::text,true);
+ denied:=false;
+ BEGIN PERFORM public.save_invoice(gen_random_uuid(),header||jsonb_build_object('id',gen_random_uuid(),'type','purchase'),lines);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;
+ IF NOT denied THEN RAISE EXCEPTION 'Restricted staff could create a purchase'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('staff module restriction is enforced');
+ PERFORM set_config('request.jwt.claim.sub',outsider_id::text,true);
+ IF EXISTS(SELECT 1 FROM public.items WHERE business_id=biz) THEN RAISE EXCEPTION 'Outsider can see tenant inventory'; END IF;
+ denied:=false;
+ BEGIN PERFORM public.save_invoice(gen_random_uuid(),header,lines);
+ EXCEPTION WHEN insufficient_privilege THEN denied:=true;END;
+ IF NOT denied THEN RAISE EXCEPTION 'Outsider could save an invoice'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('outsider is denied by both RLS and RPC authorization');
+ PERFORM set_config('request.jwt.claim.sub',owner_id::text,true);
+ PERFORM public.save_invoice(gen_random_uuid(),jsonb_build_object('id',gen_random_uuid(),'business_id',biz,'type','purchase','invoice_number','RELEASE-PURCHASE-'||batch,'invoice_date',current_date,'is_gst',false),jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'item_id',batch_item,'item_name','Rehearsal batch product','batch_id',batch,'quantity',5,'price',10,'unit','pcs','tax_rate',0)),'[]',jsonb_build_array(jsonb_build_object('id',batch,'item_id',batch_item,'batch_number','REHEARSAL','purchase_price',10)));
+ IF (SELECT current_stock FROM public.items WHERE id=batch_item)<>5 OR (SELECT quantity FROM public.batches WHERE id=batch)<>5 THEN RAISE EXCEPTION 'Batch purchase was counted twice'; END IF;
+ PERFORM public.adjust_stock(gen_random_uuid(),biz,batch_item,1,'adjustment_out',batch,'Release rehearsal');
+ IF (SELECT current_stock FROM public.items WHERE id=batch_item)<>4 OR (SELECT quantity FROM public.batches WHERE id=batch)<>4 THEN RAISE EXCEPTION 'Batch adjustment lost synchronization'; END IF;
+ INSERT INTO pg_temp.smoke_results VALUES('batch purchase and adjustment remain synchronized');
+ RESET ROLE;
+END $$;
+SELECT check_name,true AS passed FROM smoke_results ORDER BY check_name;

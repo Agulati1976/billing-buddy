@@ -1,6 +1,6 @@
 import { businessDate } from "@/lib/dates";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -18,7 +18,8 @@ import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
 import { formatINR } from "@/lib/states";
 import { format, startOfMonth } from "date-fns";
-import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, useDateFilter, type DatePreset } from "@/hooks/useDateFilter";
 
 const CATEGORIES = ["Rent", "Salary", "Utilities", "Travel", "Office Supplies", "Marketing", "Repairs", "Tax", "Other"];
 
@@ -33,6 +34,7 @@ interface ExpenseRow {
 
 export default function Expenses() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [open, setOpen] = useState(false);
@@ -55,14 +57,14 @@ export default function Expenses() {
     return dateFiltered.filter((r) => [r.category, r.description, r.method].filter(Boolean).some((v) => String(v).toLowerCase().includes(q)));
   }, [dateFiltered, search]);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     const { data } = await allRows(supabase.from("expenses")
       .select("id, category, amount, expense_date, method, description")
-      .eq("business_id", current.id).order("expense_date", { ascending: false }));
+      .eq("business_id", currentId).order("expense_date", { ascending: false }));
     setRows((data) ?? []);
-  };
-  useEffect(() => { load(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const submit = async () => {
     if (!current || !user) return;

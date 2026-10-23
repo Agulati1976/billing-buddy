@@ -1,7 +1,7 @@
 import type { Tables } from "@/integrations/supabase/types";
 import { errorMessage } from "@/lib/errors";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert, omDelete } from "@/lib/offlineMutate";
@@ -64,7 +64,9 @@ export default function Pos() {
   const operationIdRef=useRef(crypto.randomUUID());
   const [completing,setCompleting]=useState(false);
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
+  const userId = user?.id;
   const { canUsePos, posEnabled, hasPosAccess, loading: accessLoading } = usePosAccess();
 
   const [items, setItems] = useState<Item[]>([]);
@@ -99,36 +101,36 @@ export default function Pos() {
 
   // Load reference data
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     Promise.all([
-      allRows(supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,type,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", current.id).order("name")),
-      allRows(supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", current.id).eq("type", "customer").order("name")),
-      supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", current.id).maybeSingle(),
-      allRows(supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
+      allRows(supabase.from("items").select("id,name,barcode,sale_price,tax_rate,unit,unit_size,hsn_code,current_stock,type,is_batch_tracked,image_url,allow_decimal_qty,brand,flavour,color,sku").eq("business_id", currentId).order("name")),
+      allRows(supabase.from("parties").select("id,name,phone,state_code,gstin").eq("business_id", currentId).eq("type", "customer").order("name")),
+      supabase.from("invoice_settings").select("upi_id,upi_payee_name,show_upi_qr").eq("business_id", currentId).maybeSingle(),
+      allRows(supabase.from("batches").select("id,item_id,batch_number,expiry_date,quantity,purchase_price,sale_price").eq("business_id", currentId).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
     ]).then(([it, p, s, b]) => {
       setItems((it.data) ?? []);
       setParties((p.data) ?? []);
       setUpiSettings((s.data) ?? null);
       setBatches((b.data) ?? []);
     });
-  }, [current?.id]);
+  }, [currentId]);
 
   // Load active session
   useEffect(() => {
-    if (!current || !user) return;
+    if (!currentId || !userId) return;
     supabase.from("pos_sessions").select("*")
-      .eq("business_id", current.id).eq("opened_by", user.id).is("closed_at", null)
+      .eq("business_id", currentId).eq("opened_by", userId).is("closed_at", null)
       .order("opened_at", { ascending: false }).limit(1)
       .then(({ data }) => setSession(data?.[0] ?? null));
-  }, [current?.id, user?.id]);
+  }, [currentId, userId]);
 
   // Refresh held carts
-  const refreshHeld = async () => {
-    if (!current) return;
-    const { data } = await allRows(supabase.from("pos_held_carts").select("*").eq("business_id", current.id).order("created_at", { ascending: false }));
+  const refreshHeld = useCallback(async () => {
+    if (!currentId) return;
+    const { data } = await allRows(supabase.from("pos_held_carts").select("*").eq("business_id", currentId).order("created_at", { ascending: false }));
     setHeld(data ?? []);
-  };
-  useEffect(() => { refreshHeld(); }, [current?.id]);
+  }, [currentId]);
+  useEffect(() => { refreshHeld(); }, [currentId, refreshHeld]);
 
   // Filter
   const filtered = useMemo(() => {
@@ -240,8 +242,8 @@ export default function Pos() {
   const totalPaid = cashPaid + creditAmt; // total tendered including credit allocation
   const change = cashPaid - Math.max(0, totals.total_amount - creditAmt);
 
-  const validateCartStock = async () => {
-    if (!current) return false;
+  const validateCartStock = useCallback(async () => {
+    if (!currentId) return false;
     const reqItem = new Map<string, number>();
     const reqBatch = new Map<string, number>();
     for (const line of cart) {
@@ -258,7 +260,7 @@ export default function Pos() {
       const { data, error } = await allRows(supabase
         .from("items")
         .select("id,name,unit,current_stock,type,is_batch_tracked")
-        .eq("business_id", current.id)
+        .eq("business_id", currentId)
         .in("id", Array.from(reqItem.keys())));
       if (error) { toast.error(error.message); return false; }
       const fresh = new Map((data ?? []).map((item) => [item.id, item]));
@@ -294,16 +296,16 @@ export default function Pos() {
       }
     }
     return true;
-  };
+  }, [cart, currentId]);
 
 
-  const openPayment = async () => {
+  const openPayment = useCallback(async () => {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
     if (!session) {setOpenSessionDialog(true);return;}
     if (!(await validateCartStock())) return;
     setSplits([{ method: "cash", amount: totals.total_amount }]);
     setPaymentOpen(true);
-  };
+  }, [cart.length, session, totals.total_amount, validateCartStock]);
 
   const completeSale = async () => {
     if (!current || !user || completingRef.current) return;

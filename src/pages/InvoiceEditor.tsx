@@ -2,7 +2,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { usePermissions } from "@/hooks/usePermissions";
 import { errorMessage } from "@/lib/errors";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert } from "@/lib/offlineMutate";
@@ -49,6 +49,9 @@ export default function InvoiceEditor({ type }: Props) {
   const fromInvoiceId = searchParams.get("from");
   const isNew = !id || id === "new";
   const { current } = useBusiness();
+  const currentId = current?.id;
+  const pincode = current?.pincode;
+  const pincodeRank = current?.pincode_rank;
   const { user } = useAuth();
   const {features}=usePermissions();
   const navigate = useNavigate();
@@ -155,20 +158,20 @@ export default function InvoiceEditor({ type }: Props) {
   };
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
-      allRows(supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name")),
-      allRows(supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, type, brand, flavour, color, sku").eq("business_id", current.id).order("name")),
-      allRows(supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
-      allRows(supabase.from("branches").select("id, name, code").eq("business_id", current.id).order("name")),
+      allRows(supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", currentId).eq("type", partyType).order("name")),
+      allRows(supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, type, brand, flavour, color, sku").eq("business_id", currentId).order("name")),
+      allRows(supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", currentId).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
+      allRows(supabase.from("branches").select("id, name, code").eq("business_id", currentId).order("name")),
     ]).then(([p, it, b, br]) => {
       setParties((p.data) ?? []);
       setItems((it.data) ?? []);
       setBatches((b.data) ?? []);
       setBranches((br.data) ?? []);
     });
-  }, [current?.id, type]);
+  }, [currentId, type]);
 
   // Suggest invoice number for new (re-runs when branch/online flag changes)
   const branchCodeForNumber = useMemo(() => {
@@ -177,15 +180,15 @@ export default function InvoiceEditor({ type }: Props) {
   }, [isOnlineOrder, branchId, branches]);
 
   useEffect(() => {
-    if (!current || !isNew) return;
+    if (!currentId || !isNew) return;
     const todayISO = businessDate();
-    const pin = (current).pincode as string | null;
-    const rank = (current).pincode_rank as number | null;
+    const pin = pincode as string | null;
+    const rank = pincodeRank as number | null;
     if (pin && rank) {
       const base = shopInvoiceBase(pin, rank, todayISO, branchCodeForNumber);
       allRows(supabase.from("invoices")
         .select("invoice_number")
-        .eq("business_id", current.id)
+        .eq("business_id", currentId)
         .eq("type", type)
         .like("invoice_number", `${base}%`))
         .then(({ data }) => {
@@ -197,7 +200,7 @@ export default function InvoiceEditor({ type }: Props) {
     supabase
       .from("invoices")
       .select("invoice_number")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .eq("type", type)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -205,33 +208,33 @@ export default function InvoiceEditor({ type }: Props) {
         const last = data?.[0]?.invoice_number ?? null;
         setNumber(nextInvoiceNumber(meta.prefix, last, branchCodeForNumber));
       });
-  }, [current?.id, isNew, type, branchCodeForNumber]);
+  }, [currentId, isNew, type, branchCodeForNumber, meta.prefix, pincode, pincodeRank]);
 
   // Load loyalty config (sale only)
   useEffect(() => {
-    if (!current || type !== "sale" || !features.loyalty) {setLoyaltyCfg(null);return;}
-    supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle()
+    if (!currentId || type !== "sale" || !features.loyalty) {setLoyaltyCfg(null);return;}
+    supabase.from("loyalty_settings").select("*").eq("business_id", currentId).maybeSingle()
       .then(({ data }) => { if (data) setLoyaltyCfg(data); });
-  }, [current?.id, type,features.loyalty]);
+  }, [currentId, type,features.loyalty]);
 
   // Load points balance for selected customer
   useEffect(() => {
-    if (!current || !partyId || type !== "sale") { setPartyPoints(0); setRedeemPoints(0); return; }
+    if (!currentId || !partyId || type !== "sale") { setPartyPoints(0); setRedeemPoints(0); return; }
     allRows(supabase.from("loyalty_transactions")
       .select("invoice_id,points_earned, points_redeemed")
-      .eq("business_id", current.id).eq("party_id", partyId))
+      .eq("business_id", currentId).eq("party_id", partyId))
       .then(({ data }) => {
         const bal = (data ?? []).filter(transaction=>isNew || transaction.invoice_id!==id).reduce((s, t) => s + Number(t.points_earned || 0) - Number(t.points_redeemed || 0), 0);
         setPartyPoints(Math.max(0,bal));
         if(isNew)setRedeemPoints(0);
       });
-  }, [current?.id, partyId, type,isNew,id]);
+  }, [currentId, partyId, type,isNew,id]);
 
   // Load existing
   useEffect(() => {
-    if (isNew || !id || !current) return;
+    if (isNew || !id || !currentId) return;
     Promise.all([
-      supabase.from("invoices").select("*").eq("id", id).eq("business_id",current.id).single(),
+      supabase.from("invoices").select("*").eq("id", id).eq("business_id",currentId).single(),
       allRows(supabase.from("invoice_items").select("*").eq("invoice_id", id)),
     ]).then(([inv, ln]) => {
       if (inv.error) { toast.error(inv.error.message); return; }
@@ -260,10 +263,10 @@ export default function InvoiceEditor({ type }: Props) {
       })) : [emptyLine()]);
       setLoaded(true);
     });
-  }, [id, isNew, current?.id]);
+  }, [id, isNew, currentId]);
 
   // Load edit history for this invoice
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     if (isNew || !id) return;
     const { data } = await allRows(supabase
       .from("invoice_edit_log")
@@ -285,8 +288,8 @@ export default function InvoiceEditor({ type }: Props) {
       const diff=raw?.before && raw?.after ? buildInvoiceDiff(raw.before,raw.before_lines??[],raw.after,raw.after_lines??[]) : r.changes as ReturnType<typeof buildInvoiceDiff>;
       return {...r,changes:diff,summary:raw?.before && raw?.after?summarizeDiff(diff):r.summary,editor_email:emailMap[r.edited_by]??"Unknown"};
     }));
-  };
-  useEffect(() => { if (!isNew && id) void loadHistory(); }, [id, isNew]);
+  }, [id, isNew]);
+  useEffect(() => { if (!isNew && id) void loadHistory(); }, [id, isNew, loadHistory]);
 
 
   // Source-invoice picker (sale return creation)
@@ -324,17 +327,17 @@ export default function InvoiceEditor({ type }: Props) {
 
   // Auto-prefill from ?from= query param
   useEffect(() => {
-    if (!isNew || !fromInvoiceId || !current) return;
+    if (!isNew || !fromInvoiceId || !currentId) return;
     void applySourceInvoice(fromInvoiceId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromInvoiceId, isNew, current?.id]);
+  }, [fromInvoiceId, isNew, currentId]);
 
   // Load sale list for the picker (sale_return + new only) and auto-open if no source given
   useEffect(() => {
-    if (!isNew || type !== "sale_return" || !current) return;
+    if (!isNew || type !== "sale_return" || !currentId) return;
     supabase.from("invoices")
       .select("id, invoice_number, invoice_date, total_amount, parties(name)")
-      .eq("business_id", current.id).eq("type", "sale").is("deleted_at",null)
+      .eq("business_id", currentId).eq("type", "sale").is("deleted_at",null)
       .order("invoice_date", { ascending: false }).limit(200)
       .then(({ data }) => {
         const list = ((data) ?? []).map((r) => ({
@@ -345,7 +348,7 @@ export default function InvoiceEditor({ type }: Props) {
         if (!fromInvoiceId && list.length > 0 && !sourceLoaded) setSourceOpen(true);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, isNew, type]);
+  }, [currentId, isNew, type]);
 
   const party = parties.find((p) => p.id === partyId) ?? null;
   const isInterState = useMemo(() => {

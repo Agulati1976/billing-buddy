@@ -1,6 +1,6 @@
 import { errorMessage } from "@/lib/errors";
 import { allRows } from "@/lib/pagination";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
 import { Card } from "@/components/ui/card";
@@ -24,27 +24,28 @@ interface InvoiceRow {
 
 export default function ProformaInvoice() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const { data, error } = await allRows(supabase
       .from("invoices")
       .select("id, invoice_number, invoice_date, total_amount, party_id, parties(name)")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .eq("type", "sale")
       .is("deleted_at", null)
       .order("invoice_date", { ascending: false }));
     if (error) toast.error(error.message);
     else setRows((data ?? []) as InvoiceRow[]);
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { load(); }, [current?.id]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const filtered = rows.filter((r) => {
     if (!q.trim()) return true;

@@ -35,7 +35,7 @@ export default function Settings() {
 
   useEffect(() => {
     setPincode((current)?.pincode ?? "");
-  }, [current?.id]);
+  }, [current?.id, current?.pincode]);
 
   useEffect(() => {
     if (!current) return;
@@ -49,7 +49,7 @@ export default function Settings() {
       state_code: (current).state_code ?? "",
       address: (current).address ?? "",
     });
-  }, [current?.id, editOpen]);
+  }, [current, editOpen]);
 
   const saveProfile = async () => {
     if (!current) return;

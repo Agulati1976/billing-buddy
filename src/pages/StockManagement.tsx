@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -44,6 +44,7 @@ const TYPE_LABEL: Record<Movement["type"], string> = {
 
 export default function StockManagement() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const navigate = useNavigate();
   const [items, setItems] = useState<ItemRow[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -58,13 +59,13 @@ export default function StockManagement() {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<ItemRow | null>(null);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const [itemsRes, mvRes] = await Promise.all([
-      allRows(supabase.from("items").select("*").eq("business_id", current.id)
+      allRows(supabase.from("items").select("*").eq("business_id", currentId)
         .eq("type", "product").order("name")),
-      allRows(supabase.from("stock_movements").select("*, batches(batch_number)").eq("business_id", current.id)
+      allRows(supabase.from("stock_movements").select("*, batches(batch_number)").eq("business_id", currentId)
         .order("created_at", { ascending: true })),
     ]);
     if (itemsRes.error) toast.error(itemsRes.error.message);
@@ -77,15 +78,15 @@ export default function StockManagement() {
 
     const userIds = Array.from(new Set(mvs.map((m) => m.created_by).filter(Boolean))) as string[];
     if (userIds.length) {
-      const { data: profs } = await supabase.rpc("member_contacts",{p_business_id:current.id});
+      const { data: profs } = await supabase.rpc("member_contacts",{p_business_id:currentId});
       const map: Record<string, string> = {};
       (profs ?? []).forEach((p) => { map[p.user_id] = p.full_name || p.email || "—"; });
       setProfiles(map);
     } else setProfiles({});
     setLoading(false);
-  };
+  }, [currentId]);
 
-  useEffect(() => { load(); }, [current?.id]);
+  useEffect(() => { load(); }, [currentId, load]);
 
   const itemMap = useMemo(() => {
     const m = new Map<string, ItemRow>();

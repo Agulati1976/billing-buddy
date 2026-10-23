@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,7 @@ type Ticket = {
 
 export default function SupportAgent() {
   const { user, loading, signOut } = useAuth();
+  const userId = user?.id;
   const { isSupportStaff, loading: sLoading } = useSupportStaff();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [customers, setCustomers] = useState<Record<string, string>>({});
@@ -27,10 +28,10 @@ export default function SupportAgent() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [q, setQ] = useState("");
 
-  const load = async () => {
-    if (!user) return;
+  const load = useCallback(async () => {
+    if (!userId) return;
     const { data } = await allRows(supabase.from("support_tickets").select("*")
-      .eq("assigned_to", user.id)
+      .eq("assigned_to", userId)
       .order("last_message_at", { ascending: false }));
     const list = (data ?? []) as Ticket[];
     setTickets(list);
@@ -42,9 +43,9 @@ export default function SupportAgent() {
       (profs ?? []).forEach((p) => map[p.user_id] = p.full_name || p.email || "Customer");
       setCustomers(map);
     }
-  };
+  }, [userId]);
 
-  useEffect(() => { if (user) load(); }, [user?.id]);
+  useEffect(() => { if (userId) load(); }, [load, userId]);
 
   if (loading || sLoading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;

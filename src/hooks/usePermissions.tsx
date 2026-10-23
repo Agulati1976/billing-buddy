@@ -23,7 +23,9 @@ interface Perms {
 
 export function usePermissions(): Perms {
   const { user } = useAuth();
+  const userId = user?.id;
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [role, setRole] = useState<Role | null>(null);
   const [features,setFeatures]=useState<Record<string,boolean>>({});
   const [modules, setModules] = useState<Set<ModuleKey> | null>(null);
@@ -35,19 +37,19 @@ export function usePermissions(): Perms {
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (!user || !current) { setRole(null); setModules(new Set());setFeatures({}); setResolvedScope(scope);setLoading(false); return; }
+      if (!userId || !currentId) { setRole(null); setModules(new Set());setFeatures({}); setResolvedScope(scope);setLoading(false); return; }
       setLoading(true);
       const { data } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user.id)
-        .eq("business_id", current.id)
+        .eq("user_id", userId)
+        .eq("business_id", currentId)
         .maybeSingle();
       if (!alive) return;
       const r = (data?.role as Role) ?? null;
       setRole(r);
 
-      const {data:entitlements,error}=await supabase.rpc("business_entitlements",{p_business_id:current.id});
+      const {data:entitlements,error}=await supabase.rpc("business_entitlements",{p_business_id:currentId});
       if(!alive)return;
       const ent=entitlements as {modules?:ModuleKey[];features?:Record<string,boolean>} | null;
       setModules(new Set(error ? [] : ent?.modules ?? []));
@@ -56,7 +58,7 @@ export function usePermissions(): Perms {
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [user?.id, current?.id,scope]);
+  }, [userId, currentId,scope]);
 
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";

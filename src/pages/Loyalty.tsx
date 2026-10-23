@@ -23,6 +23,7 @@ interface LoyaltySettings {
 
 export default function Loyalty() {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const [settings, setSettings] = useState<LoyaltySettings>({
     business_id: "", enabled: true, amount_per_point: 100, point_value: 1, min_redeem_points: 50,
   });
@@ -31,15 +32,15 @@ export default function Loyalty() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
-      const { data } = await supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle();
+      const { data } = await supabase.from("loyalty_settings").select("*").eq("business_id", currentId).maybeSingle();
       if (data) setSettings(data);
-      else setSettings((s) => ({ ...s, business_id: current.id }));
+      else setSettings((s) => ({ ...s, business_id: currentId }));
 
       const [{ data: tx }, { data: parties }] = await Promise.all([
-        allRows(supabase.from("loyalty_transactions").select("party_id, points_earned, points_redeemed").eq("business_id", current.id)),
-        allRows(supabase.from("parties").select("id, name").eq("business_id", current.id).eq("type", "customer")),
+        allRows(supabase.from("loyalty_transactions").select("party_id, points_earned, points_redeemed").eq("business_id", currentId)),
+        allRows(supabase.from("parties").select("id, name").eq("business_id", currentId).eq("type", "customer")),
       ]);
       const map = new Map<string, { earned: number; redeemed: number }>();
       (tx ?? []).forEach((t) => {
@@ -55,7 +56,7 @@ export default function Loyalty() {
         .sort((a, b) => b.balance - a.balance);
       setMembers(rows);
     })();
-  }, [current?.id]);
+  }, [currentId]);
 
   const filtered = useMemo(
     () => members.filter((m) => m.name.toLowerCase().includes(q.toLowerCase())),

@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omDelete } from "@/lib/offlineMutate";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -38,6 +38,7 @@ export interface Party {
 
 export default function Parties({ type }: { type: "customer" | "supplier" }) {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const navigate = useNavigate();
   const [rows, setRows] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,21 +47,21 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
   const [editing, setEditing] = useState<Party | null>(null);
   const [toDelete, setToDelete] = useState<Party | null>(null);
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     const { data, error } = await allRows(supabase
       .from("parties")
       .select("*")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .eq("type", type)
       .order("created_at", { ascending: false }));
     if (error) toast.error(error.message);
     else setRows((data ?? []) as Party[]);
     setLoading(false);
-  };
+  }, [currentId, type]);
 
-  useEffect(() => { load();   }, [current?.id, type]);
+  useEffect(() => { load();   }, [currentId, load, type]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

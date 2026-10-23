@@ -59,6 +59,7 @@ const DEFAULTS: Settings = {
 
 export default function InvoiceDesign() {
   const { current, refresh } = useBusiness();
+  const currentId = current?.id;
   const { canEditSettings, loading: permsLoading } = usePermissions();
   const [s, setS] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -92,11 +93,11 @@ export default function InvoiceDesign() {
   };
 
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     (async () => {
       setLoading(true);
       const { data } = await supabase
-        .from("invoice_settings").select("*").eq("business_id", current.id).maybeSingle();
+        .from("invoice_settings").select("*").eq("business_id", currentId).maybeSingle();
       if (data) setS({
         template: data.template, accent_color: data.accent_color,
         footer_text: data.footer_text ?? "", default_terms: data.default_terms ?? "",
@@ -109,7 +110,7 @@ export default function InvoiceDesign() {
       });
       setLoading(false);
     })();
-  }, [current?.id]);
+  }, [currentId]);
 
   const save = async () => {
     if (!current) return;

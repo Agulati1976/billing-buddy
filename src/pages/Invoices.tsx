@@ -1,5 +1,5 @@
 import { allRows } from "@/lib/pagination";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
@@ -21,7 +21,8 @@ import { formatINR } from "@/lib/states";
 import { INVOICE_TYPE_META, STATUS_META, type InvoiceType } from "@/lib/invoice";
 import { toast } from "sonner";
 import { format, startOfMonth } from "date-fns";
-import { DateRangeFilter, rangeFor, useDateFilter, type DatePreset } from "@/components/DateRangeFilter";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { rangeFor, useDateFilter, type DatePreset } from "@/hooks/useDateFilter";
 
 interface Props {
   type: InvoiceType;
@@ -42,6 +43,7 @@ interface InvoiceRow {
 
 export default function Invoices({ type }: Props) {
   const { current } = useBusiness();
+  const currentId = current?.id;
   const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<InvoiceRow[]>([]);
@@ -115,13 +117,13 @@ export default function Invoices({ type }: Props) {
   const meta = INVOICE_TYPE_META[type];
   const [view, setView] = useState<"active" | "trash">("active");
 
-  const load = async () => {
-    if (!current) return;
+  const load = useCallback(async () => {
+    if (!currentId) return;
     setLoading(true);
     let query = supabase
       .from("invoices")
       .select("id, invoice_number, invoice_date, created_at, total_amount, paid_amount, balance_amount, status, party_id, parties(name, phone, email), deleted_at")
-      .eq("business_id", current.id)
+      .eq("business_id", currentId)
       .eq("type", type);
     if (view === "active") {
       query = query.is("deleted_at", null).order("invoice_date", { ascending: false }).order("created_at", { ascending: false });
@@ -133,9 +135,9 @@ export default function Invoices({ type }: Props) {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     setRows((data) ?? []);
-  };
+  }, [currentId, type, view]);
 
-  useEffect(() => { load(); }, [current?.id, type, view]);
+  useEffect(() => { load(); }, [currentId, load, type, view]);
 
   const [preset, setPreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
