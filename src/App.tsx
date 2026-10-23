@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { BusinessProvider } from "@/hooks/useBusiness";
 import AppLayout from "@/components/AppLayout";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Parties from "./pages/Parties";
@@ -66,6 +67,7 @@ const App = () => (
           <BusinessProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/delete-account" element={<DeleteAccount />} />
               <Route path="/i/:id" element={<PublicInvoiceView />} />

@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,17 +36,17 @@ export default function AdminSubscriptions() {
   useEffect(() => {
     (async () => {
       const [sRes, oRes, bRes, pRes] = await Promise.all([
-        supabase.from("business_subscriptions").select("*"),
+        allRows(supabase.from("business_subscriptions").select("*")),
         supabase.from("subscription_orders").select("*").order("created_at", { ascending: false }).limit(100),
-        supabase.from("businesses").select("id, name"),
-        supabase.from("subscription_plans").select("id, name"),
+        allRows(supabase.from("businesses").select("id, name")),
+        allRows(supabase.from("subscription_plans").select("id, name")),
       ]);
-      const bMap = new Map((bRes.data || []).map((b: any) => [b.id, b.name]));
-      const pMap = new Map((pRes.data || []).map((p: any) => [p.id, p.name]));
-      setSubs(((sRes.data as any[]) || []).map((s) => ({
+      const bMap = new Map((bRes.data || []).map((b) => [b.id, b.name]));
+      const pMap = new Map((pRes.data || []).map((p) => [p.id, p.name]));
+      setSubs(((sRes.data) || []).map((s) => ({
         ...s, business_name: bMap.get(s.business_id), plan_name: pMap.get(s.plan_id),
       })));
-      setOrders(((oRes.data as any[]) || []).map((o) => ({
+      setOrders(((oRes.data) || []).map((o) => ({
         ...o, business_name: bMap.get(o.business_id),
       })));
       setLoading(false);

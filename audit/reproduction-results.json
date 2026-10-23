@@ -1,0 +1,112 @@
+[
+  {
+    "id": "F25",
+    "label": "GST-inclusive prices report tax as a discount",
+    "reproduced": true,
+    "expectedDiscount": 0,
+    "actualDiscount": 18
+  },
+  {
+    "id": "F09",
+    "label": "Tenant-controlled business name executes script in admin print window",
+    "reproduced": true,
+    "expectedScriptExecution": false,
+    "actualScriptExecution": true,
+    "environment": "isolated jsdom; harmless marker only"
+  },
+  {
+    "id": "F20",
+    "label": "POS return generates zero tender and cannot complete",
+    "reproduced": true,
+    "expected": "a return/refund transaction",
+    "actual": "Enter payment amount",
+    "generatedTender": 0
+  },
+  {
+    "id": "F21",
+    "label": "POS refuses service items because their stock is zero",
+    "reproduced": true,
+    "expectedCartLines": 1,
+    "actualCartLines": 0,
+    "actualError": "Out of stock: Consultation has only 0 service available"
+  },
+  {
+    "id": "F22",
+    "label": "Supplier detail ignores purchase invoices in payable totals",
+    "reproduced": true,
+    "expectedPayable": 500,
+    "actualPayable": 0
+  },
+  {
+    "id": "F27",
+    "label": "Payment submission accepts a stale invoice belonging to the previous party",
+    "reproduced": true,
+    "expected": "clear or reject stale invoice selection",
+    "actualInvoice": "previous-customer-A-sale",
+    "actualParty": "supplier-B"
+  },
+  {
+    "id": "F12",
+    "label": "Restoring a sale silently clamps insufficient stock to zero",
+    "reproduced": true,
+    "available": 5,
+    "required": 10,
+    "expected": "reject restoration atomically",
+    "actualStoredStock": 0
+  },
+  {
+    "id": "F18",
+    "label": "Offline drainer runs dependent operations after a parent fails",
+    "reproduced": true,
+    "expected": "dependent lines wait for their invoice",
+    "actualCallOrder": [
+      "parent-invoice",
+      "dependent-lines"
+    ]
+  },
+  {
+    "id": "F28",
+    "label": "Closing one POS till counts other cashiers and unrelated receipts",
+    "reproduced": true,
+    "openingCash": 100,
+    "ownSales": 50,
+    "otherCashierSales": 200,
+    "unrelatedReceipts": 300,
+    "expectedTill": 150,
+    "actualExpectedTill": 650
+  },
+  {
+    "id": "F35",
+    "label": "GST report ignores sale returns and uses pre-discount taxable value",
+    "reproduced": true,
+    "expectedNetTaxable": 800,
+    "actualTaxable": 1000,
+    "expectedNetTax": 144,
+    "actualNetTax": 162
+  },
+  {
+    "id": "F23",
+    "label": "A paid quick invoice becomes a false customer credit in the ledger",
+    "reproduced": true,
+    "expectedBalance": 0,
+    "actualBalance": -500
+  },
+  {
+    "id": "F05",
+    "label": "A retried Cashfree success webhook extends the subscription twice",
+    "reproduced": true,
+    "expectedGrantedDays": 30,
+    "actualGrantedDays": 60,
+    "networkRequests": 0,
+    "webhookEventsStored": 2
+  },
+  {
+    "id": "F04",
+    "label": "Sandbox payment verification activates the real subscription record",
+    "reproduced": true,
+    "mode": "test",
+    "expectedLiveSubscriptionMutation": false,
+    "actualLiveSubscriptionMutation": true,
+    "networkRequests": 0
+  }
+]

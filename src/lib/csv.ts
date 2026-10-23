@@ -4,8 +4,9 @@ export function toCsv(rows: (string | number)[][]): string {
     .map((r) =>
       r
         .map((v) => {
-          const s = String(v ?? "");
-          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+          const raw = String(v ?? "");
+          const s=typeof v==="string" && /^[=+@\-\t\r]/.test(raw) ? "'"+raw : raw;
+          return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
         })
         .join(",")
     )

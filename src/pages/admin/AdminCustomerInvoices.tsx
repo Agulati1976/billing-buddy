@@ -1,3 +1,7 @@
+import type { Tables } from "@/integrations/supabase/types";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
+import { escapeHtml } from "@/lib/html";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -47,20 +51,20 @@ const nextInvoiceNo = (existing: string[]) => {
 
 export default function AdminCustomerInvoices() {
   const [invoices, setInvoices] = useState<SaasInvoice[]>([]);
-  const [businesses, setBusinesses] = useState<any[]>([]);
-  const [plans, setPlans] = useState<any[]>([]);
+  const [businesses, setBusinesses] = useState<Array<Pick<Tables<"businesses">,"id"|"name"|"email">>>([]);
+  const [plans, setPlans] = useState<Array<Pick<Tables<"subscription_plans">,"id"|"name"|"price_inr"|"duration_days">>>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null);
+  const [editing, setEditing] = useState<(Partial<SaasInvoice>&{line_items:LineItem[]}) | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
     const [{ data: inv }, { data: b }, { data: p }] = await Promise.all([
-      supabase.from("saas_invoices").select("*").order("created_at", { ascending: false }),
-      supabase.from("businesses").select("id, name, email").order("name"),
-      supabase.from("subscription_plans").select("id, name, price_inr, duration_days").order("price_inr"),
+      allRows(supabase.from("saas_invoices").select("*").order("created_at", { ascending: false })),
+      allRows(supabase.from("businesses").select("id, name, email").order("name")),
+      allRows(supabase.from("subscription_plans").select("id, name, price_inr, duration_days").order("price_inr")),
     ]);
-    setInvoices((inv as any) ?? []);
+    setInvoices((inv??[]).map(invoice=>({...invoice,line_items:Array.isArray(invoice.line_items)?invoice.line_items.filter(line=>line && typeof line==="object" && !Array.isArray(line)).map(line=>({description:String(line["description"]??""),qty:Number(line["qty"])||0,rate:Number(line["rate"])||0})):[]})));
     setBusinesses(b ?? []);
     setPlans(p ?? []);
     setLoading(false);
@@ -82,7 +86,7 @@ export default function AdminCustomerInvoices() {
         line_items: [{ description: "", qty: 1, rate: 0 }],
         gst_percent: 18,
         status: "draft",
-        issue_date: new Date().toISOString().slice(0, 10),
+        issue_date: businessDate(),
         due_date: "",
         notes: "",
       });
@@ -92,7 +96,7 @@ export default function AdminCustomerInvoices() {
   const applyPlan = (planId: string) => {
     const p = plans.find((x) => x.id === planId);
     if (!p) return;
-    setEditing((e: any) => ({
+    setEditing((e) => ({
       ...e,
       plan_id: planId,
       line_items: [{ description: `${p.name} subscription (${p.duration_days} days)`, qty: 1, rate: Number(p.price_inr) }],
@@ -135,7 +139,7 @@ export default function AdminCustomerInvoices() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const patch: any = { status };
+    const patch: {status:string;paid_at?:string} = { status };
     if (status === "paid") patch.paid_at = new Date().toISOString();
     const { error } = await supabase.from("saas_invoices").update(patch).eq("id", id);
     if (error) toast.error(error.message);
@@ -151,7 +155,7 @@ export default function AdminCustomerInvoices() {
 
   const printInvoice = (inv: SaasInvoice) => {
     const biz = bizMap.get(inv.business_id);
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${inv.invoice_no}</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(inv.invoice_no)}</title>
       <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:780px;margin:auto;color:#111}
       h1{margin:0 0 4px;font-size:28px}h2{margin:32px 0 8px;font-size:16px}
       .row{display:flex;justify-content:space-between;gap:24px;margin-top:24px}
@@ -161,16 +165,16 @@ export default function AdminCustomerInvoices() {
       .totals{margin-top:16px;text-align:right}.totals div{padding:4px 0}.totals .grand{font-weight:700;font-size:18px;border-top:2px solid #111;margin-top:8px;padding-top:8px}
       .muted{color:#666;font-size:13px}</style></head><body>
       <div class="row"><div><h1>Bill Look</h1><div class="muted">SaaS Invoice</div></div>
-      <div style="text-align:right"><div><strong>Invoice #</strong> ${inv.invoice_no}</div>
+      <div style="text-align:right"><div><strong>Invoice #</strong> ${escapeHtml(inv.invoice_no)}</div>
       <div class="muted">Issued ${new Date(inv.issue_date).toLocaleDateString()}</div>
       ${inv.due_date ? `<div class="muted">Due ${new Date(inv.due_date).toLocaleDateString()}</div>` : ""}</div></div>
-      <h2>Billed to</h2><div><strong>${biz?.name ?? ""}</strong><br/><span class="muted">${biz?.email ?? ""}</span></div>
+      <h2>Billed to</h2><div><strong>${escapeHtml(biz?.name ?? "")}</strong><br/><span class="muted">${escapeHtml(biz?.email ?? "")}</span></div>
       <table><thead><tr><th>Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
-      <tbody>${inv.line_items.map((l) => `<tr><td>${l.description}</td><td style="text-align:right">${l.qty}</td><td style="text-align:right">₹${Number(l.rate).toLocaleString("en-IN")}</td><td style="text-align:right">₹${(l.qty * l.rate).toLocaleString("en-IN")}</td></tr>`).join("")}</tbody></table>
+      <tbody>${inv.line_items.map((l) => `<tr><td>${escapeHtml(l.description)}</td><td style="text-align:right">${Number(l.qty)}</td><td style="text-align:right">₹${Number(l.rate).toLocaleString("en-IN")}</td><td style="text-align:right">₹${(l.qty * l.rate).toLocaleString("en-IN")}</td></tr>`).join("")}</tbody></table>
       <div class="totals"><div>Subtotal: ₹${Number(inv.subtotal).toLocaleString("en-IN")}</div>
-      <div>GST (${inv.gst_percent}%): ₹${Number(inv.gst_amount).toLocaleString("en-IN")}</div>
+      <div>GST (${Number(inv.gst_percent)}%): ₹${Number(inv.gst_amount).toLocaleString("en-IN")}</div>
       <div class="grand">Total: ₹${Number(inv.total).toLocaleString("en-IN")}</div></div>
-      ${inv.notes ? `<h2>Notes</h2><div class="muted">${inv.notes}</div>` : ""}
+      ${inv.notes ? `<h2>Notes</h2><div class="muted">${escapeHtml(inv.notes)}</div>` : ""}
       </body></html>`;
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 300); }
@@ -300,7 +304,7 @@ export default function AdminCustomerInvoices() {
                         const li = [...editing.line_items]; li[idx] = { ...li[idx], rate: Number(e.target.value) }; setEditing({ ...editing, line_items: li });
                       }} />
                       <Button className="col-span-1" size="icon" variant="ghost" onClick={() => {
-                        const li = editing.line_items.filter((_: any, i: number) => i !== idx); setEditing({ ...editing, line_items: li });
+                        const li = editing.line_items.filter((_, i: number) => i !== idx); setEditing({ ...editing, line_items: li });
                       }}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}

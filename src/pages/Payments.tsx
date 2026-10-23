@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { allRows } from "@/lib/pagination";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { omInsert } from "@/lib/offlineMutate";
+import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
+import { businessDate } from "@/lib/dates";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/SearchBar";
@@ -33,7 +36,7 @@ interface PaymentRow {
 }
 
 interface Party { id: string; name: string; type: "customer" | "supplier"; }
-interface Invoice { id: string; invoice_number: string; balance_amount: number; type: string; }
+interface Invoice { id: string; invoice_number: string; balance_amount: number; type: string; pos_session_id?:string|null; }
 
 export default function Payments() {
   const { current } = useBusiness();
@@ -42,18 +45,28 @@ export default function Payments() {
   const [parties, setParties] = useState<Party[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [open, setOpen] = useState(false);
+  const savingRef=useRef(false);
   const [saving, setSaving] = useState(false);
 
   // form
   const [direction, setDirection] = useState<"in" | "out">("in");
   const [method, setMethod] = useState("cash");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(businessDate());
   const [partyId, setPartyId] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [search, setSearch] = useState("");
+  const [tillId,setTillId]=useState<string|null>(null);
+  const [useTill,setUseTill]=useState(false);
+  useEffect(()=>{
+    setTillId(null);setUseTill(false);
+    if(!current || !user)return;
+    let active=true;
+    void supabase.from("pos_sessions").select("id").eq("business_id",current.id).eq("opened_by",user.id).is("closed_at",null).order("opened_at",{ascending:false}).limit(1).then(({data})=>{if(active)setTillId(data?.[0]?.id??null);});
+    return()=>{active=false;};
+  },[current?.id,user?.id,open]);
   const [preset, setPreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
   const [customTo, setCustomTo] = useState<Date>(new Date());
@@ -74,51 +87,59 @@ export default function Payments() {
   const load = async () => {
     if (!current) return;
     const [pays, prt] = await Promise.all([
-      supabase.from("payments")
+      allRows(supabase.from("payments")
         .select("id, direction, method, amount, payment_date, reference, notes, party_id, invoice_id, parties(name), invoices(invoice_number, pos_session_id, type)")
-        .eq("business_id", current.id).is("deleted_at", null).order("payment_date", { ascending: false }),
-      supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name"),
+        .eq("business_id", current.id).is("deleted_at", null).order("payment_date", { ascending: false })),
+      allRows(supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name")),
     ]);
-    setRows((pays.data as any) ?? []);
-    setParties((prt.data as any) ?? []);
+    setRows((pays.data) ?? []);
+    setParties((prt.data) ?? []);
   };
   useEffect(() => { load(); }, [current?.id]);
 
   // Load invoices: party-linked OR walk-in (when partyId is "WALKIN")
   useEffect(() => {
+    let active=true;
+    setInvoiceId("");
     if (!current) { setInvoices([]); return; }
-    const wantType = direction === "in" ? "sale" : "purchase";
+    const customer=partyId==="WALKIN" || parties.find(party=>party.id===partyId)?.type==="customer";
+    const refund=(direction==="out" && customer)||(direction==="in" && !customer);
+    const types=refund ? [customer?"sale_return":"purchase_return"] : customer?["sale","non_inventory"]:["purchase"];
     let q = supabase.from("invoices")
-      .select("id, invoice_number, balance_amount, type, pos_session_id")
+      .select("id, invoice_number, balance_amount, total_amount, paid_amount, type, pos_session_id")
       .eq("business_id", current.id)
-      .eq("type", wantType)
-      .is("deleted_at", null)
-      .gt("balance_amount", 0);
+      .in("type", types as Array<"sale"|"purchase"|"non_inventory"|"sale_return"|"purchase_return">)
+      .is("deleted_at", null);
     if (partyId === "WALKIN") q = q.is("party_id", null);
     else if (partyId) q = q.eq("party_id", partyId);
     else { setInvoices([]); return; }
-    q.order("invoice_date", { ascending: false }).then(({ data }) => setInvoices((data as any) ?? []));
-  }, [partyId, direction, current?.id]);
+    allRows(q.order("invoice_date", { ascending: false })).then(({ data }) => {if(active)setInvoices((data??[]).map(invoice=>({...invoice,balance_amount:refund ? Number(invoice.total_amount)-Number(invoice.paid_amount):Number(invoice.balance_amount)})).filter(invoice=>invoice.balance_amount>0));});
+    return()=>{active=false;};
+  }, [partyId, direction, current?.id,parties]);
 
   const submit = async () => {
-    if (!current || !user) return;
+    if (!current || !user || savingRef.current) return;
     const amt = Number(amount);
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
     const isWalkin = partyId === "WALKIN";
     if (!partyId) { toast.error("Select a party"); return; }
     if (isWalkin && !invoiceId) { toast.error("Select a walk-in invoice"); return; }
+    savingRef.current=true;
     setSaving(true);
-    const res = await omInsert("payments", {
+    const payment = {
       business_id: current.id,
-      direction, method: method as any, amount: amt,
+      direction, method: method, amount: amt,
       payment_date: date, party_id: isWalkin ? null : partyId,
       invoice_id: invoiceId || null,
+      pos_session_id:method==="cash" && useTill ? tillId : null,
       reference: reference.trim() || null,
       notes: notes.trim() || null,
       created_by: user.id,
-    });
+    };
+    const res=await billingTransaction("record_payment",current.id,{p_operation_id:crypto.randomUUID(),p_payment:jsonValue(payment)},payment);
+    savingRef.current=false;
     setSaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
     setOpen(false);
     setAmount(""); setReference(""); setNotes(""); setInvoiceId(""); setPartyId("");
@@ -131,9 +152,7 @@ export default function Payments() {
     return { inAmt, outAmt, net: inAmt - outAmt };
   }, [dateFiltered]);
 
-  const filteredParties = parties.filter((p) =>
-    direction === "in" ? p.type === "customer" : p.type === "supplier"
-  );
+  const filteredParties = parties;
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -274,14 +293,12 @@ export default function Payments() {
             </div>
 
             <div className="space-y-2">
-              <Label>{direction === "in" ? "Customer" : "Supplier"} *</Label>
+              <Label>Customer or supplier *</Label>
               <Select value={partyId} onValueChange={(v) => { setPartyId(v); setInvoiceId(""); }}>
                 <SelectTrigger><SelectValue placeholder="Select party" /></SelectTrigger>
                 <SelectContent>
-                  {direction === "in" && (
-                    <SelectItem value="WALKIN">Walk-in / POS customer</SelectItem>
-                  )}
-                  {filteredParties.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  <SelectItem value="WALKIN">Walk-in / POS customer</SelectItem>
+                  {filteredParties.map((p) => <SelectItem key={p.id} value={p.id}>{p.name} · {p.type}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -292,7 +309,7 @@ export default function Payments() {
                 <Select value={invoiceId} onValueChange={setInvoiceId}>
                   <SelectTrigger><SelectValue placeholder={partyId === "WALKIN" ? "Select POS invoice" : "On account (no specific invoice)"} /></SelectTrigger>
                   <SelectContent>
-                    {invoices.map((i: any) => (
+                    {invoices.map((i) => (
                       <SelectItem key={i.id} value={i.id}>
                         {i.invoice_number}{i.pos_session_id ? " · POS" : ""} · Balance {formatINR(Number(i.balance_amount))}
                       </SelectItem>
@@ -306,6 +323,7 @@ export default function Payments() {
               <Label>Reference (cheque #, txn id)</Label>
               <Input value={reference} onChange={(e) => setReference(e.target.value)} />
             </div>
+            {method==="cash" && tillId && <label className="flex items-center gap-2 text-sm"><Switch checked={useTill} onCheckedChange={setUseTill}/>Record this cash movement in my open POS till</label>}
             <div className="space-y-2">
               <Label>Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />

@@ -1,3 +1,5 @@
+import type { Tables } from "@/integrations/supabase/types";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +25,7 @@ export default function AdminTickets() {
   const [customers, setCustomers] = useState<Record<string, string>>({});
   const [businesses, setBusinesses] = useState<Record<string, string>>({});
   const [assignees, setAssignees] = useState<Record<string, string>>({});
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState<Tables<"support_staff">[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [q, setQ] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,19 +33,19 @@ export default function AdminTickets() {
   const [staffForm, setStaffForm] = useState({ email: "", password: "", full_name: "" });
 
   const load = async () => {
-    const { data } = await supabase.from("support_tickets").select("*")
-      .order("last_message_at", { ascending: false });
+    const { data } = await allRows(supabase.from("support_tickets").select("*")
+      .order("last_message_at", { ascending: false }));
     const list = (data ?? []) as Ticket[];
     setTickets(list);
 
     const userIds = Array.from(new Set(list.flatMap((t) => [t.created_by, t.assigned_to].filter(Boolean) as string[])));
     const bizIds = Array.from(new Set(list.map((t) => t.business_id).filter(Boolean) as string[]));
     if (userIds.length) {
-      const { data: profs } = await supabase.from("profiles")
-        .select("user_id,full_name,email").in("user_id", userIds);
+      const { data: profs } = await allRows(supabase.from("profiles")
+        .select("user_id,full_name,email").in("user_id", userIds));
       const map: Record<string, string> = {};
       const amap: Record<string, string> = {};
-      (profs ?? []).forEach((p: any) => {
+      (profs ?? []).forEach((p) => {
         const label = p.full_name || p.email || "User";
         map[p.user_id] = label;
         amap[p.user_id] = label;
@@ -52,23 +54,23 @@ export default function AdminTickets() {
       setAssignees(amap);
     }
     if (bizIds.length) {
-      const { data: bizs } = await supabase.from("businesses").select("id,name").in("id", bizIds);
+      const { data: bizs } = await allRows(supabase.from("businesses").select("id,name").in("id", bizIds));
       const bmap: Record<string, string> = {};
-      (bizs ?? []).forEach((b: any) => bmap[b.id] = b.name);
+      (bizs ?? []).forEach((b) => bmap[b.id] = b.name);
       setBusinesses(bmap);
     }
   };
 
   const loadStaff = async () => {
-    const { data } = await supabase.from("support_staff").select("*").order("created_at", { ascending: false });
+    const { data } = await allRows(supabase.from("support_staff").select("*").order("created_at", { ascending: false }));
     setStaff(data ?? []);
   };
 
   useEffect(() => { load(); loadStaff(); }, []);
 
   const createStaff = async () => {
-    if (!staffForm.email || staffForm.password.length < 6) {
-      return toast.error("Email + password (min 6 chars) required");
+    if (!staffForm.email || staffForm.password.length < 8) {
+      return toast.error("Email + password (min 8 chars) required");
     }
     const { error } = await supabase.functions.invoke("create-support-staff", { body: staffForm });
     if (error) return toast.error(error.message);
@@ -123,7 +125,7 @@ export default function AdminTickets() {
                   onChange={(e) => setStaffForm({ ...staffForm, full_name: e.target.value })} />
                 <Input type="email" placeholder="Email" value={staffForm.email}
                   onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} />
-                <Input type="password" placeholder="Password (min 6)" value={staffForm.password}
+                <Input type="password" placeholder="Password (min 8)" value={staffForm.password}
                   onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} />
               </div>
               <Button onClick={createStaff} className="w-full">Create agent</Button>

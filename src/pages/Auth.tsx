@@ -66,7 +66,7 @@ export default function Auth() {
       return;
     }
     const { error } = await supabase.auth.resetPasswordForEmail(loginEmail.trim(), {
-      redirectTo: `${window.location.origin}/auth`,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     });
     if (error) toast.error(error.message);
     else toast.success("Password reset link sent to your email");

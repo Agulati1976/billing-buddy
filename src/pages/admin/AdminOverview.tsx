@@ -1,3 +1,6 @@
+import type { Tables } from "@/integrations/supabase/types";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +21,7 @@ export default function AdminOverview() {
   const [revenueSeries, setRevenueSeries] = useState<{ date: string; revenue: number }[]>([]);
   const [signupsSeries, setSignupsSeries] = useState<{ date: string; count: number }[]>([]);
   const [topShops, setTopShops] = useState<{ id: string; name: string; revenue: number; invoices: number }[]>([]);
-  const [activity, setActivity] = useState<any[]>([]);
+  const [activity, setActivity] = useState<Tables<"admin_audit_log">[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -27,40 +30,40 @@ export default function AdminOverview() {
       const since90 = daysAgo(90).toISOString();
 
       const [biz, prof, inv30, prof7, allSales90, audit] = await Promise.all([
-        supabase.from("businesses").select("id", { count: "exact", head: true }).is("deleted_at", null),
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("invoices").select("total_amount, business_id, invoice_date, created_at")
-          .eq("type", "sale").gte("created_at", since30),
-        supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since7),
-        supabase.from("invoices").select("total_amount, business_id, created_at")
-          .eq("type", "sale").gte("created_at", since90),
+        allRows(supabase.from("businesses").select("id", { count: "exact", head: true }).is("deleted_at", null)),
+        allRows(supabase.from("profiles").select("id", { count: "exact", head: true })),
+        allRows(supabase.from("invoices").select("total_amount, business_id, invoice_date, created_at")
+          .eq("type", "sale").gte("created_at", since30)),
+        allRows(supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since7)),
+        allRows(supabase.from("invoices").select("total_amount, business_id, created_at")
+          .eq("type", "sale").gte("created_at", since90)),
         supabase.from("admin_audit_log").select("*").order("created_at", { ascending: false }).limit(15),
       ]);
 
-      const rev30 = (inv30.data ?? []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
+      const rev30 = (inv30.data ?? []).reduce((s, r) => s + Number(r.total_amount || 0), 0);
       const activeIds = new Set((inv30.data ?? [])
-        .filter((r: any) => new Date(r.created_at) >= daysAgo(7))
-        .map((r: any) => r.business_id));
+        .filter((r) => new Date(r.created_at) >= daysAgo(7))
+        .map((r) => r.business_id));
 
       // 90-day revenue series
       const buckets: Record<string, number> = {};
       const sBuckets: Record<string, number> = {};
       for (let i = 89; i >= 0; i--) {
         const d = daysAgo(i);
-        const key = d.toISOString().slice(0, 10);
+        const key = businessDate(d);
         buckets[key] = 0;
         sBuckets[key] = 0;
       }
-      (allSales90.data ?? []).forEach((r: any) => {
+      (allSales90.data ?? []).forEach((r) => {
         const k = (r.created_at ?? "").slice(0, 10);
         if (k in buckets) buckets[k] += Number(r.total_amount || 0);
       });
 
-      const { data: profs90 } = await supabase
+      const { data: profs90 } = await allRows(supabase
         .from("profiles")
         .select("created_at")
-        .gte("created_at", since90);
-      (profs90 ?? []).forEach((p: any) => {
+        .gte("created_at", since90));
+      (profs90 ?? []).forEach((p) => {
         const k = (p.created_at ?? "").slice(0, 10);
         if (k in sBuckets) sBuckets[k] += 1;
       });
@@ -73,12 +76,12 @@ export default function AdminOverview() {
       })));
 
       // Top shops by revenue (all-time)
-      const { data: allInv } = await supabase
+      const { data: allInv } = await allRows(supabase
         .from("invoices")
         .select("business_id, total_amount")
-        .eq("type", "sale");
+        .eq("type", "sale"));
       const tally: Record<string, { revenue: number; invoices: number }> = {};
-      (allInv ?? []).forEach((r: any) => {
+      (allInv ?? []).forEach((r) => {
         const id = r.business_id;
         if (!tally[id]) tally[id] = { revenue: 0, invoices: 0 };
         tally[id].revenue += Number(r.total_amount || 0);
@@ -89,9 +92,9 @@ export default function AdminOverview() {
         .slice(0, 10)
         .map(([id]) => id);
       const { data: topBizs } = topIds.length
-        ? await supabase.from("businesses").select("id, name").in("id", topIds)
-        : { data: [] as any[] };
-      const nameMap = new Map((topBizs ?? []).map((b: any) => [b.id, b.name]));
+        ? await allRows(supabase.from("businesses").select("id, name").in("id", topIds))
+        : { data: [] };
+      const nameMap = new Map((topBizs ?? []).map((b) => [b.id, b.name]));
       setTopShops(topIds.map((id) => ({
         id,
         name: nameMap.get(id) ?? "—",
@@ -181,7 +184,7 @@ export default function AdminOverview() {
             <ul className="space-y-3">
               {activity.map((a) => (
                 <li key={a.id} className="text-sm border-l-2 border-primary/30 pl-3">
-                  <div className="font-medium capitalize">{a.action.replaceAll("_", " ")}</div>
+                  <div className="font-medium capitalize">{a.action.replace(/_/g, " ")}</div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(a.created_at).toLocaleString()} · {a.target_type ?? "—"}
                   </div>

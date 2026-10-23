@@ -1,3 +1,7 @@
+import type { LucideIcon } from "lucide-react";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
+import { recordPayment } from "@/lib/billingTransactions";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert } from "@/lib/offlineMutate";
@@ -52,7 +56,7 @@ type LedgerRow = PaymentRow | ExpenseRow;
 
 interface Party { id: string; name: string; type: "customer" | "supplier"; }
 
-const METHOD_META: { key: Method; label: string; icon: any; tone: string }[] = [
+const METHOD_META: { key: Method; label: string; icon: LucideIcon; tone: string }[] = [
   { key: "cash",   label: "Cash",   icon: Banknote,   tone: "bg-success-soft text-success" },
   { key: "bank",   label: "Bank",   icon: Wallet2,    tone: "bg-primary-soft text-primary" },
   { key: "upi",    label: "UPI",    icon: Smartphone, tone: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300" },
@@ -74,7 +78,7 @@ export default function Accounts() {
   const [direction, setDirection] = useState<Direction>("in");
   const [method, setMethod] = useState<Method>("cash");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(businessDate());
   const [partyId, setPartyId] = useState<string>("");
   const [category, setCategory] = useState("");
   const [reference, setReference] = useState("");
@@ -92,15 +96,15 @@ export default function Accounts() {
     if (!current) return;
     setLoading(true);
     const [pays, exps, prt] = await Promise.all([
-      supabase.from("payments")
+      allRows(supabase.from("payments")
         .select("id, direction, method, amount, payment_date, reference, notes, parties(name), invoices(invoice_number)")
-        .eq("business_id", current.id).is("deleted_at", null),
-      supabase.from("expenses")
+        .eq("business_id", current.id).is("deleted_at", null)),
+      allRows(supabase.from("expenses")
         .select("id, category, method, amount, expense_date, reference, description")
-        .eq("business_id", current.id),
-      supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name"),
+        .eq("business_id", current.id)),
+      allRows(supabase.from("parties").select("id, name, type").eq("business_id", current.id).order("name")),
     ]);
-    const p: PaymentRow[] = ((pays.data as any[]) ?? []).map((r) => {
+    const p: PaymentRow[] = ((pays.data) ?? []).map((r) => {
       // Manual entries store category prefix in notes as "[Category] rest"
       let cat: string | null = null;
       let cleanNotes = r.notes as string | null;
@@ -117,7 +121,7 @@ export default function Accounts() {
         category: cat,
       };
     });
-    const e: ExpenseRow[] = ((exps.data as any[]) ?? []).map((r) => ({
+    const e: ExpenseRow[] = ((exps.data) ?? []).map((r) => ({
       id: r.id, source: "expense", direction: "out", method: r.method,
       amount: Number(r.amount), date: r.expense_date,
       reference: r.reference, notes: r.description,
@@ -126,7 +130,7 @@ export default function Accounts() {
     }));
     const merged = [...p, ...e].sort((a, b) => (a.date < b.date ? 1 : -1));
     setRows(merged);
-    setParties((prt.data as any) ?? []);
+    setParties((prt.data) ?? []);
     setLoading(false);
   };
   useEffect(() => { load(); }, [current?.id]);
@@ -169,7 +173,7 @@ export default function Accounts() {
     setSaving(true);
     const tag = category.trim();
     const composedNotes = [tag ? `[${tag}]` : "", notes.trim()].filter(Boolean).join(" ");
-    const res = await omInsert("payments", {
+    const res = await recordPayment({
       business_id: current.id,
       direction, method, amount: amt,
       payment_date: date,
@@ -179,7 +183,7 @@ export default function Accounts() {
       created_by: user.id,
     });
     setSaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Entry recorded");
     setOpen(false);
     setAmount(""); setReference(""); setNotes(""); setCategory(""); setPartyId("");
@@ -249,7 +253,7 @@ export default function Accounts() {
           <DateRangeFilter preset={preset} onPresetChange={setPreset} customFrom={customFrom} customTo={customTo} onCustomFromChange={setCustomFrom} onCustomToChange={setCustomTo} />
         </div>
 
-        <Tabs value={methodFilter} onValueChange={(v) => setMethodFilter(v as any)}>
+        <Tabs value={methodFilter} onValueChange={(v) => setMethodFilter(v as Method | "all")}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="all">All</TabsTrigger>
             {METHOD_META.map((m) => <TabsTrigger key={m.key} value={m.key}>{m.label}</TabsTrigger>)}

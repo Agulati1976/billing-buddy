@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,8 +36,8 @@ export default function Warehouses() {
 
   const load = async () => {
     if (!current) return;
-    const { data } = await supabase.from("warehouses").select("id, name, address, is_default")
-      .eq("business_id", current.id).order("name");
+    const { data } = await allRows(supabase.from("warehouses").select("id, name, address, is_default")
+      .eq("business_id", current.id).order("name"));
     setRows((data ?? []) as Wh[]);
   };
   useEffect(() => { load(); }, [current?.id]);

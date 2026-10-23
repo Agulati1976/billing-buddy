@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
@@ -15,7 +16,7 @@ const itemBase =
   "flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors active:bg-muted/60";
 const itemActive = "text-primary";
 
-type MobileMenuItem = { to: string; label: string; icon: any; module?: ModuleKey; alwaysVisible?: boolean; end?: boolean };
+type MobileMenuItem = { to: string; label: string; icon: LucideIcon; module?: ModuleKey; alwaysVisible?: boolean; end?: boolean };
 type MobileMenuGroup = { label: string; items: MobileMenuItem[] };
 
 const MENU_GROUPS: MobileMenuGroup[] = [

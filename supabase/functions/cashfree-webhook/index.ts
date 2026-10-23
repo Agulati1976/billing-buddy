@@ -1,124 +1,49 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.0";
+import { corsHeaders, json, failure, HttpError } from "../_shared/security.ts";
+import { credentials } from "../_shared/cashfree.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-
-  const rawBody = await req.text();
-  const signature = req.headers.get("x-webhook-signature") || "";
-  const timestamp = req.headers.get("x-webhook-timestamp") || "";
-
-  const webhookSecret = Deno.env.get("CASHFREE_WEBHOOK_SECRET");
-  let verified = false;
-  if (webhookSecret && signature && timestamp) {
-    try {
-      const enc = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        "raw", enc.encode(webhookSecret),
-        { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
-      );
-      const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(timestamp + rawBody));
-      const computed = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
-      verified = computed === signature;
-    } catch (e) {
-      console.error("signature verify failed", e);
-    }
-  }
-
-  let payload: any = {};
-  try { payload = JSON.parse(rawBody); } catch { /* ignore */ }
-
-  const eventType = payload?.type || "UNKNOWN";
-  const cfOrderId = payload?.data?.order?.order_id || null;
-
-  const admin = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-
-  const { data: evt } = await admin.from("cashfree_webhook_events").insert({
-    event_type: eventType, cf_order_id: cfOrderId,
-    signature_verified: verified, payload, processed: false,
-  }).select("id").maybeSingle();
-
-  if (!verified) {
-    console.warn("Unverified webhook", eventType);
-    return new Response(JSON.stringify({ ok: false, reason: "signature" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
-    if (eventType === "PAYMENT_SUCCESS_WEBHOOK" && cfOrderId) {
-      const pay = payload?.data?.payment || {};
-      // Find order
-      const { data: order } = await admin.from("subscription_orders")
-        .select("*").eq("cf_order_id", cfOrderId).maybeSingle();
-      if (order) {
-        await admin.from("subscription_orders").update({
-          status: "PAID",
-          cf_payment_id: String(pay.cf_payment_id || ""),
-          payment_method: pay.payment_group || pay.payment_method || null,
-          paid_at: new Date().toISOString(),
-          raw_response: payload,
-        }).eq("id", order.id);
-
-        // Extend subscription
-        const { data: plan } = await admin.from("subscription_plans")
-          .select("duration_days").eq("id", order.plan_id).maybeSingle();
-        const days = plan?.duration_days || 30;
-
-        const { data: existing } = await admin.from("business_subscriptions")
-          .select("*").eq("business_id", order.business_id).maybeSingle();
-        const now = new Date();
-        const base = existing?.expires_at && new Date(existing.expires_at) > now
-          ? new Date(existing.expires_at) : now;
-        const expires = new Date(base.getTime() + days * 86400000);
-
-        if (existing) {
-          await admin.from("business_subscriptions").update({
-            plan_id: order.plan_id, status: "active",
-            expires_at: expires.toISOString(), last_order_id: order.id,
-          }).eq("business_id", order.business_id);
-        } else {
-          await admin.from("business_subscriptions").insert({
-            business_id: order.business_id, plan_id: order.plan_id,
-            status: "active", started_at: now.toISOString(),
-            expires_at: expires.toISOString(), last_order_id: order.id,
-          });
-        }
-      }
-    } else if (eventType === "PAYMENT_FAILED_WEBHOOK" && cfOrderId) {
-      await admin.from("subscription_orders").update({
-        status: "FAILED", raw_response: payload,
-      }).eq("cf_order_id", cfOrderId);
-    } else if (eventType === "PAYMENT_USER_DROPPED_WEBHOOK" && cfOrderId) {
-      await admin.from("subscription_orders").update({
-        status: "DROPPED", raw_response: payload,
-      }).eq("cf_order_id", cfOrderId);
+    if (req.method !== "POST") throw new HttpError(405, "Method not allowed");
+    const raw = await req.text();
+    if (raw.length > 1_000_000) throw new HttpError(413, "Payload too large");
+    const secret = Deno.env.get("CASHFREE_WEBHOOK_SECRET") || Deno.env.get("CASHFREE_SECRET_KEY");
+    const signature = req.headers.get("x-webhook-signature");
+    const timestamp = req.headers.get("x-webhook-timestamp");
+    if (!secret || !signature || !timestamp) throw new HttpError(401, "Invalid signature");
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+    let verified = false;
+    try {
+      verified = await crypto.subtle.verify("HMAC", key, Uint8Array.from(atob(signature), (c) => c.charCodeAt(0)), encoder.encode(timestamp + raw));
+    } catch { /* Malformed signatures must not persist attacker input. */ }
+    if (!verified) throw new HttpError(401, "Invalid signature");
+    const payload = JSON.parse(raw);
+    const order = payload?.data?.order;
+    const payment = payload?.data?.payment;
+    const types: Record<string, string> = { PAYMENT_SUCCESS_WEBHOOK: "PAID", PAYMENT_FAILED_WEBHOOK: "FAILED", PAYMENT_USER_DROPPED_WEBHOOK: "DROPPED" };
+    if (!types[payload.type]) return json({ ok: true, ignored: true });
+    if (!order?.order_id || !payment?.cf_payment_id) throw new HttpError(400, "Missing payment identity");
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    if(types[payload.type]==="PAID"){
+      if(payment.payment_status!=="SUCCESS")throw new HttpError(400,"Payment is not successful");
+      const {data:stored,error:orderError}=await admin.from("subscription_orders").select("mode").eq("cf_order_id",order.order_id).maybeSingle();
+      if(orderError || !stored)throw new HttpError(404,"Order not found");
+      if(stored.mode!=="production")return json({ok:true,sandbox:true,activated:false});
+      const cf=credentials(stored.mode);
+      const response=await fetch(cf.base+"/orders/"+encodeURIComponent(order.order_id),{headers:cf.headers});
+      if(!response.ok)throw new HttpError(502,"Payment provider verification unavailable");
+      const verifiedOrder=await response.json();
+      if(verifiedOrder.order_status!=="PAID")throw new HttpError(503,"The payment order is still processing");
+      if(Number(verifiedOrder.order_amount)!==Number(order.order_amount) || verifiedOrder.order_currency!==order.order_currency)throw new HttpError(409,"Order amount or currency mismatch");
     }
-
-    if (evt?.id) {
-      await admin.from("cashfree_webhook_events").update({ processed: true }).eq("id", evt.id);
-    }
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const { data, error } = await admin.rpc("process_subscription_payment", {
+      p_order_id: order.order_id, p_payment_id: String(payment.cf_payment_id), p_status: types[payload.type],
+      p_amount: Number(order.order_amount), p_currency: order.order_currency,
+      p_method: typeof payment.payment_group === "string" ? payment.payment_group : null, p_payload: payload,
     });
-  } catch (e: any) {
-    console.error("webhook processing error", e);
-    if (evt?.id) {
-      await admin.from("cashfree_webhook_events").update({
-        error: String(e?.message || e),
-      }).eq("id", evt.id);
-    }
-    return new Response(JSON.stringify({ ok: false }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+    if (error) throw error;
+    return json({ ok: true, result: data });
+  } catch (error) { return failure(error); }
 });

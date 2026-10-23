@@ -1,3 +1,5 @@
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -9,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ScanLine, Sparkles, ImagePlus, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { omInsert, omUpdate } from "@/lib/offlineMutate";
+import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -18,6 +20,7 @@ import { ensureCatalogEntry, lookupBarcode, type CatalogEntry } from "@/lib/barc
 
 export interface ItemRow {
   id: string;
+  updated_at?: string;
   name: string;
   type: "product" | "service";
   sku: string | null;
@@ -84,8 +87,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
 
   useEffect(() => {
     if (!current) return;
-    supabase.from("categories").select("id, name").eq("business_id", current.id).order("name")
-      .then(({ data }) => setCategories((data ?? []) as any));
+    allRows(supabase.from("categories").select("id, name").eq("business_id", current.id).order("name"))
+      .then(({ data }) => setCategories((data ?? [])));
   }, [current?.id, open]);
 
   useEffect(() => {
@@ -121,7 +124,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
         void runLookup(presetBarcode);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [item, open, presetBarcode]);
 
   const runLookup = async (code: string) => {
@@ -214,7 +217,8 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
     }
 
     const newOpening = form.type === "product" ? (Number(form.opening_stock) || 0) : 0;
-    const payload: any = {
+    const payload = {
+      id:item?.id ?? crypto.randomUUID(),
       business_id: current.id,
       name: form.name.trim(),
       type: form.type,
@@ -241,49 +245,14 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
       image_url: imageUrl,
       created_by: user.id,
     };
-    // When editing a product (not batch-tracked), record an adjustment so trigger updates current_stock
-    let stockDelta = 0;
-    if (item && form.type === "product" && !form.is_batch_tracked) {
-      stockDelta = newOpening - (Number(item.opening_stock) || 0);
-      if (stockDelta < 0 && Math.abs(stockDelta) > Number(item.current_stock ?? 0)) {
-        toast.error(`Out of stock: only ${Number(item.current_stock ?? 0)} ${item.unit} available`);
-        setSaving(false);
-        return;
-      }
-    }
-    const res = item
-      ? await omUpdate("items", { column: "id", value: item.id }, payload)
-      : await omInsert("items", payload);
+    const batch = form.type==="product" && form.is_batch_tracked && form.batch_number.trim() ? {
+      id:crypto.randomUUID(),batch_number:form.batch_number.trim(),mfg_date:form.batch_mfg_date || null,expiry_date:form.batch_expiry_date || null,
+      quantity:Number(form.batch_quantity)||0,purchase_price:form.batch_purchase_price.trim()?Number(form.batch_purchase_price):null,
+      sale_price:form.batch_sale_price.trim()?Number(form.batch_sale_price):null,
+    } : null;
+    const res=await billingTransaction("save_item",current.id,{p_operation_id:crypto.randomUUID(),p_item:jsonValue(payload),p_batch:jsonValue(batch),p_expected_updated_at:item?.updated_at ?? null},payload);
     setSaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    if (item && stockDelta !== 0) {
-      await omInsert("stock_movements", {
-        business_id: current.id,
-        item_id: item.id,
-        type: stockDelta > 0 ? "adjustment_in" : "adjustment_out",
-        quantity: Math.abs(stockDelta),
-        notes: `Opening stock adjusted (${item.opening_stock} → ${newOpening})`,
-        created_by: user.id,
-      }).catch(() => {});
-    }
-
-    // Add a batch entry if user filled batch fields (only for batch-tracked products)
-    if (form.type === "product" && form.is_batch_tracked && form.batch_number.trim()) {
-      const savedItemId = item ? item.id : (res.data as any)?.id;
-      if (savedItemId) {
-        await omInsert("batches", {
-          business_id: current.id,
-          item_id: savedItemId,
-          batch_number: form.batch_number.trim(),
-          mfg_date: form.batch_mfg_date || null,
-          expiry_date: form.batch_expiry_date || null,
-          quantity: Number(form.batch_quantity) || 0,
-          purchase_price: form.batch_purchase_price.trim() ? Number(form.batch_purchase_price) : null,
-          sale_price: form.batch_sale_price.trim() ? Number(form.batch_sale_price) : null,
-          created_by: user.id,
-        }).catch((e: any) => toast.error(e?.message ?? "Batch save failed"));
-      }
-    }
+    if(res.error){toast.error(res.error.message);return;}
     toast.success(
       res.queued
         ? (item ? "Item update saved offline — will sync" : "Item saved offline — will sync")
@@ -458,7 +427,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                   type="number"
                   step={form.allow_decimal_qty ? "0.01" : "1"}
                   min="0"
-                  disabled={form.is_batch_tracked}
+                  disabled={!!item || form.is_batch_tracked}
                   value={form.opening_stock}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -555,7 +524,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                       onClick={() => {
                         const base = form.batch_mfg_date ? new Date(form.batch_mfg_date) : new Date();
                         base.setDate(base.getDate() + d);
-                        setForm({ ...form, batch_expiry_date: base.toISOString().slice(0, 10) });
+                        setForm({ ...form, batch_expiry_date: businessDate(base) });
                       }}>
                       {d} days
                     </Button>
@@ -567,7 +536,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                         if (d > 0) {
                           const base = form.batch_mfg_date ? new Date(form.batch_mfg_date) : new Date();
                           base.setDate(base.getDate() + d);
-                          setForm({ ...form, batch_expiry_date: base.toISOString().slice(0, 10) });
+                          setForm({ ...form, batch_expiry_date: businessDate(base) });
                         }
                       }
                     }}
@@ -576,7 +545,7 @@ export function ItemDialog({ open, onOpenChange, item, onSaved, presetBarcode }:
                       if (d > 0) {
                         const base = form.batch_mfg_date ? new Date(form.batch_mfg_date) : new Date();
                         base.setDate(base.getDate() + d);
-                        setForm({ ...form, batch_expiry_date: base.toISOString().slice(0, 10) });
+                        setForm({ ...form, batch_expiry_date: businessDate(base) });
                       }
                     }}
                   />

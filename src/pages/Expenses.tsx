@@ -1,3 +1,5 @@
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omInsert } from "@/lib/offlineMutate";
@@ -38,7 +40,7 @@ export default function Expenses() {
 
   const [category, setCategory] = useState("Rent");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(businessDate());
   const [method, setMethod] = useState("cash");
   const [description, setDescription] = useState("");
   const [search, setSearch] = useState("");
@@ -55,10 +57,10 @@ export default function Expenses() {
 
   const load = async () => {
     if (!current) return;
-    const { data } = await supabase.from("expenses")
+    const { data } = await allRows(supabase.from("expenses")
       .select("id, category, amount, expense_date, method, description")
-      .eq("business_id", current.id).order("expense_date", { ascending: false });
-    setRows((data as any) ?? []);
+      .eq("business_id", current.id).order("expense_date", { ascending: false }));
+    setRows((data) ?? []);
   };
   useEffect(() => { load(); }, [current?.id]);
 
@@ -69,10 +71,10 @@ export default function Expenses() {
     setSaving(true);
     const res = await omInsert("expenses", {
       business_id: current.id, category, amount: amt, expense_date: date,
-      method: method as any, description: description.trim() || null, created_by: user.id,
+      method: method as "cash"|"bank"|"upi"|"cheque"|"card"|"other", description: description.trim() || null, created_by: user.id,
     });
     setSaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Expense recorded");
     setOpen(false); setAmount(""); setDescription("");
     load();

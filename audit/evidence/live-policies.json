@@ -1,0 +1,1271 @@
+[
+  {
+    "cmd": "INSERT",
+    "policyname": "Platform admins can insert audit log",
+    "qual": null,
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "admin_audit_log",
+    "with_check": "(is_platform_admin(auth.uid()) AND (admin_id = auth.uid()))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins can read audit log",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "admin_audit_log",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Authenticated insert catalog",
+    "qual": null,
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "barcode_catalog",
+    "with_check": "(auth.uid() = contributed_by)"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Authenticated view catalog",
+    "qual": "true",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "barcode_catalog",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Contributor or admin delete catalog",
+    "qual": "((auth.uid() = contributed_by) OR is_platform_admin(auth.uid()))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "barcode_catalog",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Contributor or admin update catalog",
+    "qual": "((auth.uid() = contributed_by) OR is_platform_admin(auth.uid()))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "barcode_catalog",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create batches",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "batches",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update batches",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "batches",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view batches",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "batches",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete batches",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "batches",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all batches",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "batches",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create branches",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "branches",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update branches",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "branches",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view branches",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "branches",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete branches",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "branches",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all branches",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "branches",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view features",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_features",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Platform admins delete features",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_features",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Platform admins insert features",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_features",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Platform admins update features",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_features",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view features",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_features",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "policyname": "Admins manage subscriptions",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_subscriptions",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view their subscription",
+    "qual": "(is_business_member(auth.uid(), business_id) OR is_platform_admin(auth.uid()))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "business_subscriptions",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Authenticated create businesses",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "businesses",
+    "with_check": "(auth.uid() = owner_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view their businesses",
+    "qual": "is_business_member(auth.uid(), id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "businesses",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners delete business",
+    "qual": "has_role(auth.uid(), id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "businesses",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Owners update business",
+    "qual": "has_role(auth.uid(), id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "businesses",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Platform admins delete any business",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "businesses",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all businesses",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "businesses",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Admins view webhook events",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "cashfree_webhook_events",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create categories",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "categories",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update categories",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "categories",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view categories",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "categories",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete categories",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "categories",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all categories",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "categories",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create expenses",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "expenses",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update expenses",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "expenses",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view expenses",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "expenses",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete expenses",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "expenses",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all expenses",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "expenses",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members insert invoice edit log",
+    "qual": null,
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "invoice_edit_log",
+    "with_check": "(is_business_member(auth.uid(), business_id) AND (edited_by = auth.uid()))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members read invoice edit log",
+    "qual": "(is_business_member(auth.uid(), business_id) OR is_platform_admin(auth.uid()))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "invoice_edit_log",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create invoice items",
+    "qual": null,
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "invoice_items",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM invoices i\n  WHERE ((i.id = invoice_items.invoice_id) AND is_business_member(auth.uid(), i.business_id))))"
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Members delete invoice items",
+    "qual": "(EXISTS ( SELECT 1\n   FROM invoices i\n  WHERE ((i.id = invoice_items.invoice_id) AND is_business_member(auth.uid(), i.business_id))))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "invoice_items",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update invoice items",
+    "qual": "(EXISTS ( SELECT 1\n   FROM invoices i\n  WHERE ((i.id = invoice_items.invoice_id) AND is_business_member(auth.uid(), i.business_id))))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "invoice_items",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM invoices i\n  WHERE ((i.id = invoice_items.invoice_id) AND is_business_member(auth.uid(), i.business_id))))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view invoice items",
+    "qual": "(EXISTS ( SELECT 1\n   FROM invoices i\n  WHERE ((i.id = invoice_items.invoice_id) AND is_business_member(auth.uid(), i.business_id))))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_items",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all invoice_items",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_items",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create invoice settings",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_settings",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view invoice settings",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners delete invoice settings",
+    "qual": "has_role(auth.uid(), business_id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Owners/admins update invoice settings",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all invoice_settings",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoice_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create invoices",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoices",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update invoices",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoices",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view invoices",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoices",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete invoices",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoices",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all invoices",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "invoices",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create items",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "items",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update items",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "items",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view items",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "items",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete items",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "items",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all items",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "items",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members insert loyalty settings",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_settings",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update loyalty settings",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view loyalty settings",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners delete loyalty settings",
+    "qual": "has_role(auth.uid(), business_id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all loyalty_settings",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_settings",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members insert loyalty tx",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_transactions",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update loyalty tx",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_transactions",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view loyalty tx",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_transactions",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete loyalty tx",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_transactions",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all loyalty_tx",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "loyalty_transactions",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create parties",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "parties",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update parties",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "parties",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view parties",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "parties",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete parties",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "parties",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all parties",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "parties",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create reminders",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payment_reminders",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view reminders",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payment_reminders",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners delete reminders",
+    "qual": "has_role(auth.uid(), business_id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payment_reminders",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all payment_reminders",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payment_reminders",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create payments",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payments",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update payments",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payments",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view payments",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payments",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners delete payments",
+    "qual": "has_role(auth.uid(), business_id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payments",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all payments",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "payments",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Platform admins add admins",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "platform_admins",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Platform admins remove admins",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "platform_admins",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view admins",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "platform_admins",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Members delete held carts",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_held_carts",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members insert held carts",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_held_carts",
+    "with_check": "(is_business_member(auth.uid(), business_id) AND (auth.uid() = created_by))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view held carts",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_held_carts",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members close own session",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_sessions",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members open session",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_sessions",
+    "with_check": "(is_business_member(auth.uid(), business_id) AND (auth.uid() = opened_by))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view sessions",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_sessions",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view pos access",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_user_access",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins manage pos access delete",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_user_access",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Owners/admins manage pos access insert",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_user_access",
+    "with_check": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all pos access",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "pos_user_access",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all profiles",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "profiles",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Users insert own profile",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "profiles",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Users update own profile",
+    "qual": "(auth.uid() = user_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "profiles",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Users view own profile",
+    "qual": "(auth.uid() = user_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "profiles",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "policyname": "Admins manage saas_invoices",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "saas_invoices",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Business owners view own saas_invoices",
+    "qual": "(EXISTS ( SELECT 1\n   FROM businesses b\n  WHERE ((b.id = saas_invoices.business_id) AND (b.owner_id = auth.uid()))))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "saas_invoices",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "policyname": "Admins manage saas_reminders",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "saas_reminders",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view module access",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "staff_module_access",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete module access",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "staff_module_access",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Owners/admins insert module access",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "staff_module_access",
+    "with_check": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Owners/admins update module access",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "staff_module_access",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create stock movements",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "stock_movements",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Members delete stock movements",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "stock_movements",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view stock movements",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "stock_movements",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all stock_movements",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "stock_movements",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create orders",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "subscription_orders",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view their orders",
+    "qual": "(is_business_member(auth.uid(), business_id) OR is_platform_admin(auth.uid()))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "subscription_orders",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "policyname": "Admins manage plans",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "subscription_plans",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Anyone can view active plans",
+    "qual": "((is_active = true) OR is_platform_admin(auth.uid()))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "subscription_plans",
+    "with_check": null
+  },
+  {
+    "cmd": "ALL",
+    "policyname": "admins manage support staff",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_staff",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "staff see own record",
+    "qual": "(user_id = auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_staff",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "admins delete messages",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_ticket_messages",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "post messages on accessible tickets",
+    "qual": null,
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_ticket_messages",
+    "with_check": "((sender_id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM support_tickets t\n  WHERE ((t.id = support_ticket_messages.ticket_id) AND ((t.created_by = auth.uid()) OR (t.assigned_to = auth.uid()) OR is_platform_admin(auth.uid()))))))"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "see messages of accessible tickets",
+    "qual": "(EXISTS ( SELECT 1\n   FROM support_tickets t\n  WHERE ((t.id = support_ticket_messages.ticket_id) AND ((t.created_by = auth.uid()) OR (t.assigned_to = auth.uid()) OR is_platform_admin(auth.uid())))))",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_ticket_messages",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "admins delete tickets",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "admins see all tickets",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "admins update all tickets",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": "is_platform_admin(auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "assignee sees tickets",
+    "qual": "(assigned_to = auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "assignee updates ticket",
+    "qual": "(assigned_to = auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": "(assigned_to = auth.uid())"
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "user creates own ticket",
+    "qual": null,
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": "(created_by = auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "user sees own tickets",
+    "qual": "(created_by = auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": null
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "user updates own open ticket",
+    "qual": "(created_by = auth.uid())",
+    "roles": "{authenticated}",
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "with_check": "(created_by = auth.uid())"
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view roles in their business",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "user_roles",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners delete roles",
+    "qual": "has_role(auth.uid(), business_id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "user_roles",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Owners manage roles",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "user_roles",
+    "with_check": "has_role(auth.uid(), business_id, 'owner'::app_role)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Owners update roles",
+    "qual": "has_role(auth.uid(), business_id, 'owner'::app_role)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "user_roles",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all user_roles",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "user_roles",
+    "with_check": null
+  },
+  {
+    "cmd": "INSERT",
+    "policyname": "Members create warehouses",
+    "qual": null,
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "warehouses",
+    "with_check": "is_business_member(auth.uid(), business_id)"
+  },
+  {
+    "cmd": "UPDATE",
+    "policyname": "Members update warehouses",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "warehouses",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Members view warehouses",
+    "qual": "is_business_member(auth.uid(), business_id)",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "warehouses",
+    "with_check": null
+  },
+  {
+    "cmd": "DELETE",
+    "policyname": "Owners/admins delete warehouses",
+    "qual": "(has_role(auth.uid(), business_id, 'owner'::app_role) OR has_role(auth.uid(), business_id, 'admin'::app_role))",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "warehouses",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "policyname": "Platform admins view all warehouses",
+    "qual": "is_platform_admin(auth.uid())",
+    "roles": "{public}",
+    "schemaname": "public",
+    "tablename": "warehouses",
+    "with_check": null
+  }
+]

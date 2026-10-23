@@ -1,7 +1,13 @@
+import type { Tables } from "@/integrations/supabase/types";
+import { usePermissions } from "@/hooks/usePermissions";
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { omInsert, omInsertMany } from "@/lib/offlineMutate";
+import { omInsert } from "@/lib/offlineMutate";
+import { billingTransaction, jsonValue } from "@/lib/billingTransactions";
+import { businessDate } from "@/lib/dates";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -33,8 +39,8 @@ import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { Sparkles } from "lucide-react";
 
 interface Props { type: InvoiceType; }
-interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; }
-interface Item { id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; unit_size?: number | null; is_batch_tracked: boolean; allow_decimal_qty?: boolean; current_stock?: number | null; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
+interface Party { id: string; name: string; state_code: string | null; gstin: string | null; phone?: string | null; billing_address?:string|null;email?:string|null;state?:string|null; }
+interface Item { type?: "product" | "service"; id: string; name: string; barcode: string | null; hsn_code: string | null; sale_price: number; purchase_price: number; tax_rate: number; unit: string; unit_size?: number | null; is_batch_tracked: boolean; allow_decimal_qty?: boolean; current_stock?: number | null; brand?: string | null; flavour?: string | null; color?: string | null; sku?: string | null; }
 interface Batch { id: string; item_id: string; batch_number: string; expiry_date: string | null; quantity: number; purchase_price?: number | null; sale_price?: number | null; }
 
 export default function InvoiceEditor({ type }: Props) {
@@ -44,6 +50,7 @@ export default function InvoiceEditor({ type }: Props) {
   const isNew = !id || id === "new";
   const { current } = useBusiness();
   const { user } = useAuth();
+  const {features}=usePermissions();
   const navigate = useNavigate();
   const meta = INVOICE_TYPE_META[type];
 
@@ -53,7 +60,7 @@ export default function InvoiceEditor({ type }: Props) {
   const [branches, setBranches] = useState<{ id: string; name: string; code: string }[]>([]);
   const [partyId, setPartyId] = useState<string>("");
   const [number, setNumber] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(businessDate());
   const [dueDate, setDueDate] = useState("");
   const [receivedDate, setReceivedDate] = useState("");
   const [notes, setNotes] = useState("");
@@ -79,19 +86,19 @@ export default function InvoiceEditor({ type }: Props) {
   const [itemDialogTarget, setItemDialogTarget] = useState<number | null>(null); // line idx to fill, or null = append
   const [batchDialogFor, setBatchDialogFor] = useState<{ lineIdx: number; itemId: string } | null>(null);
   const [newBatch, setNewBatch] = useState({ batch_number: "", quantity: "1", purchase_price: "", sale_price: "", mfg_date: "", expiry_date: "", notes: "" });
-  // Batches created via "Add new batch" already carry their full received quantity
-  // (see saveNewBatch) — the purchase stock trigger intentionally skips them to avoid
-  // double-counting. Track which batch ids were freshly created in this session so the
-  // save/update paths below know not to credit them a second time.
-  const freshBatchIdsRef = useRef<Set<string>>(new Set());
+  // Draft batches reach the database only with a committed purchase invoice.
+  const pendingBatchesRef = useRef<Record<string, unknown>[]>([]);
+  const savingRef = useRef(false);
+  const draftIdRef = useRef(crypto.randomUUID());
+  const operationIdRef = useRef(crypto.randomUUID());
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [readOnly, setReadOnly] = useState(false);
   const [originalSnapshot, setOriginalSnapshot] = useState<null | {
-    invoice: any;
-    lines: any[];
+    invoice: Tables<"invoices">;
+    lines: Tables<"invoice_items">[];
   }>(null);
-  const [history, setHistory] = useState<Array<{ id: string; edited_at: string; summary: string | null; changes: any; editor_email?: string | null }>>([]);
+  const [history, setHistory] = useState<Array<{ id: string; edited_at: string; summary: string | null; changes: ReturnType<typeof buildInvoiceDiff>; editor_email?: string | null }>>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // Party quick add / full add
@@ -103,11 +110,11 @@ export default function InvoiceEditor({ type }: Props) {
 
   const reloadParties = async () => {
     if (!current) return;
-    const { data } = await supabase.from("parties")
+    const { data } = await allRows(supabase.from("parties")
       .select("id, name, state_code, gstin, phone")
-      .eq("business_id", current.id).eq("type", partyKind).order("name");
-    setParties((data as any) ?? []);
-    return data as any[] | null;
+      .eq("business_id", current.id).eq("type", partyKind).order("name"));
+    setParties((data) ?? []);
+    return data;
   };
 
   const quickAddParty = async () => {
@@ -117,9 +124,9 @@ export default function InvoiceEditor({ type }: Props) {
       business_id: current.id, name: quickName.trim(),
       phone: quickPhone.trim() || null, type: partyKind,
     });
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
-    setParties((p) => [...p, res.data as any]);
-    setPartyId((res.data as any).id);
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
+    setParties((p) => [...p, res.data]);
+    setPartyId((res.data).id);
     setQuickName(""); setQuickPhone(""); setQuickOpen(false);
     toast.success(res.queued ? "Added (offline)" : `${partyKind === "customer" ? "Customer" : "Supplier"} added`);
   };
@@ -130,18 +137,18 @@ export default function InvoiceEditor({ type }: Props) {
   const [redeemPoints, setRedeemPoints] = useState(0);
 
   function emptyLine(): InvoiceLineInput {
-    return { item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, discount_amount: 0, discount_mode: "pct", tax_rate: 0, batch_id: null };
+    return { id: crypto.randomUUID(), item_id: null, item_name: "", hsn_code: null, quantity: 1, unit: "pcs", price: 0, discount_pct: 0, discount_amount: 0, discount_mode: "pct", tax_rate: 0, batch_id: null };
   }
 
   // Load parties & items
   const reloadItemsAndBatches = async () => {
     if (!current) return { items: [] as Item[], batches: [] as Batch[] };
     const [it, b] = await Promise.all([
-      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
-      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
+      allRows(supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, type, brand, flavour, color, sku").eq("business_id", current.id).order("name")),
+      allRows(supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
     ]);
-    const nextItems = ((it.data as any) ?? []) as Item[];
-    const nextBatches = ((b.data as any) ?? []) as Batch[];
+    const nextItems = ((it.data) ?? []) as Item[];
+    const nextBatches = ((b.data) ?? []) as Batch[];
     setItems(nextItems);
     setBatches(nextBatches);
     return { items: nextItems, batches: nextBatches };
@@ -151,15 +158,15 @@ export default function InvoiceEditor({ type }: Props) {
     if (!current) return;
     const partyType = type === "purchase" || type === "purchase_return" ? "supplier" : "customer";
     Promise.all([
-      supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name"),
-      supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, brand, flavour, color, sku").eq("business_id", current.id).order("name"),
-      supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false }),
-      supabase.from("branches" as any).select("id, name, code").eq("business_id", current.id).order("name"),
+      allRows(supabase.from("parties").select("id, name, state_code, gstin, phone").eq("business_id", current.id).eq("type", partyType).order("name")),
+      allRows(supabase.from("items").select("id, name, barcode, hsn_code, sale_price, purchase_price, tax_rate, unit, unit_size, is_batch_tracked, allow_decimal_qty, current_stock, type, brand, flavour, color, sku").eq("business_id", current.id).order("name")),
+      allRows(supabase.from("batches").select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").eq("business_id", current.id).gt("quantity", 0).order("expiry_date", { ascending: true, nullsFirst: false })),
+      allRows(supabase.from("branches").select("id, name, code").eq("business_id", current.id).order("name")),
     ]).then(([p, it, b, br]) => {
-      setParties((p.data as any) ?? []);
-      setItems((it.data as any) ?? []);
-      setBatches((b.data as any) ?? []);
-      setBranches(((br as any).data as any) ?? []);
+      setParties((p.data) ?? []);
+      setItems((it.data) ?? []);
+      setBatches((b.data) ?? []);
+      setBranches((br.data) ?? []);
     });
   }, [current?.id, type]);
 
@@ -171,18 +178,18 @@ export default function InvoiceEditor({ type }: Props) {
 
   useEffect(() => {
     if (!current || !isNew) return;
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const pin = (current as any).pincode as string | null;
-    const rank = (current as any).pincode_rank as number | null;
+    const todayISO = businessDate();
+    const pin = (current).pincode as string | null;
+    const rank = (current).pincode_rank as number | null;
     if (pin && rank) {
       const base = shopInvoiceBase(pin, rank, todayISO, branchCodeForNumber);
-      supabase.from("invoices")
+      allRows(supabase.from("invoices")
         .select("invoice_number")
         .eq("business_id", current.id)
         .eq("type", type)
-        .like("invoice_number", `${base}%`)
+        .like("invoice_number", `${base}%`))
         .then(({ data }) => {
-          const existing = (data ?? []).map((r: any) => r.invoice_number as string);
+          const existing = (data ?? []).map((r) => r.invoice_number as string);
           setNumber(pickShopInvoiceNumber(base, existing));
         });
       return;
@@ -202,34 +209,34 @@ export default function InvoiceEditor({ type }: Props) {
 
   // Load loyalty config (sale only)
   useEffect(() => {
-    if (!current || type !== "sale") return;
+    if (!current || type !== "sale" || !features.loyalty) {setLoyaltyCfg(null);return;}
     supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle()
-      .then(({ data }) => { if (data) setLoyaltyCfg(data as any); });
-  }, [current?.id, type]);
+      .then(({ data }) => { if (data) setLoyaltyCfg(data); });
+  }, [current?.id, type,features.loyalty]);
 
   // Load points balance for selected customer
   useEffect(() => {
     if (!current || !partyId || type !== "sale") { setPartyPoints(0); setRedeemPoints(0); return; }
-    supabase.from("loyalty_transactions")
-      .select("points_earned, points_redeemed")
-      .eq("business_id", current.id).eq("party_id", partyId)
+    allRows(supabase.from("loyalty_transactions")
+      .select("invoice_id,points_earned, points_redeemed")
+      .eq("business_id", current.id).eq("party_id", partyId))
       .then(({ data }) => {
-        const bal = (data ?? []).reduce((s: number, t: any) => s + Number(t.points_earned || 0) - Number(t.points_redeemed || 0), 0);
-        setPartyPoints(bal);
-        setRedeemPoints(0);
+        const bal = (data ?? []).filter(transaction=>isNew || transaction.invoice_id!==id).reduce((s, t) => s + Number(t.points_earned || 0) - Number(t.points_redeemed || 0), 0);
+        setPartyPoints(Math.max(0,bal));
+        if(isNew)setRedeemPoints(0);
       });
-  }, [current?.id, partyId, type]);
+  }, [current?.id, partyId, type,isNew,id]);
 
   // Load existing
   useEffect(() => {
     if (isNew || !id || !current) return;
     Promise.all([
-      supabase.from("invoices").select("*").eq("id", id).single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", id),
+      supabase.from("invoices").select("*").eq("id", id).eq("business_id",current.id).single(),
+      allRows(supabase.from("invoice_items").select("*").eq("invoice_id", id)),
     ]).then(([inv, ln]) => {
       if (inv.error) { toast.error(inv.error.message); return; }
-      const i = inv.data as any;
-      const ls = (ln.data as any[]) ?? [];
+      const i = inv.data;
+      const ls = (ln.data) ?? [];
       setPartyId(i.party_id ?? "");
       setNumber(i.invoice_number);
       setDate(i.invoice_date);
@@ -240,13 +247,15 @@ export default function InvoiceEditor({ type }: Props) {
       setIsGst(i.is_gst !== false);
       setIsOnlineOrder(!!i.is_online_order);
       setBranchId(i.branch_id ?? "");
-      setExtraDiscount(String(i.extra_discount ?? 0));
+      setExtraDiscount(String(Number(i.extra_discount ?? 0) - Number(i.loyalty_discount ?? 0)));
+      setRedeemPoints(Number(i.loyalty_redeemed_points ?? 0));
+      if (i.source_invoice_id) setSourceLoaded({id:i.source_invoice_id,number:"Original invoice"});
       setReadOnly(true);
       setOriginalSnapshot({ invoice: i, lines: ls });
       setLines(ls.length ? ls.map((l) => ({
-        item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+        id: l.id, source_line_id: l.source_line_id ?? null, item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
         quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
-        discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate),
+        discount_pct: Number(l.price)*Number(l.quantity)>0 ? (Number(l.price)*Number(l.quantity)-Number(l.taxable_amount))/(Number(l.price)*Number(l.quantity))*100 : 0, tax_rate: Number(l.tax_rate),
         batch_id: l.batch_id ?? null,
       })) : [emptyLine()]);
       setLoaded(true);
@@ -256,22 +265,26 @@ export default function InvoiceEditor({ type }: Props) {
   // Load edit history for this invoice
   const loadHistory = async () => {
     if (isNew || !id) return;
-    const { data } = await supabase
+    const { data } = await allRows(supabase
       .from("invoice_edit_log")
       .select("id, edited_at, summary, changes, edited_by")
       .eq("invoice_id", id)
-      .order("edited_at", { ascending: false });
-    const rows = (data as any[]) ?? [];
+      .order("edited_at", { ascending: false }));
+    const rows = (data) ?? [];
     const userIds = Array.from(new Set(rows.map((r) => r.edited_by).filter(Boolean)));
-    let emailMap: Record<string, string> = {};
+    const emailMap: Record<string, string> = {};
     if (userIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles").select("user_id, email, full_name").in("user_id", userIds);
-      for (const p of (profs as any[]) ?? []) {
+      const { data: profs } = await allRows(supabase
+        .from("profiles").select("user_id, email, full_name").in("user_id", userIds));
+      for (const p of (profs) ?? []) {
         emailMap[p.user_id] = p.full_name || p.email || "Unknown";
       }
     }
-    setHistory(rows.map((r) => ({ ...r, editor_email: emailMap[r.edited_by] ?? "Unknown" })));
+    setHistory(rows.map((r) => {
+      const raw=r.changes as {before?:Record<string,unknown>;after?:Record<string,unknown>;before_lines?:DiffLine[];after_lines?:DiffLine[]};
+      const diff=raw?.before && raw?.after ? buildInvoiceDiff(raw.before,raw.before_lines??[],raw.after,raw.after_lines??[]) : r.changes as ReturnType<typeof buildInvoiceDiff>;
+      return {...r,changes:diff,summary:raw?.before && raw?.after?summarizeDiff(diff):r.summary,editor_email:emailMap[r.edited_by]??"Unknown"};
+    }));
   };
   useEffect(() => { if (!isNew && id) void loadHistory(); }, [id, isNew]);
 
@@ -285,20 +298,23 @@ export default function InvoiceEditor({ type }: Props) {
   const applySourceInvoice = async (invoiceId: string) => {
     if (!current) return;
     const [inv, ln] = await Promise.all([
-      supabase.from("invoices").select("*").eq("id", invoiceId).single(),
-      supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId),
+      supabase.from("invoices").select("*").eq("id", invoiceId).eq("business_id",current.id).is("deleted_at",null).single(),
+      allRows(supabase.from("invoice_items").select("*").eq("invoice_id", invoiceId)),
     ]);
     if (inv.error || !inv.data) { toast.error(inv.error?.message ?? "Source invoice not found"); return; }
-    const i = inv.data as any;
+    const i = inv.data;
     setPartyId(i.party_id ?? "");
     setNotes(`Return against ${i.invoice_number}`);
     setIsGst(i.is_gst !== false);
-    const ls = (ln.data as any[]) ?? [];
+    const ls = (ln.data) ?? [];
     if (!ls.length) { toast.error("Source invoice has no items"); return; }
+    const sourceTaxable=ls.reduce((sum,line)=>sum+Number(line.taxable_amount),0);
+    const discountFactor=sourceTaxable>0?Math.max(0,sourceTaxable-Number(i.extra_discount||0))/sourceTaxable:1;
+    setExtraDiscount("0");
     setLines(ls.map((l) => ({
-      item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
-      quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
-      discount_pct: Number(l.discount_pct), discount_amount: 0, discount_mode: "pct" as const,
+      id: crypto.randomUUID(), source_line_id: l.id, item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
+      quantity: Number(l.quantity), unit: l.unit, price: Number(l.taxable_amount)/Number(l.quantity)*discountFactor,
+      discount_pct: 0, discount_amount: 0, discount_mode: "pct" as const,
       tax_rate: Number(l.tax_rate), batch_id: l.batch_id ?? null,
     })));
     setSourceLoaded({ id: i.id, number: i.invoice_number });
@@ -318,10 +334,10 @@ export default function InvoiceEditor({ type }: Props) {
     if (!isNew || type !== "sale_return" || !current) return;
     supabase.from("invoices")
       .select("id, invoice_number, invoice_date, total_amount, parties(name)")
-      .eq("business_id", current.id).eq("type", "sale")
+      .eq("business_id", current.id).eq("type", "sale").is("deleted_at",null)
       .order("invoice_date", { ascending: false }).limit(200)
       .then(({ data }) => {
-        const list = ((data as any[]) ?? []).map((r) => ({
+        const list = ((data) ?? []).map((r) => ({
           id: r.id, invoice_number: r.invoice_number, invoice_date: r.invoice_date,
           total_amount: Number(r.total_amount), party: r.parties?.name ?? null,
         }));
@@ -338,9 +354,11 @@ export default function InvoiceEditor({ type }: Props) {
   }, [party, current]);
 
   const redeemValue = useMemo(() => {
-    if (type !== "sale" || !loyaltyCfg?.enabled) return 0;
+    if (type !== "sale") return 0;
+    if(originalSnapshot && Number(redeemPoints)===Number(originalSnapshot.invoice.loyalty_redeemed_points))return Number(originalSnapshot.invoice.loyalty_discount || 0);
+    if(!loyaltyCfg?.enabled)return 0;
     return (Number(redeemPoints) || 0) * Number(loyaltyCfg.point_value || 0);
-  }, [redeemPoints, loyaltyCfg, type]);
+  }, [redeemPoints, loyaltyCfg, type,originalSnapshot]);
 
   const extraDiscountValue = useMemo(() => {
     const v = Number(extraDiscount) || 0;
@@ -414,7 +432,7 @@ export default function InvoiceEditor({ type }: Props) {
     if (!Number.isFinite(qty) || qty <= 0) { toast.error("Quantity must be greater than zero"); return; }
     const purchasePrice = newBatch.purchase_price.trim() ? Number(newBatch.purchase_price) : null;
     const salePrice = newBatch.sale_price.trim() ? Number(newBatch.sale_price) : null;
-    const payload: any = {
+    const payload = {
       business_id: current.id,
       item_id: batchDialogFor.itemId,
       batch_number: bn,
@@ -426,12 +444,11 @@ export default function InvoiceEditor({ type }: Props) {
       notes: newBatch.notes?.trim() || null,
       created_by: user?.id ?? null,
     };
-    const { data, error } = await supabase.from("batches").insert(payload).select("id, item_id, batch_number, expiry_date, quantity, purchase_price, sale_price").single();
-    if (error) { toast.error(error.message); return; }
-    toast.success("Batch added");
-    const created = data as any as Batch;
+    if (type !== "purchase") { toast.error("Create new batches through a purchase"); return; }
+    const created = { ...payload, id: crypto.randomUUID() } as Batch;
+    pendingBatchesRef.current.push({...created});
     setBatches((prev) => [created, ...prev]);
-    freshBatchIdsRef.current.add(created.id);
+    toast.success("Batch added to this draft purchase");
     const lineIdx = batchDialogFor.lineIdx;
     setBatchDialogFor(null);
     const isPurchase = type === "purchase" || type === "purchase_return";
@@ -481,7 +498,7 @@ export default function InvoiceEditor({ type }: Props) {
       return;
     }
     try {
-      const created: any = await createItemFromCatalog(hit, current.id, user.id);
+      const created = await createItemFromCatalog(hit, current.id, user.id);
       const newItem: Item = {
         id: created.id, name: created.name, barcode: created.barcode,
         hsn_code: created.hsn_code,
@@ -494,8 +511,8 @@ export default function InvoiceEditor({ type }: Props) {
       setItems((prev) => [newItem, ...prev]);
       assign(newItem);
       toast.success(`Added ${newItem.name} (from catalog)`);
-    } catch (e: any) {
-      toast.error(e.message || "Could not auto-create item from catalog");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Could not auto-create item from catalog");
     }
   };
 
@@ -521,7 +538,7 @@ export default function InvoiceEditor({ type }: Props) {
             created_by: user.id,
           });
           if (!res.error) {
-            const created: any = {
+            const created = {
               id: res.data.id, name: data.supplier_name.trim(),
               state_code: null, gstin: data.supplier_gstin || null,
             };
@@ -534,7 +551,7 @@ export default function InvoiceEditor({ type }: Props) {
 
       // Items: match by name (case-insensitive), else create new
       const newLines: InvoiceLineInput[] = [];
-      let localItems = [...items];
+      const localItems = [...items];
       for (const ex of data.items) {
         const target = (ex.name || "").trim();
         if (!target) continue;
@@ -559,7 +576,7 @@ export default function InvoiceEditor({ type }: Props) {
             sale_price: Number(ex.price) || 0, purchase_price: Number(ex.price) || 0,
             tax_rate: Number(ex.tax_rate) || 0, unit: ex.unit || "pcs",
             is_batch_tracked: false,
-          } as any;
+          };
           localItems.push(it!);
         }
         newLines.push({
@@ -577,8 +594,8 @@ export default function InvoiceEditor({ type }: Props) {
       setItems(localItems);
       if (newLines.length) setLines(newLines);
       toast.success(`Added ${newLines.length} item${newLines.length === 1 ? "" : "s"} from the bill. Review and Save to update inventory.`);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not apply scanned bill");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Could not apply scanned bill");
     }
   };
 
@@ -617,454 +634,58 @@ export default function InvoiceEditor({ type }: Props) {
   };
 
   const save = async () => {
-    if (!current || !user) return;
-    if (!number.trim()) { toast.error("Invoice number is required"); return; }
-    if (!partyId && type !== "quotation" && type !== "sale_return") { toast.error("Select a party"); return; }
-    const validLines = lines.filter((l) => l.item_name.trim() && Number(l.quantity) > 0);
-    if (validLines.length === 0) { toast.error("Add at least one line item"); return; }
-    for (const l of validLines) {
-      const it = items.find(x => x.id === l.item_id);
-      if (it?.is_batch_tracked && !l.batch_id) {
-        toast.error(`Pick a batch for "${it.name}"`); return;
-      }
-    }
-
-    // ==== STOCK GUARD: prevent negative stock for stock-consuming invoices ====
-    // sale & purchase_return reduce stock. For edits, add back this invoice's own
-    // previous quantities (they will be reversed before re-applying).
-    if (type === "sale" || type === "purchase_return") {
-      // Fetch fresh stock so we don't rely on stale state
-      const itemIds = Array.from(new Set(validLines.map(l => l.item_id).filter(Boolean))) as string[];
-      const batchIds = Array.from(new Set(validLines.map(l => l.batch_id).filter(Boolean))) as string[];
-      const [freshItems, freshBatches] = await Promise.all([
-        itemIds.length
-          ? supabase.from("items").select("id, name, unit, current_stock, is_batch_tracked").in("id", itemIds)
-          : Promise.resolve({ data: [] as any[] } as any),
-        batchIds.length
-          ? supabase.from("batches").select("id, batch_number, quantity, item_id").in("id", batchIds)
-          : Promise.resolve({ data: [] as any[] } as any),
-      ]);
-      const itemMap = new Map<string, any>(((freshItems.data as any[]) ?? []).map(r => [r.id, r]));
-      const batchMap = new Map<string, any>(((freshBatches.data as any[]) ?? []).map(r => [r.id, r]));
-
-      // Add back own previous quantities on edit
-      const ownBatchBack = new Map<string, number>();
-      const ownItemBack = new Map<string, number>();
-      if (!isNew && originalSnapshot) {
-        for (const ol of originalSnapshot.lines) {
-          const q = Number(ol.quantity) || 0;
-          if (ol.batch_id) ownBatchBack.set(ol.batch_id, (ownBatchBack.get(ol.batch_id) ?? 0) + q);
-          else if (ol.item_id) ownItemBack.set(ol.item_id, (ownItemBack.get(ol.item_id) ?? 0) + q);
-        }
-      }
-
-      // Aggregate requested per batch / per item (non-batch)
-      const reqBatch = new Map<string, number>();
-      const reqItem = new Map<string, number>();
-      for (const l of validLines) {
-        const q = Number(l.quantity) || 0;
-        if (l.batch_id) reqBatch.set(l.batch_id, (reqBatch.get(l.batch_id) ?? 0) + q);
-        else if (l.item_id) {
-          const it = itemMap.get(l.item_id);
-          // Only enforce for products (skip services). is_batch_tracked=false products stored current_stock
-          if (it && it.current_stock !== null && it.current_stock !== undefined) {
-            reqItem.set(l.item_id, (reqItem.get(l.item_id) ?? 0) + q);
-          }
-        }
-      }
-
-      for (const [batchId, need] of reqBatch) {
-        const b = batchMap.get(batchId);
-        if (!b) continue;
-        const available = Number(b.quantity) + (ownBatchBack.get(batchId) ?? 0);
-        if (need > available) {
-          const it = items.find(x => x.id === b.item_id);
-          toast.error(`Out of stock: batch "${b.batch_number}"${it ? ` of ${it.name}` : ""} has only ${available} ${it?.unit ?? ""} — please pick another batch.`);
-          return;
-        }
-      }
-      for (const [itemId, need] of reqItem) {
-        const it = itemMap.get(itemId);
-        if (!it) continue;
-        const available = Number(it.current_stock ?? 0) + (ownItemBack.get(itemId) ?? 0);
-        if (need > available) {
-          toast.error(`Out of stock: ${it.name} — only ${available} ${it.unit ?? ""} in stock.`);
-          return;
-        }
-      }
-    }
-
+    if (!current || !user || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
-    // If user entered inclusive prices, convert to exclusive so storage stays consistent
-    const linesForSave = pricesIncludeTax && isGst
-      ? validLines.map((l) => {
-          const rate = Number(l.tax_rate) || 0;
-          if (rate <= 0) return l;
-          const factor = 1 + rate / 100;
-          return {
-            ...l,
-            price: (Number(l.price) || 0) / factor,
-            discount_amount: l.discount_amount ? (Number(l.discount_amount) || 0) / factor : l.discount_amount,
-          };
-        })
-      : validLines;
-    const computed = computeInvoice(linesForSave, isInterState, { isGst, extraDiscount: extraDiscountValue });
-    const status = type === "quotation" ? "draft"
-      : (type === "sale_return" || type === "purchase_return") ? "paid"
-      : "unpaid";
-    const isReturn = type === "sale_return" || type === "purchase_return";
-
-    // ==== EDIT (UPDATE) PATH ====
-    if (!isNew && id && originalSnapshot) {
-      try {
-        const oldLines = originalSnapshot.lines;
-        const oldInv = originalSnapshot.invoice;
-
-        // 1. Reverse batch quantities for old batch-tracked lines
-        for (const ol of oldLines) {
-          let delta = 0;
-          if (type === "sale") delta = Number(ol.quantity);
-          else if (type === "purchase") delta = -Number(ol.quantity);
-          else if (type === "sale_return") delta = -Number(ol.quantity);
-          else if (type === "purchase_return") delta = Number(ol.quantity);
-          if (!delta) continue;
-
-          if (!ol.batch_id && ol.item_id) {
-            const { data: oldItem } = await supabase
-              .from("items")
-              .select("id, name, unit, type, is_batch_tracked, current_stock")
-              .eq("id", ol.item_id)
-              .maybeSingle();
-            if ((oldItem as any)?.type === "product" && !(oldItem as any)?.is_batch_tracked) {
-              const nextStock = Number((oldItem as any).current_stock ?? 0) + delta;
-              if (nextStock < 0) {
-                throw new Error(`Out of stock: ${(oldItem as any).name} has only ${(oldItem as any).current_stock} ${(oldItem as any).unit ?? ""} in stock.`);
-              }
-              const { error: reverseErr } = await supabase
-                .from("items")
-                .update({ current_stock: nextStock } as any)
-                .eq("id", ol.item_id);
-              if (reverseErr) throw reverseErr;
-            }
-            continue;
-          }
-
-          if (!ol.batch_id) continue;
-          const { data: b } = await supabase.from("batches").select("quantity").eq("id", ol.batch_id).single();
-          if (b) {
-            await supabase.from("batches").update({ quantity: Number((b as any).quantity) + delta }).eq("id", ol.batch_id);
-          }
-        }
-
-        // 2. Delete stock_movements that reference the old invoice lines
-        const oldLineIds = oldLines.map((l) => l.id).filter(Boolean);
-        if (oldLineIds.length) {
-          await supabase.from("stock_movements").delete().in("reference_id", oldLineIds);
-        }
-
-        // 3. Delete old invoice_items
-        await supabase.from("invoice_items").delete().eq("invoice_id", id);
-
-        // 4. Insert new invoice_items
-        const liRes = await supabase.from("invoice_items").insert(
-          computed.lines.map((l) => ({
-            invoice_id: id,
-            item_id: l.item_id,
-            item_name: l.item_name,
-            hsn_code: l.hsn_code,
-            quantity: l.quantity,
-            unit: l.unit,
-            price: l.price,
-            discount_pct: l.discount_pct,
-            tax_rate: l.tax_rate,
-            batch_id: l.batch_id ?? null,
-            taxable_amount: l.taxable_amount,
-            tax_amount: l.tax_amount,
-            total_amount: l.total_amount,
-          }))
-        ).select("id, batch_id, quantity");
-        if (liRes.error) {
-          await supabase.from("invoice_items").insert(oldLines as any);
-          throw liRes.error;
-        }
-
-        // 4b. Step 1 reversed the old purchase quantities off each batch, but the
-        // insert above never credits the new quantities back — the DB trigger
-        // deliberately skips stock additions for purchase-type invoice_items (a
-        // freshly created batch already carries its received qty). Credit lines
-        // that reference an existing batch explicitly so edits don't lose stock.
-        // Goes through the credit_batch_quantity RPC (not a plain update) so the
-        // resulting Stock History row is tagged with this invoice line.
-        if (type === "purchase") {
-          for (const l of (liRes.data as any[]) ?? []) {
-            if (!l.batch_id || freshBatchIdsRef.current.has(l.batch_id)) continue;
-            const qty = Number(l.quantity) || 0;
-            if (qty <= 0) continue;
-            await supabase.rpc("credit_batch_quantity", { p_batch_id: l.batch_id, p_qty: qty, p_reference_id: l.id });
-          }
-        }
-
-        // 5. Recompute paid/balance/status from existing payments
-        const { data: pays } = await supabase.from("payments")
-          .select("amount").eq("invoice_id", id).is("deleted_at", null);
-        const paid = ((pays as any[]) ?? []).reduce((s, p) => s + Number(p.amount || 0), 0);
-        const balance = Math.max(0, Number(computed.total_amount) - paid);
-        const newStatus: any = type === "quotation" ? "draft"
-          : isReturn ? "paid"
-          : balance <= 0 ? "paid"
-          : paid > 0 ? "partial"
-          : "unpaid";
-
-        // 6. Update invoice header
-        const updRes = await supabase.from("invoices").update({
-          party_id: partyId || null,
-          status: newStatus,
-          invoice_number: number.trim(),
-          invoice_date: date,
-          due_date: dueDate || null,
-          received_date: (type === "purchase" || type === "purchase_return") ? (receivedDate || null) : null,
-          party_state_code: party?.state_code ?? null,
-          is_inter_state: isInterState,
-          is_gst: isGst,
-          is_online_order: type === "sale" ? isOnlineOrder : false,
-          branch_id: type === "sale" && isOnlineOrder && branchId ? branchId : null,
-          extra_discount: computed.extra_discount,
-          subtotal: computed.subtotal,
-          discount_amount: computed.discount_amount,
-          tax_amount: computed.tax_amount,
-          cgst_amount: computed.cgst_amount,
-          sgst_amount: computed.sgst_amount,
-          igst_amount: computed.igst_amount,
-          round_off: computed.round_off,
-          total_amount: computed.total_amount,
-          paid_amount: paid,
-          balance_amount: isReturn ? 0 : balance,
-          notes: notes.trim() || null,
-          terms: terms.trim() || null,
-        }).eq("id", id);
-        if (updRes.error) throw updRes.error;
-
-        // 6b. Record loyalty points redeemed during this edit. The "Redeem points"
-        // widget is available whenever the invoice isn't read-only (including
-        // edits, not just brand-new sales) — without this, redeeming points on an
-        // edit reduced the total but never actually debited the customer's points
-        // balance, letting the same points be redeemed again indefinitely.
-        // Points earned are intentionally not re-recorded here to avoid granting
-        // them again on every subsequent edit of the same invoice.
-        if (type === "sale" && partyId && loyaltyCfg?.enabled && redeemPoints > 0) {
-          await omInsert("loyalty_transactions", {
-            business_id: current.id,
-            party_id: partyId,
-            invoice_id: id,
-            points_earned: 0,
-            points_redeemed: Number(redeemPoints) || 0,
-            redeem_value: redeemValue,
-            created_by: user.id,
-          });
-        }
-
-        // 7. Build diff & write audit log
-        const diff = buildInvoiceDiff(
-          oldInv, oldLines,
-          {
-            invoice_number: number.trim(), invoice_date: date, due_date: dueDate || null,
-            party_id: partyId || null, is_gst: isGst, notes: notes.trim() || null,
-            terms: terms.trim() || null, total_amount: computed.total_amount,
-            subtotal: computed.subtotal, discount_amount: computed.discount_amount,
-            tax_amount: computed.tax_amount, extra_discount: computed.extra_discount,
-          },
-          computed.lines
-        );
-        const summary = summarizeDiff(diff);
-        await supabase.from("invoice_edit_log").insert({
-          invoice_id: id,
-          business_id: current.id,
-          edited_by: user.id,
-          changes: diff,
-          summary,
-        });
-
-        setSaving(false);
-        toast.success(`${meta.label} updated`);
-        await loadHistory();
-        // refresh snapshot
-        const [invFresh, lnFresh] = await Promise.all([
-          supabase.from("invoices").select("*").eq("id", id).single(),
-          supabase.from("invoice_items").select("*").eq("invoice_id", id),
-        ]);
-        if (invFresh.data) setOriginalSnapshot({ invoice: invFresh.data, lines: (lnFresh.data as any[]) ?? [] });
-        setReadOnly(true);
-        return;
-      } catch (e: any) {
-        setSaving(false);
-        toast.error(e?.message || "Failed to update invoice");
-        return;
+    try {
+      if (!number.trim()) throw new Error("Invoice number is required");
+      if (!partyId && type !== "quotation" && type !== "sale_return") throw new Error("Select a party");
+      const validLines = lines.filter(l => l.item_name.trim());
+      if (!validLines.length || validLines.some(l => !Number.isFinite(Number(l.quantity)) || Number(l.quantity) <= 0 || !Number.isFinite(Number(l.price)) || Number(l.price)<0)) throw new Error("Add valid items, quantities and prices");
+      for (const l of validLines) {
+        const item = items.find(x => x.id === l.item_id);
+        if (type !== "non_inventory" && type !== "quotation" && item?.is_batch_tracked && !l.batch_id) throw new Error(`Pick a batch for "${item.name}"`);
       }
-    }
-
-    // ==== NEW INVOICE PATH ====
-    // Compute payment split totals (only for sale/purchase — returns are auto-paid; quotations have no payment)
-    const supportsPayment = type === "sale" || type === "purchase";
-    const cashSplitTotal = supportsPayment
-      ? paySplits.filter((s) => s.method !== "credit").reduce((s, x) => s + (Number(x.amount) || 0), 0)
-      : 0;
-    const newPaid = isReturn ? computed.total_amount
-      : supportsPayment ? Math.min(cashSplitTotal, computed.total_amount)
-      : 0;
-    const newBalance = isReturn ? 0 : Math.max(0, computed.total_amount - newPaid);
-    let newStatus: any = status;
-    if (supportsPayment) {
-      newStatus = newBalance <= 0 ? "paid" : newPaid > 0 ? "partial" : "unpaid";
-    }
-
-    const invoiceId = crypto.randomUUID();
-    // NOTE: We intentionally insert the invoice with paid_amount=0 / balance=total
-    // for sale & purchase. The `apply_payment_to_invoice` trigger will fire when
-    // we insert the payment rows below and correctly compute paid/balance/status.
-    // Setting paid_amount=newPaid here AND inserting payment rows caused the
-    // trigger to double-count (paid_amount = newPaid + payment.amount), which
-    // pushed balance_amount negative and mis-labelled partial-credit invoices
-    // as fully paid — hiding the credit portion from To Receive / Outstanding.
-    const seedPaid = isReturn ? computed.total_amount : 0;
-    const seedBalance = isReturn ? 0 : computed.total_amount;
-    const seedStatus: any = supportsPayment ? "unpaid" : newStatus;
-
-    const invRes = await omInsert("invoices", {
-      id: invoiceId,
-      business_id: current.id,
-      party_id: partyId || null,
-      type,
-      status: seedStatus,
-      invoice_number: number.trim(),
-      invoice_date: date,
-      due_date: dueDate || null,
-      received_date: (type === "purchase" || type === "purchase_return") ? (receivedDate || null) : null,
-      source_invoice_id: type === "sale_return" ? (sourceLoaded?.id ?? null) : null,
-      party_state_code: party?.state_code ?? null,
-      is_inter_state: isInterState,
-      is_gst: isGst,
-      is_online_order: type === "sale" ? isOnlineOrder : false,
-      branch_id: type === "sale" && isOnlineOrder && branchId ? branchId : null,
-      extra_discount: computed.extra_discount,
-      subtotal: computed.subtotal,
-      discount_amount: computed.discount_amount,
-      tax_amount: computed.tax_amount,
-      cgst_amount: computed.cgst_amount,
-      sgst_amount: computed.sgst_amount,
-      igst_amount: computed.igst_amount,
-      round_off: computed.round_off,
-      total_amount: computed.total_amount,
-      paid_amount: seedPaid,
-      balance_amount: seedBalance,
-      notes: notes.trim() || null,
-      terms: terms.trim() || null,
-      created_by: user.id,
-    });
-
-
-
-    if (invRes.error) {
-      setSaving(false);
-      const err = invRes.error as any;
-      toast.error(err?.code === "23505" ? `${meta.label} number "${number.trim()}" already exists` : err?.message ?? "Failed");
-      return;
-    }
-
-    const liRes = await omInsertMany("invoice_items",
-      computed.lines.map((l) => ({
-        invoice_id: invoiceId,
-        item_id: l.item_id,
-        item_name: l.item_name,
-        hsn_code: l.hsn_code,
-        quantity: l.quantity,
-        unit: l.unit,
-        price: l.price,
-        discount_pct: l.discount_pct,
-        tax_rate: l.tax_rate,
-        batch_id: l.batch_id ?? null,
-        taxable_amount: l.taxable_amount,
-        tax_amount: l.tax_amount,
-        total_amount: l.total_amount,
-      }))
-    );
-    if (liRes.error) {
-      await supabase.from("invoices").delete().eq("id", invoiceId);
-      setSaving(false);
-      toast.error((liRes.error as any).message ?? "Failed");
-      return;
-    }
-
-    // The DB trigger deliberately skips adding stock for purchase-type invoice_items
-    // (a freshly created batch already carries its received qty — see saveNewBatch).
-    // For lines that restock an existing batch instead, credit them explicitly here.
-    // Goes through the credit_batch_quantity RPC (not a plain update) so the
-    // resulting Stock History row is tagged with this invoice line.
-    if (type === "purchase") {
-      for (const l of (liRes.data as any[]) ?? []) {
-        if (!l.batch_id || freshBatchIdsRef.current.has(l.batch_id)) continue;
-        const qty = Number(l.quantity) || 0;
-        if (qty <= 0) continue;
-        await supabase.rpc("credit_batch_quantity", { p_batch_id: l.batch_id, p_qty: qty, p_reference_id: l.id });
+      // Friendly client guard; the transaction also locks and verifies stock.
+      if (type === "sale" || type === "purchase_return") {
+        const ids = [...new Set(validLines.flatMap(l => l.item_id ? [l.item_id] : []))];
+        const {data:fresh,error} = ids.length ? await allRows(supabase.from("items").select("id,name,type,current_stock,is_batch_tracked").eq("business_id",current.id).in("id",ids)) : {data:[],error:null};
+        if (error) throw error;
+        for (const item of fresh ?? []) {
+          if (item.type !== "product" || item.is_batch_tracked) continue;
+          const needed = validLines.filter(l => l.item_id === item.id).reduce((sum,l)=>sum+Number(l.quantity),0);
+          const previous = originalSnapshot?.lines.filter(l=>l.item_id===item.id).reduce((sum,l)=>sum+Number(l.quantity),0) ?? 0;
+          if (needed > Number(item.current_stock)+previous) throw new Error(`Out of stock: ${item.name}`);
+        }
       }
-    }
-
-    // Net this return against the original sale's balance — otherwise the
-    // return is recorded as fully settled on its own, but the original sale's
-    // balance_amount never drops, overstating receivables (Dashboard/Customer
-    // outstanding) by the returned amount.
-    if (type === "sale_return" && sourceLoaded?.id) {
-      const { data: src } = await supabase.from("invoices")
-        .select("total_amount, paid_amount, balance_amount").eq("id", sourceLoaded.id).single();
-      if (src) {
-        const s = src as any;
-        const newSrcBalance = Math.max(0, Number(s.balance_amount) - computed.total_amount);
-        const newSrcStatus = newSrcBalance <= 0 ? "paid" : Number(s.paid_amount) > 0 ? "partial" : "unpaid";
-        await supabase.from("invoices")
-          .update({ balance_amount: newSrcBalance, status: newSrcStatus })
-          .eq("id", sourceLoaded.id);
-      }
-    }
-
-    // Loyalty: record earned + redeemed for sale
-    if (type === "sale" && partyId && loyaltyCfg?.enabled && (earnedPoints > 0 || redeemPoints > 0)) {
-      await omInsert("loyalty_transactions", {
-        business_id: current.id,
-        party_id: partyId,
-        invoice_id: invoiceId,
-        points_earned: earnedPoints,
-        points_redeemed: Number(redeemPoints) || 0,
-        redeem_value: redeemValue,
-        created_by: user.id,
+      const linesForSave = validLines.map(l => {
+        const factor = pricesIncludeTax && isGst ? 1 + Number(l.tax_rate || 0)/100 : 1;
+        return {...l,id:l.id ?? crypto.randomUUID(),price:Number(l.price)/factor,discount_amount:Number(l.discount_amount || 0)/factor};
       });
-    }
-
-    // Record payment rows (non-credit splits only) for new sale/purchase
-    if (supportsPayment && newPaid > 0) {
-      let remaining = computed.total_amount;
-      const direction = type === "sale" ? "in" : "out";
-      const payRows = [] as any[];
-      for (const s of paySplits) {
-        if (s.method === "credit") continue;
-        const amt = Math.min(Number(s.amount) || 0, remaining);
-        if (amt <= 0) continue;
-        remaining -= amt;
-        payRows.push({
-          business_id: current.id, party_id: partyId || null, invoice_id: invoiceId,
-          direction, method: s.method, amount: amt,
-          payment_date: date,
-          notes: `Recorded with invoice · ${PAY_LABEL[s.method]}`,
-          created_by: user.id,
-        });
-        if (remaining <= 0) break;
-      }
-      if (payRows.length) await omInsertMany("payments", payRows);
-    }
-
-    setSaving(false);
-    toast.success(invRes.queued || liRes.queued ? `${meta.label} saved offline — will sync` : `${meta.label} saved`);
-    navigate(`/${meta.route}`);
+      const invoice = {
+        id:isNew ? draftIdRef.current : id, business_id:current.id, party_id:partyId || null, type,
+        invoice_number:number.trim(),auto_number:isNew,invoice_date:date,due_date:dueDate || null,
+        received_date:receivedDate || null,is_gst:isGst,is_online_order:type==="sale" && isOnlineOrder,
+        branch_id:type==="sale" && isOnlineOrder ? branchId || null : null,
+        source_invoice_id:sourceLoaded?.id ?? null, extra_discount:Math.max(0,extraDiscountValue-redeemValue),
+        pos_session_id:searchParams.get("pos_session_id") || originalSnapshot?.invoice.pos_session_id || null,
+        channel:searchParams.get("pos_session_id") ? "pos" : undefined,
+        loyalty_redeemed_points:redeemPoints,notes:notes.trim() || null,terms:terms.trim() || null,
+      };
+      const payments = isNew && type !== "quotation" ? paySplits.filter(s=>s.method!=="credit" && Number(s.amount)>0).map(s=>({id:crypto.randomUUID(),method:s.method,amount:Number(s.amount)})) : [];
+      const usedBatches = new Set(linesForSave.map(l=>l.batch_id));
+      const result = await billingTransaction("save_invoice",current.id,{
+        p_operation_id:operationIdRef.current,p_invoice:jsonValue(invoice),p_lines:jsonValue(linesForSave),
+        p_payments:jsonValue(payments),p_batches:jsonValue(pendingBatchesRef.current.filter(b=>usedBatches.has(b.id as string))),
+        p_expected_updated_at:isNew ? null : originalSnapshot?.invoice.updated_at,
+      },invoice);
+      if (result.error) throw result.error;
+      toast.success(result.queued ? `${meta.label} saved offline — pending server validation` : `${meta.label} saved`);
+      navigate(`/${meta.route}`);
+    } catch (error) {
+      toast.error((error as Error).message || "Unable to save invoice");
+    } finally { savingRef.current=false; setSaving(false); }
   };
-
 
   const downloadPdf = async () => {
     if (!current) return;
@@ -1078,13 +699,13 @@ export default function InvoiceEditor({ type }: Props) {
         name: current.name,
         gstin: current.gstin, phone: current.phone, email: current.email,
         address: current.address, state: current.state, state_code: current.state_code,
-        logo_url: (current as any).logo_url,
+        logo_url: (current).logo_url,
       },
       party ? {
         name: party.name, gstin: party.gstin, state_code: party.state_code,
-        billing_address: (party as any).billing_address ?? null,
-        phone: (party as any).phone ?? null, email: (party as any).email ?? null,
-        state: (party as any).state ?? null,
+        billing_address: (party).billing_address ?? null,
+        phone: (party).phone ?? null, email: (party).email ?? null,
+        state: (party).state ?? null,
       } : null,
       {
         type, invoice_number: number, invoice_date: date, due_date: dueDate || null,
@@ -1099,11 +720,11 @@ export default function InvoiceEditor({ type }: Props) {
         template: design.template, accent_color: design.accent_color,
         footer_text: design.footer_text, signature_label: design.signature_label,
         show_signature: design.show_signature, show_amount_in_words: design.show_amount_in_words,
-        upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name,
-        show_upi_qr: (design as any).show_upi_qr,
+        upi_id: (design).upi_id, upi_payee_name: (design).upi_payee_name,
+        show_upi_qr: (design).show_upi_qr,
       } : undefined,
     );
-    const safeNum = number.replace(/[\/\\]/g, "-");
+    const safeNum = number.replace(/[/\\]/g, "-");
     const label = type === "sale" ? "Invoice" : type === "purchase" ? "Purchase" : type === "sale_return" ? "SalesReturn" : type === "purchase_return" ? "PurchaseReturn" : type === "quotation" ? "Quotation" : type === "credit_note" ? "CreditNote" : "DebitNote";
     await savePdf(doc, `${label}-${safeNum || "Document"}.pdf`);
   };
@@ -1120,7 +741,7 @@ export default function InvoiceEditor({ type }: Props) {
         invoice_number: number,
         invoice_date: new Date(date).toLocaleString(),
         party_name: party?.name ?? null,
-        party_phone: (party as any)?.phone ?? null,
+        party_phone: (party)?.phone ?? null,
         cashier: user?.email ?? null,
         lines: validLines.map((l) => ({
           item_name: l.item_name, quantity: l.quantity, unit: l.unit,
@@ -1138,9 +759,9 @@ export default function InvoiceEditor({ type }: Props) {
         balance_amount: originalSnapshot ? Number(originalSnapshot.invoice.balance_amount) || 0 : 0,
         payment_method: null,
       },
-      design ? { upi_id: (design as any).upi_id, upi_payee_name: (design as any).upi_payee_name, show_upi_qr: (design as any).show_upi_qr } : undefined,
+      design ? { upi_id: (design).upi_id, upi_payee_name: (design).upi_payee_name, show_upi_qr: (design).show_upi_qr } : undefined,
     );
-    const safeNum = number.replace(/[\/\\]/g, "-");
+    const safeNum = number.replace(/[/\\]/g, "-");
     await savePdf(receipt, `POS-${safeNum || "Receipt"}.pdf`);
   };
 
@@ -1220,8 +841,10 @@ export default function InvoiceEditor({ type }: Props) {
                 setNotes(i.notes ?? "");
                 setTerms(i.terms ?? "");
                 setIsGst(i.is_gst !== false);
-                setExtraDiscount(String(i.extra_discount ?? 0));
-                setLines(ls.length ? ls.map((l: any) => ({
+                setExtraDiscount(String(Number(i.extra_discount ?? 0) - Number(i.loyalty_discount ?? 0)));
+      setRedeemPoints(Number(i.loyalty_redeemed_points ?? 0));
+      if (i.source_invoice_id) setSourceLoaded({id:i.source_invoice_id,number:"Original invoice"});
+                setLines(ls.length ? ls.map((l) => ({
                   item_id: l.item_id, item_name: l.item_name, hsn_code: l.hsn_code,
                   quantity: Number(l.quantity), unit: l.unit, price: Number(l.price),
                   discount_pct: Number(l.discount_pct), tax_rate: Number(l.tax_rate),
@@ -1389,8 +1012,8 @@ export default function InvoiceEditor({ type }: Props) {
         {/* Mobile: stacked cards per line */}
         <div className="sm:hidden divide-y">
           {totals.lines.map((l, idx) => {
-            const it = l.item_id ? items.find((x: any) => x.id === l.item_id) : null;
-            const allowDec = it ? !!(it as any).allow_decimal_qty : true;
+            const it = l.item_id ? items.find((x) => x.id === l.item_id) : null;
+            const allowDec = it ? !!(it).allow_decimal_qty : true;
             const mode = l.discount_mode ?? "pct";
             const discVal = mode === "amt" ? (l.discount_amount ?? 0) : (l.discount_pct ?? 0);
             const itemBatches = it?.is_batch_tracked ? batches.filter(b => b.item_id === it.id) : [];
@@ -1604,7 +1227,7 @@ export default function InvoiceEditor({ type }: Props) {
                         </Button>
                       </div>
                       {(() => {
-                        const it = l.item_id ? items.find((x: any) => x.id === l.item_id) : null;
+                        const it = l.item_id ? items.find((x) => x.id === l.item_id) : null;
                         if (it?.unit_size == null || !(Number(it.unit_size) > 0)) return null;
                         return <div className="text-xs text-muted-foreground">{Number(it.unit_size)} {(it.unit || "").toUpperCase()}</div>;
                       })()}
@@ -1661,8 +1284,8 @@ export default function InvoiceEditor({ type }: Props) {
                 </TableCell>
                 <TableCell>
                   {readOnly ? <span className="num">{l.quantity}</span> : (() => {
-                    const it = l.item_id ? items.find((x: any) => x.id === l.item_id) : null;
-                    const allowDec = it ? !!(it as any).allow_decimal_qty : true;
+                    const it = l.item_id ? items.find((x) => x.id === l.item_id) : null;
+                    const allowDec = it ? !!(it).allow_decimal_qty : true;
                     return (
                       <Input
                         className="h-8 num"
@@ -1855,10 +1478,10 @@ export default function InvoiceEditor({ type }: Props) {
               <Row label="Total" value={formatINR(totals.total_amount)} bold />
             </div>
 
-            {isNew && !readOnly && (type === "sale" || type === "purchase") && (
+            {isNew && !readOnly && (type === "sale" || type === "purchase" || type === "non_inventory" || type === "sale_return") && (
               <div className="border-t pt-3 mt-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Payment received now</Label>
+                  <Label className="text-sm font-medium">{type==="sale_return" ? "Refund paid now (up to the refundable amount)" : type==="purchase" ? "Payment made now" : "Payment received now"}</Label>
                   <button
                     type="button"
                     className="text-xs text-primary hover:underline"
@@ -1910,7 +1533,7 @@ export default function InvoiceEditor({ type }: Props) {
       <ItemPickerDialog
         open={pickerOpen}
         onOpenChange={(v) => { setPickerOpen(v); if (!v) setPickerReplaceIdx(null); }}
-        items={items as any}
+        items={items}
         mode={pickerReplaceIdx !== null ? "single" : "multi"}
         onPick={(picks) => {
           if (pickerReplaceIdx !== null) {
@@ -2127,42 +1750,43 @@ const HEADER_FIELDS: Array<{ key: string; label: string; money?: boolean }> = [
   { key: "total_amount", label: "Total", money: true },
 ];
 
-function fmtVal(v: any) {
+function fmtVal(v: unknown) {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "boolean") return v ? "Yes" : "No";
   return String(v);
 }
 
+type DiffLine=InvoiceLineInput & {total_amount?:number};
 function buildInvoiceDiff(
-  oldInv: any, oldLines: any[],
-  newInv: Record<string, any>, newLines: any[]
+  oldInv: Record<string,unknown>, oldLines: DiffLine[],
+  newInv: Record<string,unknown>, newLines: DiffLine[]
 ) {
-  const header: Record<string, { old: any; new: any; label: string; money?: boolean }> = {};
+  const header: Record<string, { old: unknown; new: unknown; label: string; money?: boolean }> = {};
   for (const f of HEADER_FIELDS) {
     const a = oldInv?.[f.key] ?? null;
     const b = newInv[f.key] ?? null;
-    const norm = (x: any) => (x === null || x === undefined ? null : typeof x === "number" ? Number(x) : x);
+    const norm = (x: unknown) => (x === null || x === undefined ? null : typeof x === "number" ? Number(x) : x);
     if (norm(a) !== norm(b) && !(a == null && b == null)) {
       header[f.key] = { old: a, new: b, label: f.label, money: f.money };
     }
   }
 
-  const keyOf = (l: any) => (l.item_id || l.item_name || "").toString();
-  const oldMap = new Map<string, any>();
+  const keyOf = (l: DiffLine) => l.id || [l.item_id,l.batch_id,l.item_name].join("|");
+  const oldMap = new Map<string, DiffLine>();
   for (const l of oldLines) oldMap.set(keyOf(l), l);
-  const newMap = new Map<string, any>();
+  const newMap = new Map<string, DiffLine>();
   for (const l of newLines) newMap.set(keyOf(l), l);
 
-  const added: any[] = [];
-  const removed: any[] = [];
-  const modified: any[] = [];
+  const added: Array<{item_name:string;quantity:number;price:number;total:number}> = [];
+  const removed: typeof added = [];
+  const modified: Array<{item_name:string;fields:Record<string,{old:unknown;new:unknown}>}> = [];
 
   for (const [k, n] of newMap.entries()) {
     const o = oldMap.get(k);
     if (!o) {
       added.push({ item_name: n.item_name, quantity: Number(n.quantity), price: Number(n.price), total: Number(n.total_amount) });
     } else {
-      const fields: Record<string, { old: any; new: any }> = {};
+      const fields: Record<string, { old: unknown; new: unknown }> = {};
       if (Number(o.quantity) !== Number(n.quantity)) fields.quantity = { old: Number(o.quantity), new: Number(n.quantity) };
       if (Number(o.price) !== Number(n.price)) fields.price = { old: Number(o.price), new: Number(n.price) };
       if (Number(o.discount_pct) !== Number(n.discount_pct)) fields.discount_pct = { old: Number(o.discount_pct), new: Number(n.discount_pct) };
@@ -2178,7 +1802,7 @@ function buildInvoiceDiff(
   return { header, lines: { added, removed, modified } };
 }
 
-function summarizeDiff(diff: any): string {
+function summarizeDiff(diff: ReturnType<typeof buildInvoiceDiff>): string {
   const parts: string[] = [];
   const hKeys = Object.keys(diff.header || {});
   if (hKeys.length) parts.push(`${hKeys.length} field${hKeys.length === 1 ? "" : "s"} changed`);
@@ -2191,7 +1815,7 @@ function summarizeDiff(diff: any): string {
   return parts.join(" · ") || "No changes";
 }
 
-function HistoryDiffView({ changes }: { changes: any }) {
+function HistoryDiffView({ changes }: { changes: ReturnType<typeof buildInvoiceDiff> }) {
   const header = changes?.header ?? {};
   const lines = changes?.lines ?? { added: [], removed: [], modified: [] };
   const hKeys = Object.keys(header);
@@ -2216,7 +1840,7 @@ function HistoryDiffView({ changes }: { changes: any }) {
       {lines.added?.length > 0 && (
         <div>
           <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Added lines</div>
-          {lines.added.map((l: any, i: number) => (
+          {lines.added.map((l, i: number) => (
             <div key={i} className="text-success">+ {l.item_name} × {l.quantity} @ {l.price}</div>
           ))}
         </div>
@@ -2224,7 +1848,7 @@ function HistoryDiffView({ changes }: { changes: any }) {
       {lines.removed?.length > 0 && (
         <div>
           <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Removed lines</div>
-          {lines.removed.map((l: any, i: number) => (
+          {lines.removed.map((l, i: number) => (
             <div key={i} className="text-danger">− {l.item_name} × {l.quantity} @ {l.price}</div>
           ))}
         </div>
@@ -2232,10 +1856,10 @@ function HistoryDiffView({ changes }: { changes: any }) {
       {lines.modified?.length > 0 && (
         <div>
           <div className="font-medium text-muted-foreground uppercase text-[10px] tracking-wide">Modified lines</div>
-          {lines.modified.map((l: any, i: number) => (
+          {lines.modified.map((l, i: number) => (
             <div key={i}>
               <div className="font-medium">{l.item_name}</div>
-              {Object.entries(l.fields).map(([fk, fv]: any) => (
+              {Object.entries(l.fields).map(([fk, fv]) => (
                 <div key={fk} className="ml-3 flex items-baseline gap-2">
                   <span className="text-muted-foreground">{fk}:</span>
                   <span className="line-through text-danger">{fmtVal(fv.old)}</span>

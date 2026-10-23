@@ -1,0 +1,32 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID as uuid} from 'node:crypto';
+import {Client} from 'pg';
+import {database,asUser} from './database-helpers.mjs';
+
+test('concurrent requests cannot oversell stock or activate a payment twice',{skip:!process.env.BILLLOOK_TEST_POSTGRES},async t=>{
+  const db=await database();
+  const clients=[new Client({connectionString:db.connectionString}),new Client({connectionString:db.connectionString})];
+  await Promise.all(clients.map(client=>client.connect()));
+  const sessions=clients.map(client=>({exec:sql=>client.query(sql),query:(sql,params)=>client.query(sql,params)}));
+  t.after(async()=>{await Promise.all(clients.map(client=>client.end()));await db.close();});
+  const owner=uuid(),biz=uuid(),item=uuid();
+  await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2)',[owner,'concurrency@example.invalid']);
+  await db.query("INSERT INTO businesses(id,owner_id,name) VALUES($1,$2,'Concurrency shop')",[biz,owner]);
+  await db.query("INSERT INTO items(id,business_id,name,opening_stock) VALUES($1,$2,'Last stock',5)",[item,biz]);
+  const invoice=()=>({id:uuid(),business_id:biz,type:'sale',invoice_number:uuid(),invoice_date:'2026-10-23',is_gst:false});
+  const lines=()=>JSON.stringify([{id:uuid(),item_id:item,item_name:'Last stock',quantity:4,price:100,unit:'pcs'}]);
+  const results=await Promise.allSettled(sessions.map(client=>asUser(client,owner,"SELECT save_invoice($1,$2,$3)",[uuid(),JSON.stringify(invoice()),lines()])));
+  assert.equal(results.filter(result=>result.status==='fulfilled').length,1);
+  assert.match(results.find(result=>result.status==='rejected').reason.message,/out of stock/i);
+  assert.equal(Number((await db.query('SELECT current_stock FROM items WHERE id=$1',[item])).rows[0].current_stock),1);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM invoices WHERE business_id=$1',[biz])).rows[0].n),1);
+  const plan=uuid();
+  await db.query("INSERT INTO subscription_plans(id,code,name,price_inr,duration_days) VALUES($1,'concurrent','Concurrent',499,30)",[plan]);
+  await db.query("INSERT INTO subscription_orders(business_id,plan_id,cf_order_id,order_amount,mode) VALUES($1,$2,'concurrent-order',499,'production')",[biz,plan]);
+  const activations=await Promise.all(clients.map(client=>client.query("SELECT process_subscription_payment('concurrent-order','payment-id','PAID',499,'INR','upi','{}') result")));
+  assert.equal(activations.filter(result=>result.rows[0].result.already_processed===false).length,1);
+  const duration=await db.query('SELECT extract(epoch from (expires_at-started_at))/86400 days FROM business_subscriptions WHERE business_id=$1',[biz]);
+  assert.ok(Math.abs(Number(duration.rows[0].days)-30)<0.001);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM business_subscriptions WHERE business_id=$1',[biz])).rows[0].n),1);
+});

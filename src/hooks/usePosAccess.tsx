@@ -25,13 +25,10 @@ export function usePosAccess(): PosAccess {
       setPosEnabled(false); setHasPosAccess(false); setLoading(false); return;
     }
     setLoading(true);
-    const [feat, access] = await Promise.all([
-      supabase.from("business_features").select("pos_enabled").eq("business_id", current.id).maybeSingle(),
-      supabase.from("pos_user_access").select("id").eq("business_id", current.id).eq("user_id", user.id).maybeSingle(),
-    ]);
-    setPosEnabled(!!feat.data?.pos_enabled);
-    // Owners & admins implicitly have access; staff need explicit grant
-    setHasPosAccess(isOwner || isAdmin || !!access.data);
+    const {data,error}=await supabase.rpc("business_entitlements",{p_business_id:current.id});
+    const ent=data as {modules?:string[];features?:Record<string,boolean>} | null;
+    setPosEnabled(!error && !!ent?.features?.pos);
+    setHasPosAccess(!error && !!ent?.modules?.includes("pos"));
     setLoading(false);
   };
 

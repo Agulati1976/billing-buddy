@@ -67,6 +67,19 @@ export default defineConfig(({ mode }) => ({
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
+              plugins: [{
+                cacheKeyWillBeUsed: async ({ request }) => {
+                  let userId = "anonymous";
+                  try {
+                    const token = request.headers.get("Authorization")?.split(" ")[1];
+                    const encoded = token?.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/");
+                    if (encoded) userId = JSON.parse(atob(encoded)).sub || "anonymous";
+                  } catch { /* Public responses use their own cache partition. */ }
+                  const key = new URL(request.url);
+                  key.searchParams.set("__offline_account", userId);
+                  return key.href;
+                },
+              }],
             },
           },
           {

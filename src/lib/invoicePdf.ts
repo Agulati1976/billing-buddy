@@ -224,28 +224,36 @@ export async function generateInvoicePdf(
       let h = maxH; let w = h * ratio;
       if (w > maxW) { w = maxW; h = w / ratio; }
       const ly = isBold ? 9 : isCompact ? 4 : 6;
-      try { doc.addImage(logo.data, logo.format, titleX, ly, w, h); } catch {}
+      try { doc.addImage(logo.data, logo.format, titleX, ly, w, h); } catch { /* Optional branding/barcodes must not prevent invoice generation. */ }
       nameX = titleX + w + 4;
     }
   }
 
-  // Header text
-  doc.setTextColor(titleColorWhite ? 255 : 30, titleColorWhite ? 255 : 30, titleColorWhite ? 255 : 30);
-  doc.setFont(bodyFont, "bold");
-  doc.setFontSize(isBold ? 24 : isCompact ? 14 : 18);
-  doc.text(business.name, nameX, isBold ? 16 : isCompact ? 10 : 12);
-
-  doc.setFont(bodyFont, "normal");
-  doc.setFontSize(isCompact ? 8 : 9);
-  const headerLines: string[] = [];
-  if (business.address) headerLines.push(business.address);
-  const cityLine = [business.state, business.state_code ? `State Code: ${business.state_code}` : null]
-    .filter(Boolean).join(" · ");
-  if (cityLine) headerLines.push(cityLine);
-  const contact = [business.phone, business.email].filter(Boolean).join(" · ");
-  if (contact) headerLines.push(contact);
-  if (business.gstin) headerLines.push(`GSTIN: ${business.gstin}`);
-  doc.text(headerLines, nameX, isBold ? 22 : isCompact ? 14 : 17, { maxWidth: 120 });
+  // Measure the business column before drawing; long names must not overlap the title.
+  const headerFontSize=isBold?24:isCompact?14:18;
+  const nameY=isBold?16:isCompact?10:12;
+  const nameWidth=Math.max(40,PAGE_W-MARGIN-nameX-68);
+  doc.setFont(bodyFont,"bold");doc.setFontSize(headerFontSize);
+  const businessNameLines:string[]=doc.splitTextToSize(business.name,nameWidth);
+  const nameLineHeight=headerFontSize*0.4;
+  const detailY=nameY+(businessNameLines.length-1)*nameLineHeight+5;
+  doc.setFontSize(isCompact?8:9);
+  const headerLines:string[]=[];
+  if(business.address)headerLines.push(business.address);
+  const cityLine=[business.state,business.state_code?`State Code: ${business.state_code}`:null].filter(Boolean).join(" | ");
+  if(cityLine)headerLines.push(cityLine);
+  const contact=[business.phone,business.email].filter(Boolean).join(" | ");
+  if(contact)headerLines.push(contact);
+  if(business.gstin)headerLines.push(`GSTIN: ${business.gstin}`);
+  const wrappedHeader:string[]=headerLines.flatMap(line=>doc.splitTextToSize(line,nameWidth));
+  const oldHeaderH=headerH;
+  headerH=Math.max(headerH,detailY+wrappedHeader.length*3.7+3);
+  if(titleColorWhite && headerH>oldHeaderH){doc.setFillColor(...accent);doc.rect(0,oldHeaderH,PAGE_W,headerH-oldHeaderH,"F");}
+  doc.setTextColor(titleColorWhite?255:30);
+  doc.setFont(bodyFont,"bold");doc.setFontSize(headerFontSize);
+  doc.text(businessNameLines,nameX,nameY);
+  doc.setFont(bodyFont,"normal");doc.setFontSize(isCompact?8:9);
+  doc.text(wrappedHeader,nameX,detailY);
 
   // Title (right side)
   doc.setFont(bodyFont, "bold");
@@ -329,7 +337,7 @@ export async function generateInvoicePdf(
       doc.addImage(barcodeUrl, "PNG", PAGE_W - MARGIN - bcW, y, bcW, bcH);
       y += bcH + 2;
     }
-  } catch {}
+  } catch { /* Optional branding/barcodes must not prevent invoice generation. */ }
 
 
   // Line items table
@@ -359,7 +367,7 @@ export async function generateInvoicePdf(
     headStyles: { fillColor: accent, textColor: isMinimal ? 30 : 255, fontStyle: "bold", halign: "center" },
     columnStyles: {
       0: { halign: "center", cellWidth: 8 },
-      1: { cellWidth: 50 },
+      1: { cellWidth: 48 },
       2: { halign: "center", cellWidth: 18 },
       3: { halign: "right", cellWidth: 14 },
       4: { halign: "right", cellWidth: 22 },
@@ -371,8 +379,7 @@ export async function generateInvoicePdf(
     margin: { left: MARGIN, right: MARGIN },
   });
 
-  // @ts-ignore — autotable adds lastAutoTable
-  let tableEnd: number = (doc as any).lastAutoTable?.finalY ?? y + 30;
+  const tableEnd: number = (doc as jsPDF & {lastAutoTable?:{finalY:number}}).lastAutoTable?.finalY ?? y + 30;
   let cy = tableEnd + 4;
 
   // Totals box (right)
@@ -394,6 +401,7 @@ export async function generateInvoicePdf(
   doc.setDrawColor(220);
   doc.setFillColor(248, 250, 252);
   const totalsH = totalsRows.length * 5.5 + 12;
+  if(cy+totalsH+12>doc.internal.pageSize.getHeight()-MARGIN-10){doc.addPage();cy=MARGIN;}
   doc.rect(totalsX, cy, totalsW, totalsH, "FD");
 
   let ty = cy + 5;
@@ -437,35 +445,39 @@ export async function generateInvoicePdf(
 
   // Notes & Terms
   let by = cy + totalsH + 8;
-  if (invoice.notes) {
+  if(design?.show_upi_qr && design.upi_id && Number(invoice.balance_amount)>0){
+    try{
+      if(by+42>doc.internal.pageSize.getHeight()-MARGIN-12){doc.addPage();by=MARGIN;}
+      const uri=buildUpiUri({pa:design.upi_id,pn:design.upi_payee_name || business.name,am:invoice.balance_amount,tn:`Inv ${invoice.invoice_number}`,tr:invoice.invoice_number});
+      const qr=await QRCode.toDataURL(uri,{margin:1,width:256});
+      doc.addImage(qr,"PNG",MARGIN,by,30,30);
+      doc.setFontSize(9);doc.setTextColor(30);
+      doc.text(`Pay outstanding ${formatINR(invoice.balance_amount ?? 0)} via UPI`,MARGIN+34,by+8);
+      doc.text(design.upi_id,MARGIN+34,by+14,{maxWidth:PAGE_W-MARGIN*2-34});
+      by+=38;
+    }catch{ /* A QR encoding failure must not discard the saved invoice. */ }
+  }
+  const section=(heading:string,text:string)=>{
+    if(by+12>doc.internal.pageSize.getHeight()-MARGIN-12){doc.addPage();by=MARGIN;}
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(30);
-    doc.text("Notes", MARGIN, by);
+    doc.text(heading, MARGIN, by);by+=4;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(80);
-    const noteLines = doc.splitTextToSize(invoice.notes, PAGE_W - MARGIN * 2);
-    doc.text(noteLines, MARGIN, by + 4);
-    by += 4 + noteLines.length * 4 + 4;
-  }
-  if (invoice.terms) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(30);
-    doc.text("Terms & Conditions", MARGIN, by);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    const tLines = doc.splitTextToSize(invoice.terms, PAGE_W - MARGIN * 2);
-    doc.text(tLines, MARGIN, by + 4);
-    by += 4 + tLines.length * 4 + 4;
-  }
+    const textLines:string[]=doc.splitTextToSize(text,PAGE_W-MARGIN*2);
+    for(const line of textLines){if(by+4>doc.internal.pageSize.getHeight()-MARGIN-12){doc.addPage();by=MARGIN;}doc.text(line,MARGIN,by);by+=4;}
+    by+=4;
+  };
+  if(invoice.notes)section("Notes",invoice.notes);
+  if(invoice.terms)section("Terms & Conditions",invoice.terms);
 
   const pageH = doc.internal.pageSize.getHeight();
 
   let sigY = by + 14;
   if (showSig) {
+    if(by+25>pageH-MARGIN){doc.addPage();by=MARGIN;}
     sigY = Math.max(by + 14, pageH - 30);
     doc.setDrawColor(180);
     doc.line(PAGE_W - MARGIN - 60, sigY, PAGE_W - MARGIN, sigY);

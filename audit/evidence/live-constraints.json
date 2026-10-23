@@ -1,0 +1,542 @@
+[
+  {
+    "conname": "admin_audit_log_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "admin_audit_log"
+  },
+  {
+    "conname": "barcode_catalog_barcode_key",
+    "contype": "u",
+    "definition": "UNIQUE (barcode)",
+    "table_name": "barcode_catalog"
+  },
+  {
+    "conname": "barcode_catalog_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "barcode_catalog"
+  },
+  {
+    "conname": "batches_item_id_batch_number_key",
+    "contype": "u",
+    "definition": "UNIQUE (item_id, batch_number)",
+    "table_name": "batches"
+  },
+  {
+    "conname": "batches_item_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+    "table_name": "batches"
+  },
+  {
+    "conname": "batches_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "batches"
+  },
+  {
+    "conname": "branches_business_id_code_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id, code)",
+    "table_name": "branches"
+  },
+  {
+    "conname": "branches_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "branches"
+  },
+  {
+    "conname": "business_features_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (business_id)",
+    "table_name": "business_features"
+  },
+  {
+    "conname": "business_subscriptions_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "business_subscriptions"
+  },
+  {
+    "conname": "business_subscriptions_business_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id)",
+    "table_name": "business_subscriptions"
+  },
+  {
+    "conname": "business_subscriptions_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "business_subscriptions"
+  },
+  {
+    "conname": "business_subscriptions_plan_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (plan_id) REFERENCES subscription_plans(id) ON DELETE SET NULL",
+    "table_name": "business_subscriptions"
+  },
+  {
+    "conname": "businesses_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "businesses"
+  },
+  {
+    "conname": "cashfree_webhook_events_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "cashfree_webhook_events"
+  },
+  {
+    "conname": "categories_business_id_name_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id, name)",
+    "table_name": "categories"
+  },
+  {
+    "conname": "categories_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "categories"
+  },
+  {
+    "conname": "expenses_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "expenses"
+  },
+  {
+    "conname": "expenses_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "expenses"
+  },
+  {
+    "conname": "invoice_edit_log_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "invoice_edit_log"
+  },
+  {
+    "conname": "invoice_edit_log_edited_by_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (edited_by) REFERENCES auth.users(id)",
+    "table_name": "invoice_edit_log"
+  },
+  {
+    "conname": "invoice_edit_log_invoice_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE",
+    "table_name": "invoice_edit_log"
+  },
+  {
+    "conname": "invoice_edit_log_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "invoice_edit_log"
+  },
+  {
+    "conname": "invoice_items_batch_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (batch_id) REFERENCES batches(id) ON DELETE SET NULL",
+    "table_name": "invoice_items"
+  },
+  {
+    "conname": "invoice_items_invoice_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE",
+    "table_name": "invoice_items"
+  },
+  {
+    "conname": "invoice_items_item_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL",
+    "table_name": "invoice_items"
+  },
+  {
+    "conname": "invoice_items_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "invoice_items"
+  },
+  {
+    "conname": "invoice_settings_business_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id)",
+    "table_name": "invoice_settings"
+  },
+  {
+    "conname": "invoice_settings_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "invoice_settings"
+  },
+  {
+    "conname": "invoices_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "invoices"
+  },
+  {
+    "conname": "invoices_business_id_type_invoice_number_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id, type, invoice_number)",
+    "table_name": "invoices"
+  },
+  {
+    "conname": "invoices_party_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE SET NULL",
+    "table_name": "invoices"
+  },
+  {
+    "conname": "invoices_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "invoices"
+  },
+  {
+    "conname": "invoices_source_invoice_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (source_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL",
+    "table_name": "invoices"
+  },
+  {
+    "conname": "items_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "items"
+  },
+  {
+    "conname": "items_catalog_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (catalog_id) REFERENCES barcode_catalog(id) ON DELETE SET NULL",
+    "table_name": "items"
+  },
+  {
+    "conname": "items_category_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL",
+    "table_name": "items"
+  },
+  {
+    "conname": "items_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "items"
+  },
+  {
+    "conname": "loyalty_settings_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (business_id)",
+    "table_name": "loyalty_settings"
+  },
+  {
+    "conname": "loyalty_transactions_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "loyalty_transactions"
+  },
+  {
+    "conname": "parties_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "parties"
+  },
+  {
+    "conname": "parties_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "parties"
+  },
+  {
+    "conname": "payment_reminders_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "payment_reminders"
+  },
+  {
+    "conname": "payments_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "payments"
+  },
+  {
+    "conname": "payments_invoice_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE SET NULL",
+    "table_name": "payments"
+  },
+  {
+    "conname": "payments_party_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (party_id) REFERENCES parties(id) ON DELETE SET NULL",
+    "table_name": "payments"
+  },
+  {
+    "conname": "payments_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "payments"
+  },
+  {
+    "conname": "platform_admins_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "platform_admins"
+  },
+  {
+    "conname": "platform_admins_user_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (user_id)",
+    "table_name": "platform_admins"
+  },
+  {
+    "conname": "pos_held_carts_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "pos_held_carts"
+  },
+  {
+    "conname": "pos_sessions_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "pos_sessions"
+  },
+  {
+    "conname": "pos_user_access_business_id_user_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id, user_id)",
+    "table_name": "pos_user_access"
+  },
+  {
+    "conname": "pos_user_access_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "pos_user_access"
+  },
+  {
+    "conname": "profiles_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "profiles"
+  },
+  {
+    "conname": "profiles_user_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (user_id)",
+    "table_name": "profiles"
+  },
+  {
+    "conname": "saas_invoices_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "saas_invoices"
+  },
+  {
+    "conname": "saas_invoices_invoice_no_key",
+    "contype": "u",
+    "definition": "UNIQUE (invoice_no)",
+    "table_name": "saas_invoices"
+  },
+  {
+    "conname": "saas_invoices_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "saas_invoices"
+  },
+  {
+    "conname": "saas_invoices_plan_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (plan_id) REFERENCES subscription_plans(id) ON DELETE SET NULL",
+    "table_name": "saas_invoices"
+  },
+  {
+    "conname": "saas_reminders_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "saas_reminders"
+  },
+  {
+    "conname": "saas_reminders_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "saas_reminders"
+  },
+  {
+    "conname": "staff_module_access_business_id_user_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id, user_id)",
+    "table_name": "staff_module_access"
+  },
+  {
+    "conname": "staff_module_access_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "staff_module_access"
+  },
+  {
+    "conname": "stock_movements_batch_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (batch_id) REFERENCES batches(id) ON DELETE SET NULL",
+    "table_name": "stock_movements"
+  },
+  {
+    "conname": "stock_movements_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "stock_movements"
+  },
+  {
+    "conname": "stock_movements_item_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+    "table_name": "stock_movements"
+  },
+  {
+    "conname": "stock_movements_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "stock_movements"
+  },
+  {
+    "conname": "stock_movements_warehouse_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL",
+    "table_name": "stock_movements"
+  },
+  {
+    "conname": "subscription_orders_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "subscription_orders"
+  },
+  {
+    "conname": "subscription_orders_cf_order_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (cf_order_id)",
+    "table_name": "subscription_orders"
+  },
+  {
+    "conname": "subscription_orders_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "subscription_orders"
+  },
+  {
+    "conname": "subscription_orders_plan_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (plan_id) REFERENCES subscription_plans(id) ON DELETE SET NULL",
+    "table_name": "subscription_orders"
+  },
+  {
+    "conname": "subscription_plans_code_key",
+    "contype": "u",
+    "definition": "UNIQUE (code)",
+    "table_name": "subscription_plans"
+  },
+  {
+    "conname": "subscription_plans_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "subscription_plans"
+  },
+  {
+    "conname": "support_staff_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "support_staff"
+  },
+  {
+    "conname": "support_staff_user_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+    "table_name": "support_staff"
+  },
+  {
+    "conname": "support_staff_user_id_key",
+    "contype": "u",
+    "definition": "UNIQUE (user_id)",
+    "table_name": "support_staff"
+  },
+  {
+    "conname": "support_ticket_messages_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "support_ticket_messages"
+  },
+  {
+    "conname": "support_ticket_messages_sender_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+    "table_name": "support_ticket_messages"
+  },
+  {
+    "conname": "support_ticket_messages_ticket_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE",
+    "table_name": "support_ticket_messages"
+  },
+  {
+    "conname": "support_tickets_assigned_to_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (assigned_to) REFERENCES auth.users(id) ON DELETE SET NULL",
+    "table_name": "support_tickets"
+  },
+  {
+    "conname": "support_tickets_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE SET NULL",
+    "table_name": "support_tickets"
+  },
+  {
+    "conname": "support_tickets_created_by_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE CASCADE",
+    "table_name": "support_tickets"
+  },
+  {
+    "conname": "support_tickets_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "support_tickets"
+  },
+  {
+    "conname": "support_tickets_ticket_number_key",
+    "contype": "u",
+    "definition": "UNIQUE (ticket_number)",
+    "table_name": "support_tickets"
+  },
+  {
+    "conname": "user_roles_business_id_fkey",
+    "contype": "f",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE",
+    "table_name": "user_roles"
+  },
+  {
+    "conname": "user_roles_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "user_roles"
+  },
+  {
+    "conname": "user_roles_user_id_business_id_role_key",
+    "contype": "u",
+    "definition": "UNIQUE (user_id, business_id, role)",
+    "table_name": "user_roles"
+  },
+  {
+    "conname": "warehouses_business_id_name_key",
+    "contype": "u",
+    "definition": "UNIQUE (business_id, name)",
+    "table_name": "warehouses"
+  },
+  {
+    "conname": "warehouses_pkey",
+    "contype": "p",
+    "definition": "PRIMARY KEY (id)",
+    "table_name": "warehouses"
+  }
+]

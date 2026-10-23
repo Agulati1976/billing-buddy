@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,30 +39,30 @@ export default function AdminShopkeepers() {
 
   const load = async () => {
     setLoading(true);
-    const { data: bizs } = await supabase
+    const { data: bizs } = await allRows(supabase
       .from("businesses")
       .select("id, name, email, phone, state, owner_id, created_at, status, deleted_at")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
 
     const ownerIds = Array.from(new Set((bizs ?? []).map((b) => b.owner_id)));
     const bizIds = (bizs ?? []).map((b) => b.id);
 
     const [profs, feats, invs] = await Promise.all([
       ownerIds.length
-        ? supabase.from("profiles").select("user_id, full_name, email").in("user_id", ownerIds)
-        : Promise.resolve({ data: [] as any[] }),
+        ? allRows(supabase.from("profiles").select("user_id, full_name, email").in("user_id", ownerIds))
+        : Promise.resolve({ data: [] }),
       bizIds.length
-        ? supabase.from("business_features").select("business_id, plan").in("business_id", bizIds)
-        : Promise.resolve({ data: [] as any[] }),
+        ? allRows(supabase.from("business_features").select("business_id, plan").in("business_id", bizIds),"business_id")
+        : Promise.resolve({ data: [] }),
       bizIds.length
-        ? supabase.from("invoices").select("business_id, total_amount, created_at").eq("type", "sale").in("business_id", bizIds)
-        : Promise.resolve({ data: [] as any[] }),
+        ? allRows(supabase.from("invoices").select("business_id, total_amount, created_at").eq("type", "sale").in("business_id", bizIds))
+        : Promise.resolve({ data: [] }),
     ]);
 
-    const pMap = new Map((profs.data ?? []).map((p: any) => [p.user_id, p]));
-    const fMap = new Map((feats.data ?? []).map((f: any) => [f.business_id, f]));
+    const pMap = new Map((profs.data ?? []).map((p) => [p.user_id, p]));
+    const fMap = new Map((feats.data ?? []).map((f) => [f.business_id, f]));
     const rev: Record<string, { revenue: number; last: string | null }> = {};
-    (invs.data ?? []).forEach((i: any) => {
+    (invs.data ?? []).forEach((i) => {
       const r = rev[i.business_id] ?? { revenue: 0, last: null };
       r.revenue += Number(i.total_amount || 0);
       if (!r.last || i.created_at > r.last) r.last = i.created_at;
@@ -68,7 +70,7 @@ export default function AdminShopkeepers() {
     });
 
     setRows(
-      (bizs ?? []).map((b: any) => ({
+      (bizs ?? []).map((b) => ({
         ...b,
         owner_name: pMap.get(b.owner_id)?.full_name ?? null,
         owner_email: pMap.get(b.owner_id)?.email ?? null,
@@ -93,7 +95,7 @@ export default function AdminShopkeepers() {
 
   const act = async (action: string, id: string, ok: string) => {
     try { await callAdminAction(action, id); toast.success(ok); load(); }
-    catch (e: any) { toast.error(e.message ?? "Failed"); }
+    catch (e: unknown) { toast.error(errorMessage(e) ?? "Failed"); }
   };
 
   return (

@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omDelete } from "@/lib/offlineMutate";
@@ -32,6 +33,7 @@ export interface Party {
   state_code: string | null;
   opening_balance: number;
   notes: string | null;
+  supplies?: string | null;
 }
 
 export default function Parties({ type }: { type: "customer" | "supplier" }) {
@@ -47,18 +49,18 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
   const load = async () => {
     if (!current) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await allRows(supabase
       .from("parties")
       .select("*")
       .eq("business_id", current.id)
       .eq("type", type)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
     if (error) toast.error(error.message);
     else setRows((data ?? []) as Party[]);
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [current?.id, type]);
+  useEffect(() => { load();   }, [current?.id, type]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -71,7 +73,7 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
   const handleDelete = async () => {
     if (!toDelete) return;
     const res = await omDelete("parties", { column: "id", value: toDelete.id });
-    if (res.error) toast.error((res.error as any).message ?? "Failed");
+    if (res.error) toast.error((res.error).message ?? "Failed");
     else {
       toast.success(res.queued ? "Deletion queued — will sync" : `${toDelete.name} deleted`);
       load();
@@ -114,7 +116,7 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
               {search ? "No matches." : `No ${type}s yet.`}
             </div>
           ) : filtered.map((p) => (
-            <button
+            <div role="button" tabIndex={0} onKeyDown={event=>{if(event.key==="Enter")navigate(`/${type==="customer"?"customers":"suppliers"}/${p.id}`);}}
               key={p.id}
               onClick={() => navigate(`/${type === "customer" ? "customers" : "suppliers"}/${p.id}`)}
               className="w-full text-left mobile-card flex items-center gap-3"
@@ -133,7 +135,11 @@ export default function Parties({ type }: { type: "customer" | "supplier" }) {
                 )}
                 <ChevronRight className="h-4 w-4 text-muted-foreground inline-block" />
               </div>
-            </button>
+              <div className="flex items-center shrink-0" onClick={event=>event.stopPropagation()} onKeyDown={event=>event.stopPropagation()}>
+                <Button aria-label={`Edit ${p.name}`} variant="ghost" size="icon" className="h-9 w-9" onClick={()=>{setEditing(p);setOpenForm(true);}}><Pencil className="h-4 w-4"/></Button>
+                <Button aria-label={`Delete ${p.name}`} variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={()=>setToDelete(p)}><Trash2 className="h-4 w-4"/></Button>
+              </div>
+            </div>
           ))}
         </div>
 

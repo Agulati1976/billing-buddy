@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,7 @@ import { StockAdjustDialog } from "@/components/StockAdjustDialog";
 import { ItemDialog, type ItemRow } from "@/components/ItemDialog";
 import { ArrowUpDown, Pencil, Package, AlertTriangle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { fetchInvoiceLinksForReferenceIds, invoiceViewRoute, type StockMovementInvoiceLink } from "@/lib/stockMovementLinks";
+import { fetchInvoiceLinksForMovements, invoiceViewRoute, type StockMovementInvoiceLink } from "@/lib/stockMovementLinks";
 import { INVOICE_TYPE_META } from "@/lib/invoice";
 
 type Movement = {
@@ -24,6 +25,8 @@ type Movement = {
   created_by: string | null;
   created_at: string;
   reference_id: string | null;
+  invoice_id: string | null;
+  invoice_number_snapshot: string | null;
   batch_id: string | null;
   batches?: { batch_number: string } | null;
 };
@@ -59,25 +62,24 @@ export default function StockManagement() {
     if (!current) return;
     setLoading(true);
     const [itemsRes, mvRes] = await Promise.all([
-      supabase.from("items").select("*").eq("business_id", current.id)
-        .eq("type", "product").order("name"),
-      supabase.from("stock_movements").select("*, batches(batch_number)").eq("business_id", current.id)
-        .order("created_at", { ascending: true }),
+      allRows(supabase.from("items").select("*").eq("business_id", current.id)
+        .eq("type", "product").order("name")),
+      allRows(supabase.from("stock_movements").select("*, batches(batch_number)").eq("business_id", current.id)
+        .order("created_at", { ascending: true })),
     ]);
     if (itemsRes.error) toast.error(itemsRes.error.message);
     if (mvRes.error) toast.error(mvRes.error.message);
     const its = (itemsRes.data ?? []) as ItemRow[];
-    const mvs = (mvRes.data ?? []) as any as Movement[];
+    const mvs = (mvRes.data ?? []) as Movement[];
     setItems(its);
     setMovements(mvs);
-    setLinks(await fetchInvoiceLinksForReferenceIds(mvs.map((m) => m.reference_id).filter(Boolean) as string[]));
+    setLinks(await fetchInvoiceLinksForMovements(mvs));
 
     const userIds = Array.from(new Set(mvs.map((m) => m.created_by).filter(Boolean))) as string[];
     if (userIds.length) {
-      const { data: profs } = await supabase
-        .from("profiles").select("user_id, full_name, email").in("user_id", userIds);
+      const { data: profs } = await supabase.rpc("member_contacts",{p_business_id:current.id});
       const map: Record<string, string> = {};
-      (profs ?? []).forEach((p: any) => { map[p.user_id] = p.full_name || p.email || "—"; });
+      (profs ?? []).forEach((p) => { map[p.user_id] = p.full_name || p.email || "—"; });
       setProfiles(map);
     } else setProfiles({});
     setLoading(false);
@@ -170,7 +172,7 @@ export default function StockManagement() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1" disabled={it.is_batch_tracked}
+                    <Button size="sm" variant="outline" className="flex-1"
                       onClick={() => { setAdjustItem(it); setAdjustOpen(true); }}>
                       <ArrowUpDown className="h-3.5 w-3.5 mr-1" />Adjust
                     </Button>
@@ -226,7 +228,7 @@ export default function StockManagement() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" disabled={it.is_batch_tracked}
+                          <Button size="sm" variant="outline"
                             onClick={() => { setAdjustItem(it); setAdjustOpen(true); }}>
                             <ArrowUpDown className="h-3 w-3" /> Adjust
                           </Button>
@@ -264,7 +266,7 @@ export default function StockManagement() {
               const it = itemMap.get(m.item_id);
               const sign = SIGN[m.type];
               const delta = sign * Number(m.quantity);
-              const link = m.reference_id ? links.get(m.reference_id) : undefined;
+              const link = links.get(m.id);
               const route = link ? invoiceViewRoute(link.type, link.invoiceId) : null;
               return (
                 <Card key={m.id} className="p-3">
@@ -291,10 +293,11 @@ export default function StockManagement() {
                       <div className="text-sm font-semibold tabular-nums">{m.after}</div>
                     </div>
                   </div>
-                  {(m.notes || m.created_by || link || m.batches) && (
+                  {(m.notes || m.created_by || link || m.batches || m.invoice_number_snapshot) && (
                     <div className="text-xs text-muted-foreground space-y-0.5">
                       {m.created_by && <div>By: {profiles[m.created_by] ?? "—"}</div>}
                       {m.batches?.batch_number && <div>Batch: {m.batches.batch_number}</div>}
+                      {!link && m.invoice_number_snapshot && <div>Invoice: {m.invoice_number_snapshot} (archived)</div>}
                       {link ? (
                         <div className="flex items-center gap-1.5">
                           <span>{INVOICE_TYPE_META[link.type]?.label ?? link.type}: <span className="font-medium text-foreground">{link.invoiceNumber}</span></span>
@@ -339,7 +342,7 @@ export default function StockManagement() {
                   const it = itemMap.get(m.item_id);
                   const sign = SIGN[m.type];
                   const delta = sign * Number(m.quantity);
-                  const link = m.reference_id ? links.get(m.reference_id) : undefined;
+                  const link = links.get(m.id);
                   const route = link ? invoiceViewRoute(link.type, link.invoiceId) : null;
                   return (
                     <TableRow key={m.id}>
@@ -369,7 +372,7 @@ export default function StockManagement() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground" title={m.notes ?? ""}>{m.notes ?? "—"}</span>
+                          <span className="text-muted-foreground" title={m.notes ?? ""}>{m.invoice_number_snapshot ? `Invoice: ${m.invoice_number_snapshot} (archived)` : m.notes ?? "—"}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm">{m.created_by ? (profiles[m.created_by] ?? "—") : "—"}</TableCell>

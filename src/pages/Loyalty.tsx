@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,21 +34,21 @@ export default function Loyalty() {
     if (!current) return;
     (async () => {
       const { data } = await supabase.from("loyalty_settings").select("*").eq("business_id", current.id).maybeSingle();
-      if (data) setSettings(data as any);
+      if (data) setSettings(data);
       else setSettings((s) => ({ ...s, business_id: current.id }));
 
       const [{ data: tx }, { data: parties }] = await Promise.all([
-        supabase.from("loyalty_transactions").select("party_id, points_earned, points_redeemed").eq("business_id", current.id),
-        supabase.from("parties").select("id, name").eq("business_id", current.id).eq("type", "customer"),
+        allRows(supabase.from("loyalty_transactions").select("party_id, points_earned, points_redeemed").eq("business_id", current.id)),
+        allRows(supabase.from("parties").select("id, name").eq("business_id", current.id).eq("type", "customer")),
       ]);
       const map = new Map<string, { earned: number; redeemed: number }>();
-      (tx ?? []).forEach((t: any) => {
+      (tx ?? []).forEach((t) => {
         const cur = map.get(t.party_id) ?? { earned: 0, redeemed: 0 };
         cur.earned += Number(t.points_earned || 0);
         cur.redeemed += Number(t.points_redeemed || 0);
         map.set(t.party_id, cur);
       });
-      const rows = (parties ?? []).map((p: any) => {
+      const rows = (parties ?? []).map((p) => {
         const v = map.get(p.id) ?? { earned: 0, redeemed: 0 };
         return { party_id: p.id, name: p.name, earned: v.earned, redeemed: v.redeemed, balance: v.earned - v.redeemed };
       }).filter((r) => r.balance > 0 || r.earned > 0)

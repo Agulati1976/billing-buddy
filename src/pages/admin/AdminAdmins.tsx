@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -22,12 +23,12 @@ export default function AdminAdmins() {
 
   const load = async () => {
     setLoading(true);
-    const { data: pa } = await supabase.from("platform_admins").select("id, user_id, created_at").order("created_at");
+    const { data: pa } = await allRows(supabase.from("platform_admins").select("id, user_id, created_at").order("created_at"));
     const ids = (pa ?? []).map((p) => p.user_id);
     const { data: profs } = ids.length
-      ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids)
-      : { data: [] as any[] };
-    const map = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
+      ? await allRows(supabase.from("profiles").select("user_id, full_name, email").in("user_id", ids))
+      : { data: [] };
+    const map = new Map((profs ?? []).map((p) => [p.user_id, p]));
     setAdmins((pa ?? []).map((p) => ({ ...p, ...(map.get(p.user_id) ?? {}) })));
     setLoading(false);
   };
@@ -48,8 +49,8 @@ export default function AdminAdmins() {
       },
     });
     setBusy(false);
-    if (error || (data as any)?.error) {
-      toast.error((data as any)?.error ?? error?.message ?? "Failed");
+    if (error || (data)?.error) {
+      toast.error((data)?.error ?? error?.message ?? "Failed");
       return;
     }
     toast.success("Admin added");

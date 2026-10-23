@@ -7,6 +7,8 @@ export type InvoiceStatus = Database["public"]["Enums"]["invoice_status"];
 export type DiscountMode = "pct" | "amt";
 
 export interface InvoiceLineInput {
+  id?: string;
+  source_line_id?: string | null;
   item_id: string | null;
   item_name: string;
   hsn_code: string | null;
@@ -48,7 +50,7 @@ export function computeInvoice(
   opts: { isGst?: boolean; extraDiscount?: number; pricesIncludeTax?: boolean } = {}
 ): InvoiceTotals {
   const isGst = opts.isGst !== false; // default true
-  const extraDiscount = Number(opts.extraDiscount) || 0;
+  const extraDiscount = Math.max(0, Number(opts.extraDiscount) || 0);
   const pricesIncludeTax = !!opts.pricesIncludeTax;
 
   const computed: ComputedLine[] = lines.map((l) => {
@@ -75,6 +77,8 @@ export function computeInvoice(
     const tax = (taxable * effectiveRate) / 100;
     return {
       ...l,
+      price: unitNet,
+      discount_amount: flat,
       discount_pct: round2(effectivePct),
       tax_rate: effectiveRate,
       taxable_amount: round2(taxable),
@@ -99,10 +103,10 @@ export function computeInvoice(
   // proportionally so it doesn't stay charged on value that's no longer taxable
   // (and floors to 0 alongside taxable_total instead of diverging from it).
   const taxScale = taxable_after_lines > 0 ? taxable_total / taxable_after_lines : 0;
-  const tax_amount = taxAfterLines * taxScale;
+  const tax_amount = round2(taxAfterLines * taxScale);
 
   const cgst_amount = isInterState ? 0 : tax_amount / 2;
-  const sgst_amount = isInterState ? 0 : tax_amount / 2;
+  const sgst_amount = isInterState ? 0 : tax_amount - round2(tax_amount / 2);
   const igst_amount = isInterState ? tax_amount : 0;
 
   const raw_total = taxable_total + tax_amount;

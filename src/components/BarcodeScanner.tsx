@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { usePermissions } from "@/hooks/usePermissions";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { Capacitor } from "@capacitor/core";
@@ -15,6 +17,7 @@ interface Props {
 type PermState = "idle" | "requesting" | "granted" | "denied" | "no-camera" | "insecure" | "error";
 
 export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function BarcodeScanner({ open, onOpenChange, onScanned }, _ref) {
+  const {features,loading}=usePermissions();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerId = "barcode-scanner-region";
   const [perm, setPerm] = useState<PermState>("idle");
@@ -45,7 +48,7 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
     return () => {
       stopScanner();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, []);
 
   useEffect(() => {
@@ -61,10 +64,11 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
     try {
       if (s.isScanning) await s.stop();
       await s.clear();
-    } catch {}
+    } catch { /* Camera may already be stopped when the dialog closes. */ }
   }
 
   async function requestAndStart() {
+    if(loading || !features.barcode){setErrMsg("Barcode scanning is not included in your current access or plan.");return;}
     setErrMsg("");
     setPerm("requesting");
     try {
@@ -110,9 +114,9 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
         },
         () => {} // ignore decode errors
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Camera permission/start failed", err);
-      const name = err?.name || "";
+      const name = (err as {name?:string})?.name || "";
       if (name === "NotAllowedError" || name === "PermissionDeniedError") {
         setPerm("denied");
         setErrMsg("Camera permission denied. Allow camera access in your browser settings, then try again.");
@@ -124,7 +128,7 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
         setErrMsg("Camera is in use by another application. Close it and try again.");
       } else {
         setPerm("error");
-        setErrMsg(err?.message || "Failed to start camera.");
+        setErrMsg(errorMessage(err) || "Failed to start camera.");
       }
     }
   }
@@ -145,7 +149,7 @@ export const BarcodeScanner = forwardRef<HTMLDivElement, Props>(function Barcode
           </DialogDescription>
         </DialogHeader>
 
-        {perm === "granted" ? (
+        {!loading && !features.barcode ? <p className="text-sm text-muted-foreground">Barcode scanning is not included in your current access or plan.</p> : perm === "granted" ? (
           <>
             <div id={containerId} className="w-full rounded-md overflow-hidden bg-black" style={{ minHeight: 280 }} />
             <p className="text-xs text-muted-foreground text-center">

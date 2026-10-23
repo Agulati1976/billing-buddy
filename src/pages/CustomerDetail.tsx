@@ -1,3 +1,7 @@
+import { errorMessage } from "@/lib/errors";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
+import { recordPayment } from "@/lib/billingTransactions";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +61,7 @@ interface PaymentRow {
   direction: string;
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+const todayISO = () => businessDate();
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -84,21 +88,21 @@ export default function CustomerDetail() {
     if (!current || !id) return;
     setLoading(true);
     const [pRes, iRes, payRes] = await Promise.all([
-      supabase.from("parties").select("*").eq("id", id).maybeSingle(),
-      supabase
+      supabase.from("parties").select("*").eq("id", id).eq("business_id",current.id).maybeSingle(),
+      allRows(supabase
         .from("invoices")
         .select("id,invoice_number,invoice_date,due_date,total_amount,paid_amount,balance_amount,status,type")
         .eq("business_id", current.id)
         .eq("party_id", id)
         .is("deleted_at", null)
-        .order("invoice_date", { ascending: false }),
-      supabase
+        .order("invoice_date", { ascending: false })),
+      allRows(supabase
         .from("payments")
         .select("id,payment_date,amount,method,reference,invoice_id,direction")
         .eq("business_id", current.id)
         .eq("party_id", id)
         .is("deleted_at", null)
-        .order("payment_date", { ascending: false }),
+        .order("payment_date", { ascending: false })),
     ]);
     if (pRes.error) toast.error(pRes.error.message);
     setParty((pRes.data as Party) ?? null);
@@ -113,9 +117,10 @@ export default function CustomerDetail() {
   }, [current?.id, id]);
 
   const stats = useMemo(() => {
-    const sales = invoices.filter((i) => i.type === "sale");
-    const totalSold = sales.reduce((s, i) => s + Number(i.total_amount || 0), 0);
-    const totalPaid = sales.reduce((s, i) => s + Number(i.paid_amount || 0), 0);
+    const sales = invoices.filter((i) => party?.type==="supplier" ? i.type==="purchase" : ["sale","non_inventory"].includes(i.type));
+    const returns=invoices.filter(i=>party?.type==="supplier" ? i.type==="purchase_return" : i.type==="sale_return");
+    const totalSold = sales.reduce((s, i) => s + Number(i.total_amount || 0), 0)-returns.reduce((s,i)=>s+Number(i.total_amount || 0),0);
+    const totalPaid = payments.reduce((sum,payment)=>sum+(payment.direction===(party?.type==="supplier"?"out":"in") ? 1 : -1)*Number(payment.amount),0);
     const outstanding =
       sales.reduce((s, i) => s + Number(i.balance_amount || 0), 0) +
       Number(party?.opening_balance || 0);
@@ -125,7 +130,7 @@ export default function CustomerDetail() {
     );
     const overdueAmount = overdue.reduce((s, i) => s + Number(i.balance_amount || 0), 0);
     return { totalSold, totalPaid, outstanding, overdue, overdueAmount };
-  }, [invoices, party]);
+  }, [invoices, party, payments]);
 
   const handleSendReminder = async () => {
     if (!party?.email) {
@@ -147,8 +152,8 @@ export default function CustomerDetail() {
       });
       if (error) throw error;
       toast.success("Reminder queued. Email sending will activate once your domain is configured.");
-    } catch (e: any) {
-      toast.error(e.message || "Could not send reminder");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) || "Could not send reminder");
     } finally {
       setSendingReminder(false);
     }
@@ -160,10 +165,10 @@ export default function CustomerDetail() {
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
     if (!payInvoiceId) { toast.error("Select an invoice"); return; }
     setPaySaving(true);
-    const res = await omInsert("payments", {
+    const res = await recordPayment({
       business_id: current.id,
       direction: party.type === "customer" ? "in" : "out",
-      method: payMethod as any,
+      method: payMethod,
       amount: amt,
       payment_date: payDate,
       party_id: party.id,
@@ -173,7 +178,7 @@ export default function CustomerDetail() {
       created_by: user.id,
     });
     setPaySaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Payment recorded");
     setPayOpen(false);
     load();

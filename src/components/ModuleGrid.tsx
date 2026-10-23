@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart, FileText, ArrowUpDown, FileEdit, Receipt as ReceiptIcon,
@@ -11,7 +12,7 @@ import type { ModuleKey } from "@/lib/modules";
 type Tile = {
   to: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   module?: ModuleKey;
   tone: "primary" | "success" | "warning" | "danger" | "info" | "violet" | "pink" | "teal";
   alwaysVisible?: boolean;

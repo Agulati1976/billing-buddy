@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -13,7 +14,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ROUTE_TO_MODULE } from "@/lib/modules";
 import logoAsset from "@/assets/billlook-logo.png.asset.json";
 
-type NavItem = { to: string; label: string; icon: any; end?: boolean; soon?: boolean };
+type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean; soon?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
 
 const groups: NavGroup[] = [

@@ -1,3 +1,7 @@
+import { financialSummary } from "@/lib/reporting";
+import { invoiceCostLines } from "@/lib/invoiceData";
+import { businessDate } from "@/lib/dates";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -55,22 +59,22 @@ export function DashboardChart() {
       const spanDays = Math.max(1, Math.round((+to - +from) / 86400000) + 1);
       const useMonthly = spanDays > 120;
 
-      const sinceStr = from.toISOString().slice(0, 10);
-      const untilStr = to.toISOString().slice(0, 10);
+      const sinceStr = businessDate(from);
+      const untilStr = businessDate(to);
 
       const [invR, expR] = await Promise.all([
-        supabase.from("invoices")
-          .select("invoice_date, type, total_amount")
+        allRows(supabase.from("invoices")
+          .select("id,invoice_date,type,total_amount,subtotal,discount_amount")
           .eq("business_id", current.id)
-          .in("type", ["sale", "purchase"])
+          .in("type", ["sale", "non_inventory","sale_return","purchase","purchase_return"])
           .is("deleted_at", null)
           .gte("invoice_date", sinceStr)
-          .lte("invoice_date", untilStr),
-        supabase.from("expenses")
+          .lte("invoice_date", untilStr)),
+        allRows(supabase.from("expenses")
           .select("expense_date, amount")
           .eq("business_id", current.id)
           .gte("expense_date", sinceStr)
-          .lte("expense_date", untilStr),
+          .lte("expense_date", untilStr)),
       ]);
 
       const buckets: Point[] = [];
@@ -88,7 +92,7 @@ export function DashboardChart() {
       } else {
         const cursor = new Date(from);
         for (let i = 0; i < spanDays; i++) {
-          const key = cursor.toISOString().slice(0, 10);
+          const key = businessDate(cursor);
           const label = cursor.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
           bucketIdx.set(key, buckets.length);
           buckets.push({ bucket: key, label, Sales: 0, Purchases: 0, Expenses: 0, Profit: 0 });
@@ -98,21 +102,27 @@ export function DashboardChart() {
 
       const keyFor = (iso: string) => useMonthly ? iso.slice(0, 7) : iso.slice(0, 10);
 
-      ((invR.data as any[]) ?? []).forEach((r) => {
+      ((invR.data) ?? []).forEach((r) => {
         const k = keyFor(r.invoice_date);
         const idx = bucketIdx.get(k);
         if (idx == null) return;
         const amt = Number(r.total_amount) || 0;
-        if (r.type === "sale") buckets[idx].Sales += amt;
+        if (r.type === "sale" || r.type==="non_inventory") buckets[idx].Sales += amt;
+        else if(r.type==="sale_return")buckets[idx].Sales-=amt;
         else if (r.type === "purchase") buckets[idx].Purchases += amt;
+        else if(r.type==="purchase_return")buckets[idx].Purchases-=amt;
       });
-      ((expR.data as any[]) ?? []).forEach((r) => {
+      ((expR.data) ?? []).forEach((r) => {
         const k = keyFor(r.expense_date);
         const idx = bucketIdx.get(k);
         if (idx == null) return;
         buckets[idx].Expenses += Number(r.amount) || 0;
       });
-      buckets.forEach((b) => { b.Profit = b.Sales - b.Purchases - b.Expenses; });
+      let costs;try{costs=await invoiceCostLines((invR.data??[]).map(invoice=>invoice.id));}catch{setLoading(false);return;}
+      for(const bucket of buckets){
+        const invoices=(invR.data??[]).filter(invoice=>keyFor(invoice.invoice_date)===bucket.bucket);
+        bucket.Profit=financialSummary(invoices,costs,[{amount:bucket.Expenses}]).net;
+      }
 
       setData(buckets);
       setLoading(false);
@@ -150,7 +160,7 @@ export function DashboardChart() {
           tick={{ fontSize: 11 }} tickLine={false} axisLine={false}
           tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(v >= 100000 ? 0 : 1)}k` : String(v)}
         />
-        <ChartTooltip content={<ChartTooltipContent formatter={(v: any) => formatINR(Number(v))} />} />
+        <ChartTooltip content={<ChartTooltipContent formatter={(v) => formatINR(Number(v))} />} />
       </>
     );
 

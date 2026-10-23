@@ -1,3 +1,6 @@
+import type { Tables } from "@/integrations/supabase/types";
+import type { Database } from "@/integrations/supabase/types";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +15,7 @@ import { formatINR } from "@/lib/admin/api";
 const PAGE = 50;
 
 export default function AdminInvoices() {
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<Array<Pick<Tables<"invoices">,"id"|"invoice_number"|"type"|"status"|"total_amount"|"paid_amount"|"balance_amount"|"invoice_date"|"business_id"|"party_id">>>([]);
   const [businesses, setBusinesses] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -25,7 +28,7 @@ export default function AdminInvoices() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("businesses").select("id, name").order("name");
+      const { data } = await allRows(supabase.from("businesses").select("id, name").order("name"));
       setBusinesses(data ?? []);
     })();
   }, []);
@@ -38,8 +41,8 @@ export default function AdminInvoices() {
         .select("id, invoice_number, type, status, total_amount, paid_amount, balance_amount, invoice_date, business_id, party_id", { count: "exact" })
         .order("invoice_date", { ascending: false })
         .range(page * PAGE, page * PAGE + PAGE - 1);
-      if (type !== "all") q = q.eq("type", type as any);
-      if (status !== "all") q = q.eq("status", status as any);
+      if (type !== "all") q = q.eq("type", type as Database["public"]["Enums"]["invoice_type"]);
+      if (status !== "all") q = q.eq("status", status as Database["public"]["Enums"]["invoice_status"]);
       if (bizId !== "all") q = q.eq("business_id", bizId);
       if (from) q = q.gte("invoice_date", from);
       if (to) q = q.lte("invoice_date", to);

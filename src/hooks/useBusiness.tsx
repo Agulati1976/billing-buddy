@@ -1,9 +1,13 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 export interface Business {
   id: string;
+  created_at?: string;
+  pan?: string | null;
+  status: string;
+  deleted_at: string | null;
   name: string;
   gstin: string | null;
   phone: string | null;
@@ -21,12 +25,13 @@ interface BusinessCtx {
   businesses: Business[];
   current: Business | null;
   loading: boolean;
+  hasMembership: boolean;
   setCurrent: (b: Business) => void;
   refresh: () => Promise<void>;
 }
 
 const Ctx = createContext<BusinessCtx>({
-  businesses: [], current: null, loading: true, setCurrent: () => {}, refresh: async () => {},
+  businesses: [], current: null, loading: true, hasMembership:false, setCurrent: () => {}, refresh: async () => {},
 });
 
 const STORAGE_KEY = "current_business_id";
@@ -36,16 +41,20 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [current, setCurrentState] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasMembership,setHasMembership]=useState(false);
 
   const { loading: authLoading } = useAuth();
   const userId = user?.id;
+  const requestVersion=useRef(0);
 
   // Keyed on the stable user id, not the `user` object — Supabase silently
   // refreshes the session (new session/user object each time) whenever the
   // tab regains focus, which must NOT be treated as "identity changed".
   const refresh = useCallback(async () => {
+    const version=++requestVersion.current;
     if (!userId) {
       setBusinesses([]);
+      setHasMembership(false);
       setCurrentState(null);
       setLoading(false);
       return;
@@ -61,20 +70,22 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .select("businesses(*)")
       .eq("user_id", userId);
+    if(version!==requestVersion.current)return;
     if (!error && data) {
+      setHasMembership(data.length>0);
       const seen = new Set<string>();
       const list: Business[] = [];
-      for (const row of data as any[]) {
+      for (const row of data) {
         const b = row.businesses as Business | null;
-        if (b && !seen.has(b.id)) { seen.add(b.id); list.push(b); }
+        if (b && b.status==='active' && !b.deleted_at && !seen.has(b.id)) { seen.add(b.id); list.push(b); }
       }
-      list.sort((a: any, b: any) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
+      list.sort((a, b) => new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
       setBusinesses(list);
-      const savedId = localStorage.getItem(STORAGE_KEY);
+      const savedId = localStorage.getItem(STORAGE_KEY+":"+userId);
       const found = list.find((b) => b.id === savedId) ?? list[0] ?? null;
       setCurrentState(found);
-      if (found) localStorage.setItem(STORAGE_KEY, found.id);
-    }
+      if (found) localStorage.setItem(STORAGE_KEY+":"+userId, found.id);
+    } else {setBusinesses([]);setCurrentState(null);setHasMembership(false);}
     setLoading(false);
   }, [userId]);
 
@@ -94,11 +105,11 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
 
   const setCurrent = (b: Business) => {
     setCurrentState(b);
-    localStorage.setItem(STORAGE_KEY, b.id);
+    localStorage.setItem(STORAGE_KEY+":"+userId, b.id);
   };
 
   return (
-    <Ctx.Provider value={{ businesses, current, loading, setCurrent, refresh }}>
+    <Ctx.Provider value={{ businesses, current, loading, hasMembership, setCurrent, refresh }}>
       {children}
     </Ctx.Provider>
   );

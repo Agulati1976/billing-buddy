@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,9 +36,9 @@ export default function Branches() {
 
   const load = async () => {
     if (!current) return;
-    const { data } = await supabase.from("branches" as any).select("id, name, code, address")
-      .eq("business_id", current.id).order("name");
-    setRows((data ?? []) as any);
+    const { data } = await allRows(supabase.from("branches").select("id, name, code, address")
+      .eq("business_id", current.id).order("name"));
+    setRows((data ?? []));
   };
   useEffect(() => { load(); }, [current?.id]);
 
@@ -47,7 +48,7 @@ export default function Branches() {
     const base = n.trim().toUpperCase().replace(/[^A-Z0-9\s]/g, "");
     if (!base) return "";
     const words = base.split(/\s+/).filter(Boolean);
-    let code = words.length >= 2
+    const code = words.length >= 2
       ? words.slice(0, 3).map((w) => w[0]).join("")
       : words[0].slice(0, 4);
     const existing = new Set(
@@ -83,7 +84,7 @@ export default function Branches() {
     if (!cleanCode) cleanCode = generateCode(name);
     if (!cleanCode) { toast.error("Could not generate branch code"); return; }
     setSaving(true);
-    const payload: any = {
+    const payload = {
       business_id: current.id,
       name: name.trim(),
       code: cleanCode,
@@ -91,8 +92,8 @@ export default function Branches() {
       created_by: user.id,
     };
     const { error } = editing
-      ? await supabase.from("branches" as any).update(payload).eq("id", editing.id)
-      : await supabase.from("branches" as any).insert(payload);
+      ? await supabase.from("branches").update(payload).eq("id", editing.id)
+      : await supabase.from("branches").insert(payload);
     setSaving(false);
     if (error) {
       toast.error(error.message.includes("duplicate") ? "Branch code already used" : error.message);
@@ -104,7 +105,7 @@ export default function Branches() {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this branch?")) return;
-    const { error } = await supabase.from("branches" as any).delete().eq("id", id);
+    const { error } = await supabase.from("branches").delete().eq("id", id);
     if (error) toast.error(error.message); else { toast.success("Deleted"); load(); }
   };
 

@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,17 +29,17 @@ export default function SupportAgent() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("support_tickets").select("*")
+    const { data } = await allRows(supabase.from("support_tickets").select("*")
       .eq("assigned_to", user.id)
-      .order("last_message_at", { ascending: false });
+      .order("last_message_at", { ascending: false }));
     const list = (data ?? []) as Ticket[];
     setTickets(list);
     const ids = Array.from(new Set(list.map((t) => t.created_by)));
     if (ids.length) {
-      const { data: profs } = await supabase.from("profiles")
-        .select("user_id,full_name,email").in("user_id", ids);
+      const { data: profs } = await allRows(supabase.from("profiles")
+        .select("user_id,full_name,email").in("user_id", ids));
       const map: Record<string, string> = {};
-      (profs ?? []).forEach((p: any) => map[p.user_id] = p.full_name || p.email || "Customer");
+      (profs ?? []).forEach((p) => map[p.user_id] = p.full_name || p.email || "Customer");
       setCustomers(map);
     }
   };

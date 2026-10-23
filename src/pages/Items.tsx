@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { omDelete } from "@/lib/offlineMutate";
@@ -71,10 +72,10 @@ export default function Items() {
   const load = async () => {
     if (!current) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await allRows(supabase
       .from("items").select("*")
       .eq("business_id", current.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
     if (error) toast.error(error.message);
     else setItems((data ?? []) as ItemRow[]);
     setLoading(false);
@@ -91,7 +92,7 @@ export default function Items() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this item?")) return;
     const res = await omDelete("items", { column: "id", value: id });
-    if (res.error) toast.error((res.error as any).message ?? "Failed");
+    if (res.error) toast.error((res.error).message ?? "Failed");
     else { toast.success(res.queued ? "Deletion queued — will sync" : "Item deleted"); load(); }
   };
 
@@ -171,8 +172,8 @@ export default function Items() {
                 <div className="flex flex-col gap-1">
                   {i.type === "product" && (
                     <>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" disabled={i.is_batch_tracked}
-                        title={i.is_batch_tracked ? "Batch-tracked — adjust stock from Batches instead" : "Adjust stock"}
+                      <Button size="icon" variant="ghost" className="h-8 w-8"
+                        title="Adjust stock"
                         onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
                         <ArrowUpDown className="h-4 w-4" />
                       </Button>
@@ -249,8 +250,8 @@ export default function Items() {
                       <div className="flex justify-end gap-1">
                         {i.type === "product" && (
                           <>
-                            <Button size="icon" variant="ghost" disabled={i.is_batch_tracked}
-                              title={i.is_batch_tracked ? "Batch-tracked — adjust stock from Batches instead" : "Adjust stock"}
+                            <Button size="icon" variant="ghost"
+                              title="Adjust stock"
                               onClick={() => { setAdjustItem(i); setAdjustOpen(true); }}>
                               <ArrowUpDown className="h-4 w-4" />
                             </Button>

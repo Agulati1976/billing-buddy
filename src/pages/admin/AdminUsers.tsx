@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -30,28 +32,28 @@ export default function AdminUsers() {
 
   const load = async () => {
     setLoading(true);
-    const { data: profs } = await supabase
+    const { data: profs } = await allRows(supabase
       .from("profiles")
       .select("user_id, full_name, email, phone, created_at")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }));
 
-    const ids = (profs ?? []).map((p: any) => p.user_id);
+    const ids = (profs ?? []).map((p) => p.user_id);
     const [bizs, roles] = await Promise.all([
-      ids.length ? supabase.from("businesses").select("owner_id").in("owner_id", ids) : Promise.resolve({ data: [] as any[] }),
-      ids.length ? supabase.from("user_roles").select("user_id").in("user_id", ids) : Promise.resolve({ data: [] as any[] }),
+      ids.length ? allRows(supabase.from("businesses").select("owner_id").in("owner_id", ids)) : Promise.resolve({ data: [] }),
+      ids.length ? allRows(supabase.from("user_roles").select("user_id").in("user_id", ids)) : Promise.resolve({ data: [] }),
     ]);
     const bCount: Record<string, number> = {};
-    (bizs.data ?? []).forEach((b: any) => { bCount[b.owner_id] = (bCount[b.owner_id] ?? 0) + 1; });
+    (bizs.data ?? []).forEach((b) => { bCount[b.owner_id] = (bCount[b.owner_id] ?? 0) + 1; });
     const rCount: Record<string, number> = {};
-    (roles.data ?? []).forEach((r: any) => { rCount[r.user_id] = (rCount[r.user_id] ?? 0) + 1; });
+    (roles.data ?? []).forEach((r) => { rCount[r.user_id] = (rCount[r.user_id] ?? 0) + 1; });
 
-    let authMap: Record<string, any> = {};
+    let authMap: Record<string,{last_sign_in_at:string|null;banned_until:string|null;created_at:string}> = {};
     try {
-      const res = await callAdminAction<{ users: Record<string, any> }>("list_auth_users", undefined, { ids });
+      const res = await callAdminAction<{ users: Record<string,{last_sign_in_at:string|null;banned_until:string|null;created_at:string}> }>("list_auth_users", undefined, { ids });
       authMap = res.users ?? {};
     } catch { /* non-fatal */ }
 
-    setRows((profs ?? []).map((p: any) => ({
+    setRows((profs ?? []).map((p) => ({
       ...p,
       businesses: bCount[p.user_id] ?? 0,
       roles: rCount[p.user_id] ?? 0,
@@ -73,7 +75,7 @@ export default function AdminUsers() {
 
   const act = async (action: string, id: string, ok: string) => {
     try { await callAdminAction(action, id); toast.success(ok); load(); }
-    catch (e: any) { toast.error(e.message ?? "Failed"); }
+    catch (e: unknown) { toast.error(errorMessage(e) ?? "Failed"); }
   };
 
   const isBanned = (u: U) => u.banned_until && new Date(u.banned_until) > new Date();

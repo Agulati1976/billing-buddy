@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "https://esm.sh/@supabase/supabase-js@2.104.0": "npm:@supabase/supabase-js@2.104.0"
+  },
+  "nodeModulesDir": "auto",
+  "compilerOptions": { "strict": true }
+}

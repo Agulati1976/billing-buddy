@@ -1,0 +1,32 @@
+{
+  "reviewed_date": "2026-10-23",
+  "timezone": "Asia/Kolkata",
+  "source_commit": "02ed926",
+  "project_ref": "qbxombgwzqqumubpaogo",
+  "public_tables": 36,
+  "public_tables_with_rls": 36,
+  "active_edge_functions": 11,
+  "consistency_checks": {
+    "batch_stock_mismatch": 1,
+    "stock_history_balance_mismatch": 5,
+    "payment_invoice_tenant_mismatch": 0,
+    "invoice_item_tenant_mismatch": 0,
+    "multiple_roles_per_business_user": 0
+  },
+  "unauthenticated_ocr_probe": {
+    "request_body": {},
+    "http_status": 400,
+    "response": { "error": "image_base64 required" },
+    "ai_request_made": false
+  },
+  "validation": {
+    "baseline_vite_build": "passed",
+    "baseline_tests_passed": 7,
+    "application_typecheck_errors": 2,
+    "baseline_lint_errors": 472,
+    "baseline_lint_warnings": 57,
+    "local_findings_reproduced": 13
+  },
+  "deployed_function_source_download": "failed: InvalidFunctionDownloadResponseError; complete deployed-source equality unverified",
+  "production_data_or_schema_mutated": false
+}

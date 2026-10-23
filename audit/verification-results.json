@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-23",
+  "branch": "codex/production-stabilization",
+  "baseline_commit": "02ed926",
+  "deployed": false,
+  "checks": {
+    "clean_npm_ci": true,
+    "release_check_exit": 0,
+    "unit_tests_passed": 26,
+    "postgres_tests_passed": 27,
+    "postgres_version": 16,
+    "postgres_concurrency_skipped": 0,
+    "edge_tests_passed": 15,
+    "edge_functions_typechecked": 11,
+    "browser_tests_passed": 12,
+    "owner_routes_visited": 27,
+    "admin_routes_visited": 13,
+    "production_build": true,
+    "application_typecheck": true,
+    "lint_errors": 0,
+    "lint_warnings": 55,
+    "production_dependency_vulnerabilities": 0,
+    "development_advisory_packages": 6
+  },
+  "pdfs": [
+    {
+      "file": "long-delivery-copies.pdf",
+      "pages": 8,
+      "out_of_bounds_characters": 0
+    },
+    {
+      "file": "long-invoice.pdf",
+      "pages": 8,
+      "out_of_bounds_characters": 0
+    },
+    {
+      "file": "long-receipt.pdf",
+      "pages": 2,
+      "out_of_bounds_characters": 0
+    }
+  ],
+  "critical_file_sha256": {
+    "package-lock.json": "d8f12a5a0a55386eaf1cdc08fc8ab85bbd1ddcf5558790319feee80aede99fb7",
+    "supabase/migrations/20261023080621_secure_atomic_billing.sql": "4e7067ea70f15d25df63d3974c23c35fdd8d543862350e3d9cdcbac29258d215",
+    "src/integrations/supabase/types.ts": "9879c9db9bc1c4cdcab9b1ad1200c034e5b7f7da5e4aebb411176951aafe5b04"
+  },
+  "remaining_release_gates": [
+    "Rehearse and verify hosted staging Auth/gateway/email/provider settlement",
+    "Reconcile existing one batch-total and five movement-history discrepancies against authoritative stock",
+    "Coordinate migration, edge functions, frontend and old-client/outbox transition",
+    "Reconcile historical migration bookkeeping"
+  ],
+  "limits": [
+    "Development-only Tailwind 3 nested-pattern advisory remains; trusted build inputs only",
+    "55 lint warnings and a large frontend chunk remain maintenance work",
+    "Local mocks do not certify hosted provider delivery/settlement"
+  ]
+}

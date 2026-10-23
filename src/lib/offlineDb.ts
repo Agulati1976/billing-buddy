@@ -4,9 +4,11 @@ import { openDB, type IDBPDatabase } from "idb";
 export type OutboxOp = {
   id: string;
   table: string;
-  op: "insert" | "update" | "delete" | "insertMany";
-  payload?: any;
-  match?: { column: string; value: any };
+  op: "insert" | "update" | "delete" | "insertMany" | "rpc";
+  ownerId?: string;
+  businessId?: string;
+  payload?: unknown;
+  match?: { column: string; value: unknown };
   createdAt: number;
   attempts: number;
   lastError?: string;
@@ -18,6 +20,12 @@ const DB_VERSION = 1;
 const OUTBOX = "outbox";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
+let accountId: string | null = null;
+export function setOfflineAccount(userId: string | null) {
+  accountId = userId;
+  notifyOutboxChange();
+}
+export function offlineAccount() { return accountId; }
 function getDb() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
@@ -33,14 +41,21 @@ function getDb() {
 }
 
 export async function enqueue(op: Omit<OutboxOp, "id" | "createdAt" | "attempts">) {
+  const owner=accountId;
+  if (!owner) throw new Error("Sign in before saving offline changes");
   const db = await getDb();
+  if(accountId!==owner)throw new Error("Account changed before this request could be queued");
+  const tx=db.transaction(OUTBOX,"readwrite");
+  const last=await tx.store.index("createdAt").openCursor(null,"prev");
   const entry: OutboxOp = {
     id: crypto.randomUUID(),
-    createdAt: Date.now(),
+    createdAt: Math.max(Date.now(),Number(last?.value.createdAt ?? 0)+1),
     attempts: 0,
     ...op,
+    ownerId: owner,
   };
-  await db.add(OUTBOX, entry);
+  await tx.store.add(entry);
+  await tx.done;
   notifyOutboxChange();
   return entry;
 }
@@ -48,12 +63,13 @@ export async function enqueue(op: Omit<OutboxOp, "id" | "createdAt" | "attempts"
 export async function listOutbox(): Promise<OutboxOp[]> {
   const db = await getDb();
   const all = (await db.getAllFromIndex(OUTBOX, "createdAt")) as OutboxOp[];
-  return all;
+  // Legacy entries cannot safely be attributed to any account. Display them for
+  // recovery, but never replay them with whichever account signs in next.
+  return accountId ? all.filter(op => op.ownerId === accountId || !op.ownerId).map(op => op.ownerId ? op : {...op,failed:true,lastError:"Legacy change has no account identity. Review and re-enter it before discarding."}) : [];
 }
 
 export async function countOutbox(): Promise<number> {
-  const db = await getDb();
-  return db.count(OUTBOX);
+  return (await listOutbox()).length;
 }
 
 export async function deleteOutbox(id: string) {
@@ -64,7 +80,7 @@ export async function deleteOutbox(id: string) {
 
 export async function clearOutbox() {
   const db = await getDb();
-  await db.clear(OUTBOX);
+  for (const op of await listOutbox()) await db.delete(OUTBOX, op.id);
   notifyOutboxChange();
 }
 

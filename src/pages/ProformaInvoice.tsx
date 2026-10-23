@@ -1,3 +1,5 @@
+import { errorMessage } from "@/lib/errors";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBusiness } from "@/hooks/useBusiness";
@@ -30,15 +32,15 @@ export default function ProformaInvoice() {
   const load = async () => {
     if (!current) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await allRows(supabase
       .from("invoices")
       .select("id, invoice_number, invoice_date, total_amount, party_id, parties(name)")
       .eq("business_id", current.id)
       .eq("type", "sale")
       .is("deleted_at", null)
-      .order("invoice_date", { ascending: false });
+      .order("invoice_date", { ascending: false }));
     if (error) toast.error(error.message);
-    else setRows((data ?? []) as any as InvoiceRow[]);
+    else setRows((data ?? []) as InvoiceRow[]);
     setLoading(false);
   };
 
@@ -56,19 +58,19 @@ export default function ProformaInvoice() {
     try {
       const [{ data: inv, error: invErr }, { data: lines, error: liErr }] = await Promise.all([
         supabase.from("invoices").select("*").eq("id", row.id).single(),
-        supabase.from("invoice_items")
+        allRows(supabase.from("invoice_items")
           .select("item_name, hsn_code, quantity, unit, price, discount_pct, tax_rate, taxable_amount, tax_amount, total_amount")
-          .eq("invoice_id", row.id),
+          .eq("invoice_id", row.id)),
       ]);
       if (invErr || !inv) throw invErr ?? new Error("Invoice not found");
       if (liErr) throw liErr;
 
-      let party: any = null;
-      if ((inv as any).party_id) {
+      let party = null;
+      if ((inv).party_id) {
         const { data: p } = await supabase
           .from("parties")
           .select("name, gstin, phone, email, billing_address, state, state_code")
-          .eq("id", (inv as any).party_id)
+          .eq("id", (inv).party_id)
           .maybeSingle();
         party = p;
       }
@@ -85,28 +87,28 @@ export default function ProformaInvoice() {
         } : null,
         {
           type: "sale",
-          invoice_number: (inv as any).invoice_number,
-          invoice_date: (inv as any).invoice_date,
-          due_date: (inv as any).due_date,
-          is_inter_state: (inv as any).is_inter_state,
-          subtotal: (inv as any).subtotal,
-          discount_amount: (inv as any).discount_amount,
-          taxable_total: (inv as any).subtotal - (inv as any).discount_amount,
-          cgst_amount: (inv as any).cgst_amount,
-          sgst_amount: (inv as any).sgst_amount,
-          igst_amount: (inv as any).igst_amount,
-          round_off: (inv as any).round_off,
-          total_amount: (inv as any).total_amount,
-          notes: (inv as any).notes,
-          terms: (inv as any).terms,
-          lines: (lines ?? []) as any,
+          invoice_number: (inv).invoice_number,
+          invoice_date: (inv).invoice_date,
+          due_date: (inv).due_date,
+          is_inter_state: (inv).is_inter_state,
+          subtotal: (inv).subtotal,
+          discount_amount: (inv).discount_amount,
+          taxable_total: (inv).subtotal - (inv).discount_amount,
+          cgst_amount: (inv).cgst_amount,
+          sgst_amount: (inv).sgst_amount,
+          igst_amount: (inv).igst_amount,
+          round_off: (inv).round_off,
+          total_amount: (inv).total_amount,
+          notes: (inv).notes,
+          terms: (inv).terms,
+          lines: (lines ?? []),
         },
       );
-      const safeNum = row.invoice_number.replace(/[\/\\]/g, "-");
+      const safeNum = row.invoice_number.replace(/[/\\]/g, "-");
       await savePdf(doc, `Proforma-${safeNum || "Invoice"}.pdf`);
       toast.success("Proforma copy generated");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to generate");
+    } catch (e: unknown) {
+      toast.error(errorMessage(e) ?? "Failed to generate");
     } finally {
       setGeneratingId(null);
     }

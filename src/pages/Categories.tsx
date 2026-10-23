@@ -1,3 +1,4 @@
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { SearchBar } from "@/components/SearchBar";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,8 +34,8 @@ export default function Categories() {
 
   const load = async () => {
     if (!current) return;
-    const { data } = await supabase.from("categories").select("id, name, description")
-      .eq("business_id", current.id).order("name");
+    const { data } = await allRows(supabase.from("categories").select("id, name, description")
+      .eq("business_id", current.id).order("name"));
     setRows((data ?? []) as Cat[]);
   };
   useEffect(() => { load(); }, [current?.id]);

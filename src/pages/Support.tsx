@@ -1,3 +1,5 @@
+import type { Database } from "@/integrations/supabase/types";
+import { allRows } from "@/lib/pagination";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,11 +42,11 @@ export default function Support() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await allRows(supabase
       .from("support_tickets")
       .select("*")
       .eq("created_by", user.id)
-      .order("last_message_at", { ascending: false });
+      .order("last_message_at", { ascending: false }));
     setTickets((data ?? []) as Ticket[]);
     setLoading(false);
   };
@@ -53,10 +55,10 @@ export default function Support() {
 
   useEffect(() => {
     if (!selectedId) { setMessages([]); return; }
-    supabase.from("support_ticket_messages")
+    allRows(supabase.from("support_ticket_messages")
       .select("*")
       .eq("ticket_id", selectedId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: true }))
       .then(({ data }) => setMessages((data ?? []) as Message[]));
 
     const channel = supabase.channel(`ticket-${selectedId}`)
@@ -71,7 +73,7 @@ export default function Support() {
     const { data, error } = await supabase.from("support_tickets").insert({
       subject: form.subject.trim(),
       description: form.description.trim() || null,
-      priority: form.priority as any,
+      priority: form.priority as Database["public"]["Enums"]["support_ticket_priority"],
       created_by: user.id,
       business_id: current?.id ?? null,
     }).select("id").single();

@@ -1,5 +1,6 @@
 // Create a support staff login. Platform admin only.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.0";
+import { requestJson } from "../_shared/security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if(req.method!=="POST")return new Response(JSON.stringify({error:"Method not allowed"}),{status:405,headers:{...corsHeaders,"Content-Type":"application/json"}});
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -38,12 +40,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { email, password, full_name } = await req.json() as {
+    const { email, password, full_name } = await requestJson(req) as {
       email: string; password: string; full_name?: string;
     };
 
-    if (!email || !password || password.length < 6) {
-      return new Response(JSON.stringify({ error: "email and password (min 6 chars) required" }), {
+    if (typeof email!=="string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || typeof password!=="string" || password.length < 8) {
+      return new Response(JSON.stringify({ error: "Valid email and password (min 8 chars) required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -83,7 +85,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
+    console.error("Support account creation failed",e);
+    return new Response(JSON.stringify({ error: "The support account could not be created" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

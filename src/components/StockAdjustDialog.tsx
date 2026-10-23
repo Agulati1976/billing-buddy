@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { allRows } from "@/lib/pagination";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { omInsert } from "@/lib/offlineMutate";
+import { billingTransaction } from "@/lib/billingTransactions";
 import { useBusiness } from "@/hooks/useBusiness";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -26,24 +27,39 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
   const [type, setType] = useState<"adjustment_in" | "adjustment_out" | "damage" | "transfer">("adjustment_in");
   const [qty, setQty] = useState("");
   const [notes, setNotes] = useState("");
+  const savingRef=useRef(false);
+  const [batchId,setBatchId]=useState("");
+  const [batches,setBatches]=useState<Array<{id:string;batch_number:string;quantity:number}>>([]);
+  useEffect(()=>{
+    setBatchId("");setBatches([]);
+    if(!open || !current || !item?.is_batch_tracked) return;
+    let active=true;
+    void allRows(supabase.from("batches").select("id,batch_number,quantity").eq("business_id",current.id).eq("item_id",item.id).order("batch_number")).then(({data,error})=>{
+      if(!active)return;
+      if(error)toast.error(error.message);else setBatches(data??[]);
+    });
+    return()=>{active=false;};
+  },[open,current?.id,item?.id,item?.is_batch_tracked]);
 
   const submit = async () => {
-    if (!current || !user || !item) return;
+    if (!current || !user || !item || savingRef.current) return;
+    if (item.is_batch_tracked && !batchId) {toast.error("Select a batch");return;}
     const q = Number(qty);
     if (!q || q <= 0) { toast.error("Enter a valid quantity"); return; }
     const reducesStock = type === "adjustment_out" || type === "damage" || type === "transfer";
-    const available = Number(item.current_stock) || 0;
+    const available = item.is_batch_tracked ? Number(batches.find(batch=>batch.id===batchId)?.quantity || 0) : Number(item.current_stock) || 0;
     if (reducesStock && q > available) {
       toast.error(`Out of stock: only ${available} ${item.unit} available`);
       return;
     }
-    setSaving(true);
-    const res = await omInsert("stock_movements", {
-      business_id: current.id, item_id: item.id, type, quantity: q,
-      notes: notes.trim() || null, created_by: user.id,
-    });
+    savingRef.current=true;setSaving(true);
+    const res = await billingTransaction("adjust_stock",current.id,{
+      p_operation_id:crypto.randomUUID(),p_business_id:current.id,p_item_id:item.id,p_type:type,p_quantity:q,
+      p_batch_id:batchId || null,p_notes:notes.trim() || null,
+    },{id:item.id});
+    savingRef.current=false;
     setSaving(false);
-    if (res.error) { toast.error((res.error as any).message ?? "Failed"); return; }
+    if (res.error) { toast.error((res.error).message ?? "Failed"); return; }
     toast.success(res.queued ? "Saved offline — will sync" : "Stock adjusted");
     setQty(""); setNotes(""); setType("adjustment_in");
     onSaved();
@@ -57,6 +73,7 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
           <DialogTitle>Adjust Stock — {item?.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {item?.is_batch_tracked && <div><Label>Batch</Label><Select value={batchId} onValueChange={setBatchId}><SelectTrigger><SelectValue placeholder="Select a batch" /></SelectTrigger><SelectContent>{batches.map(batch=><SelectItem key={batch.id} value={batch.id}>{batch.batch_number} · {Number(batch.quantity)} {item.unit}</SelectItem>)}</SelectContent></Select></div>}
           <div>
             <Label>Adjustment Type</Label>
             <Select value={type} onValueChange={(v: typeof type) => setType(v)}>
@@ -83,7 +100,7 @@ export function StockAdjustDialog({ open, onOpenChange, item, onSaved }: Props) 
             />
             {(type === "adjustment_out" || type === "damage" || type === "transfer") && (
               <p className="text-xs text-muted-foreground mt-1">
-                Max available: <span className="font-semibold tabular-nums">{Number(item?.current_stock ?? 0)} {item?.unit}</span>
+                Max available: <span className="font-semibold tabular-nums">{item?.is_batch_tracked ? Number(batches.find(batch=>batch.id===batchId)?.quantity || 0) : Number(item?.current_stock ?? 0)} {item?.unit}</span>
               </p>
             )}
           </div>

@@ -1,3 +1,5 @@
+import { businessDate } from "@/lib/dates";
+import { billingTransaction } from "@/lib/billingTransactions";
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,20 +34,20 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    setPincode((current as any)?.pincode ?? "");
+    setPincode((current)?.pincode ?? "");
   }, [current?.id]);
 
   useEffect(() => {
     if (!current) return;
     setForm({
       name: current.name ?? "",
-      phone: (current as any).phone ?? "",
-      email: (current as any).email ?? "",
-      gstin: (current as any).gstin ?? "",
-      pan: (current as any).pan ?? "",
-      state: (current as any).state ?? "",
-      state_code: (current as any).state_code ?? "",
-      address: (current as any).address ?? "",
+      phone: (current).phone ?? "",
+      email: (current).email ?? "",
+      gstin: (current).gstin ?? "",
+      pan: (current).pan ?? "",
+      state: (current).state ?? "",
+      state_code: (current).state_code ?? "",
+      address: (current).address ?? "",
     });
   }, [current?.id, editOpen]);
 
@@ -62,7 +64,7 @@ export default function Settings() {
       toast.error("Invalid email"); return;
     }
     setSavingProfile(true);
-    const payload: any = {
+    const payload = {
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       address: form.address.trim() || null,
@@ -76,46 +78,15 @@ export default function Settings() {
   };
 
 
-  const renumberAll = async (pin: string, rank: number) => {
-    if (!current) return;
-    const { data, error } = await supabase
-      .from("invoices")
-      .select("id, type, invoice_date, created_at")
-      .eq("business_id", current.id)
-      .is("deleted_at", null)
-      .order("invoice_date", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error) { toast.error(error.message); return; }
-    const counters: Record<string, number> = {};
-    let updated = 0;
-    for (const inv of (data ?? []) as any[]) {
-      const base = shopInvoiceBase(pin, rank, inv.invoice_date);
-      const key = `${inv.type}|${inv.invoice_date}`;
-      counters[key] = (counters[key] ?? 0) + 1;
-      const num = counters[key] === 1 ? base : `${base}-${counters[key]}`;
-      const { error: e } = await supabase.from("invoices").update({ invoice_number: num }).eq("id", inv.id);
-      if (!e) updated++;
-    }
-    toast.success(`Renumbered ${updated} invoice(s)`);
-  };
-
   const savePincode = async () => {
-    if (!current) return;
-    if (!/^\d{6}$/.test(pincode)) { toast.error("Pincode must be 6 digits"); return; }
+    if(!current || savingPin)return;
+    if(!/^\d{6}$/.test(pincode)){toast.error("Pincode must be 6 digits");return;}
     setSavingPin(true);
-    const { data, error } = await supabase
-      .from("businesses")
-      .update({ pincode } as any)
-      .eq("id", current.id)
-      .select("pincode, pincode_rank")
-      .maybeSingle();
-    if (error) { toast.error(error.message); setSavingPin(false); return; }
-    const newPin = (data as any)?.pincode as string;
-    const newRank = (data as any)?.pincode_rank as number;
-    toast.success(`Pincode saved. Your store is #${String(newRank).padStart(3, "0")} in ${newPin}.`);
-    await renumberAll(newPin, newRank);
-    await refresh();
+    const result=await billingTransaction("set_business_pincode",current.id,{p_operation_id:crypto.randomUUID(),p_business_id:current.id,p_pincode:pincode},{pincode,pincode_rank:0,renumbered:0});
     setSavingPin(false);
+    if(result.error){toast.error(result.error.message);return;}
+    toast.success(result.queued ? "Pincode update queued" : `Pincode saved. Renumbered ${result.data.renumbered} invoice(s).`);
+    await refresh();
   };
 
   const tiles = [
@@ -125,8 +96,8 @@ export default function Settings() {
       desc: "Pick a template, accent colour, footer text and defaults." },
   ];
 
-  const curPin = (current as any)?.pincode as string | null;
-  const curRank = (current as any)?.pincode_rank as number | null;
+  const curPin = (current)?.pincode as string | null;
+  const curRank = (current)?.pincode_rank as number | null;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -152,7 +123,7 @@ export default function Settings() {
         <dl className="text-sm grid grid-cols-3 gap-y-2">
           <dt className="text-muted-foreground">Name</dt><dd className="col-span-2">{current?.name}</dd>
           <dt className="text-muted-foreground">GSTIN</dt><dd className="col-span-2 font-mono">{current?.gstin || "—"}</dd>
-          <dt className="text-muted-foreground">PAN</dt><dd className="col-span-2 font-mono">{(current as any)?.pan || "—"}</dd>
+          <dt className="text-muted-foreground">PAN</dt><dd className="col-span-2 font-mono">{(current)?.pan || "—"}</dd>
           <dt className="text-muted-foreground">State</dt><dd className="col-span-2">{current?.state_code ? `${current.state_code} · ${current.state}` : "—"}</dd>
           <dt className="text-muted-foreground">Pincode</dt><dd className="col-span-2 font-mono">{curPin || "—"}</dd>
           <dt className="text-muted-foreground">Phone</dt><dd className="col-span-2">{current?.phone || "—"}</dd>
@@ -231,7 +202,7 @@ export default function Settings() {
             <p className="text-sm text-muted-foreground">
               Invoices use the format <span className="font-mono">PINCODE/STORE&nbsp;NO/DDMMYY</span>
               {curPin && curRank ? (
-                <> &nbsp;— e.g. <span className="font-mono">{shopInvoiceBase(curPin, curRank, new Date().toISOString().slice(0,10))}</span></>
+                <> &nbsp;— e.g. <span className="font-mono">{shopInvoiceBase(curPin, curRank, businessDate())}</span></>
               ) : null}.
             </p>
           </div>
